@@ -26,7 +26,7 @@ interface Payment {
     id: string
     number: string
   } | null
-  createdByUser: {
+  createdBy: {
     name: string
     email: string
   }
@@ -259,8 +259,8 @@ export default function PaymentsPage() {
                             <StatusBadge status={payment.status} />
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-900">{payment.createdByUser.name}</div>
-                            <div className="text-sm text-gray-500">{payment.createdByUser.email}</div>
+                            <div className="text-sm text-gray-900">{payment.createdBy.name}</div>
+                            <div className="text-sm text-gray-500">{payment.createdBy.email}</div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             {formatDate(payment.createdAt)}

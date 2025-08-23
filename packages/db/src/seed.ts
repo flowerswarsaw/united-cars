@@ -68,7 +68,9 @@ async function main() {
 
   const dealerUser = await prisma.user.upsert({
     where: { email: 'dealer@demo.com' },
-    update: {},
+    update: {
+      orgId: dealerOrg.id
+    },
     create: {
       email: 'dealer@demo.com',
       name: 'Dealer User',
@@ -240,8 +242,7 @@ async function main() {
   // Create demo vehicles
   const vehicles = [
     {
-      id: 'vehicle-1',
-      orgId: dealerOrg.id,
+      orgId: adminOrg.id,
       vin: '1HGCM82633A123456',
       make: 'Honda',
       model: 'Accord',
@@ -251,8 +252,7 @@ async function main() {
       currentStage: 'auction_purchased'
     },
     {
-      id: 'vehicle-2',
-      orgId: dealerOrg.id,
+      orgId: adminOrg.id,
       vin: '2T1BURHE8JC123457',
       make: 'Toyota',
       model: 'Corolla',
@@ -260,12 +260,117 @@ async function main() {
       purchasePriceUSD: 12000,
       status: 'IN_TRANSIT',
       currentStage: 'towing'
+    },
+    {
+      orgId: adminOrg.id,
+      vin: '3VWLL7AJ9BM053541',
+      make: 'Volkswagen',
+      model: 'Jetta',
+      year: 2021,
+      purchasePriceUSD: 18500,
+      status: 'DELIVERED',
+      currentStage: 'delivered'
+    },
+    {
+      orgId: adminOrg.id,
+      vin: '5YFBURHE8JP785241',
+      make: 'Toyota',
+      model: 'Camry',
+      year: 2019,
+      purchasePriceUSD: 22000,
+      status: 'AT_PORT',
+      currentStage: 'port_processing'
+    },
+    {
+      orgId: adminOrg.id,
+      vin: 'WBA8E9G59GNU18273',
+      make: 'BMW',
+      model: '328i',
+      year: 2016,
+      purchasePriceUSD: 25000,
+      status: 'SHIPPED',
+      currentStage: 'ocean_freight'
+    },
+    {
+      orgId: adminOrg.id,
+      vin: 'WAUFFAFL7BN021953',
+      make: 'Audi',
+      model: 'A4',
+      year: 2022,
+      purchasePriceUSD: 32000,
+      status: 'PURCHASED',
+      currentStage: 'auction_purchased'
+    },
+    {
+      orgId: adminOrg.id,
+      vin: '1C4RJFAG5FC123987',
+      make: 'Jeep',
+      model: 'Grand Cherokee',
+      year: 2015,
+      purchasePriceUSD: 19500,
+      status: 'IN_TRANSIT',
+      currentStage: 'title_processing'
+    },
+    {
+      orgId: adminOrg.id,
+      vin: '5TDJKRFH4HS092837',
+      make: 'Toyota',
+      model: 'Highlander',
+      year: 2017,
+      purchasePriceUSD: 28000,
+      status: 'AT_PORT',
+      currentStage: 'customs_clearance'
+    },
+    {
+      orgId: adminOrg.id,
+      vin: '1FTFW1ET5DFC48291',
+      make: 'Ford',
+      model: 'F-150',
+      year: 2020,
+      purchasePriceUSD: 35000,
+      status: 'SOURCING',
+      currentStage: 'auction_bidding'
+    },
+    {
+      orgId: adminOrg.id,
+      vin: 'JM3KFBDM1J0392847',
+      make: 'Mazda',
+      model: 'CX-5',
+      year: 2018,
+      purchasePriceUSD: 21000,
+      status: 'SHIPPED',
+      currentStage: 'ocean_freight'
+    },
+    {
+      orgId: adminOrg.id,
+      vin: 'KMHD84LF1HU283746',
+      make: 'Hyundai',
+      model: 'Sonata',
+      year: 2019,
+      purchasePriceUSD: 16500,
+      status: 'DELIVERED',
+      currentStage: 'delivered'
+    },
+    {
+      orgId: adminOrg.id,
+      vin: '2HGFC2F53JH579324',
+      make: 'Honda',
+      model: 'Civic',
+      year: 2021,
+      purchasePriceUSD: 23000,
+      status: 'IN_TRANSIT',
+      currentStage: 'port_departure'
     }
   ]
 
   for (const vehicle of vehicles) {
     await prisma.vehicle.upsert({
-      where: { id: vehicle.id },
+      where: { 
+        orgId_vin: {
+          orgId: vehicle.orgId,
+          vin: vehicle.vin
+        }
+      },
       update: {},
       create: vehicle as any
     })
@@ -277,7 +382,7 @@ async function main() {
     update: {},
     create: {
       id: 'demo-invoice-1',
-      orgId: dealerOrg.id,
+      orgId: adminOrg.id,
       number: 'INV-2024-001',
       status: 'ISSUED',
       currency: 'USD',
@@ -324,7 +429,7 @@ async function main() {
     update: {},
     create: {
       id: 'demo-payment-1',
-      orgId: dealerOrg.id,
+      orgId: adminOrg.id,
       invoiceId: invoice.id,
       method: 'bank_transfer',
       amount: 1650.00,
@@ -341,7 +446,7 @@ async function main() {
   // Create a pending intake for the dealer
   const pendingIntake = await prisma.vehicleIntake.create({
     data: {
-      orgId: dealerOrg.id,
+      orgId: adminOrg.id,
       createdById: dealerUser.id,
       status: 'PENDING',
       auction: 'COPART',
@@ -357,11 +462,12 @@ async function main() {
     }
   })
 
+
   // Create an approved intake with corresponding vehicle
   const approvedVehicle = await prisma.vehicle.upsert({
     where: {
       orgId_vin: {
-        orgId: dealerOrg.id,
+        orgId: adminOrg.id,
         vin: '1HGBH41JXMN556789'
       }
     },
@@ -372,7 +478,7 @@ async function main() {
       model: 'Accord',
       year: 2019,
       purchasePriceUSD: 12500.00,
-      orgId: dealerOrg.id,
+      orgId: adminOrg.id,
       status: 'PURCHASED',
       currentStage: 'INTAKE_APPROVED'
     }
@@ -380,7 +486,7 @@ async function main() {
 
   const approvedIntake = await prisma.vehicleIntake.create({
     data: {
-      orgId: dealerOrg.id,
+      orgId: adminOrg.id,
       createdById: dealerUser.id,
       status: 'APPROVED',
       auction: 'IAA',
@@ -506,7 +612,7 @@ async function main() {
   const serviceRequests = [
     {
       id: 'service-1',
-      orgId: dealerOrg.id,
+      orgId: adminOrg.id,
       vehicleId: 'vehicle-1',
       type: 'inspection',
       status: 'pending',
@@ -514,7 +620,7 @@ async function main() {
     },
     {
       id: 'service-2',
-      orgId: dealerOrg.id,
+      orgId: adminOrg.id,
       vehicleId: 'vehicle-2', 
       type: 'cleaning',
       status: 'approved',
@@ -523,7 +629,7 @@ async function main() {
     },
     {
       id: 'service-3',
-      orgId: dealerOrg.id,
+      orgId: adminOrg.id,
       vehicleId: approvedVehicle.id,
       type: 'repair',
       status: 'completed',
@@ -575,7 +681,7 @@ async function main() {
   const claims = [
     {
       id: 'claim-1',
-      orgId: dealerOrg.id,
+      orgId: adminOrg.id,
       vehicleId: 'vehicle-1',
       status: 'new',
       incidentAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000), // 3 days ago
@@ -587,7 +693,7 @@ async function main() {
     },
     {
       id: 'claim-2',
-      orgId: dealerOrg.id,
+      orgId: adminOrg.id,
       vehicleId: 'vehicle-2',
       status: 'approved',
       incidentAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // 7 days ago
@@ -598,7 +704,7 @@ async function main() {
     },
     {
       id: 'claim-3',
-      orgId: dealerOrg.id,
+      orgId: adminOrg.id,
       vehicleId: approvedVehicle.id,
       status: 'rejected',
       description: 'Claim for pre-existing scratches - determined to be auction condition, not transport damage.',

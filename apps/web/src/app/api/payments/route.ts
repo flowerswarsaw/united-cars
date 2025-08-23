@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
         include: {
           org: true,
           invoice: true,
-          createdByUser: true
+          createdBy: true
         },
         orderBy: { createdAt: 'desc' },
         skip,
@@ -77,12 +77,12 @@ export async function POST(request: NextRequest) {
         status: body.status || 'SUBMITTED',
         proofUrl: body.proofUrl,
         ref: body.ref,
-        createdByUserId: body.createdByUserId
+        createdById: body.createdById
       },
       include: {
         org: true,
         invoice: true,
-        createdByUser: true
+        createdBy: true
       }
     })
 

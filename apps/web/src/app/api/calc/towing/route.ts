@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { calculateTowingCost, TowingCostInputSchema } from '@united-cars/calc'
+import { calculateTowing, TowingInputSchema } from '@united-cars/calc'
 import { PrismaClient } from '@prisma/client'
 
 const prisma = new PrismaClient()
@@ -9,10 +9,10 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
 
     // Validate input
-    const input = TowingCostInputSchema.parse(body)
+    const input = TowingInputSchema.parse(body)
 
     // Calculate towing cost
-    const result = calculateTowingCost(input)
+    const result = calculateTowing(input, [])
 
     // Save calculation to vehicle stage history if vehicleId provided
     if (body.vehicleId) {

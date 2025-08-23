@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { calculateCustomsFees, CustomsFeesInputSchema } from '@united-cars/calc'
+import { calculateCustoms, CustomsInputSchema } from '@united-cars/calc'
 import { PrismaClient } from '@prisma/client'
 
 const prisma = new PrismaClient()
@@ -9,10 +9,10 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
 
     // Validate input
-    const input = CustomsFeesInputSchema.parse(body)
+    const input = CustomsInputSchema.parse(body)
 
     // Calculate customs fees
-    const result = calculateCustomsFees(input)
+    const result = calculateCustoms(input, [])
 
     // Save calculation to vehicle stage history if vehicleId provided
     if (body.vehicleId) {
