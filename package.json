@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "pnpm -r --parallel dev",
     "build": "pnpm -r build",
+    "build:packages": "pnpm --filter './packages/*' build",
     "test": "pnpm -r test",
     "e2e": "pnpm --filter web test:e2e",
     "lint": "eslint .",
