@@ -1,0 +1,220 @@
+{
+    # Global options
+    admin off
+    auto_https on
+    email {$ACME_EMAIL:admin@example.com}
+    
+    # Security options
+    servers {
+        protocol {
+            allow_h2c
+        }
+    }
+    
+    # Rate limiting
+    order rate_limit before basicauth
+}
+
+# Main application domain
+{$DOMAIN:localhost} {
+    # Enable automatic HTTPS
+    tls {$ACME_EMAIL:admin@example.com}
+    
+    # Security headers (production-grade)
+    header {
+        # HSTS (HTTP Strict Transport Security)
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        
+        # Content Security Policy (strict but functional)
+        Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' ws: wss:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests"
+        
+        # Prevent MIME type sniffing
+        X-Content-Type-Options "nosniff"
+        
+        # Prevent clickjacking
+        X-Frame-Options "DENY"
+        
+        # XSS Protection (legacy browsers)
+        X-XSS-Protection "1; mode=block"
+        
+        # Referrer policy
+        Referrer-Policy "strict-origin-when-cross-origin"
+        
+        # Permissions policy
+        Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()"
+        
+        # Additional security headers
+        Cross-Origin-Embedder-Policy "credentialless"
+        Cross-Origin-Opener-Policy "same-origin"
+        Cross-Origin-Resource-Policy "same-origin"
+        
+        # Server identification
+        Server "United Cars Platform"
+        
+        # Remove potentially sensitive headers
+        -Server
+        -X-Powered-By
+        -X-AspNet-Version
+    }
+    
+    # Rate limiting for API endpoints (more aggressive)
+    rate_limit {
+        zone api {
+            key    {remote_host}
+            events 100
+            window 1m
+        }
+        
+        zone auth {
+            key    {remote_host}
+            events 10
+            window 1m
+        }
+        
+        zone upload {
+            key    {remote_host}
+            events 5
+            window 1m
+        }
+    }
+    
+    # Logging (structured JSON for production)
+    log {
+        output file /var/log/caddy/access.log {
+            roll_size 100MB
+            roll_keep 5
+            roll_keep_for 720h
+        }
+        format json {
+            time_format "2006-01-02T15:04:05.000Z07:00"
+            message_key "msg"
+            level_key "level"
+            time_key "timestamp"
+        }
+        level INFO
+    }
+    
+    # Compression (gzip + brotli)
+    encode {
+        gzip 6
+        brotli 6
+        minimum_length 512
+    }
+    
+    # Static file serving for uploads (with auth check)
+    handle_path /uploads/* {
+        @auth_required {
+            not path /uploads/public/*
+        }
+        
+        # For non-public uploads, proxy to app for auth verification
+        reverse_proxy @auth_required web:3000 {
+            header_up X-Forwarded-Proto {scheme}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Host {host}
+        }
+        
+        # Serve public uploads directly
+        root * /var/www/uploads
+        file_server {
+            hide .* 
+            browse false
+            precompressed br gz
+        }
+        
+        # Cache headers for static assets
+        header Cache-Control "public, max-age=86400, must-revalidate"
+        header ETag "\"{file_last_modified}\""
+    }
+    
+    # Health check endpoint (bypass rate limiting)
+    handle /healthz {
+        reverse_proxy web:3000 {
+            header_up X-Forwarded-Proto {scheme}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Host {host}
+        }
+    }
+    
+    # API endpoints with strict rate limiting
+    handle /api/auth/* {
+        rate_limit auth
+        reverse_proxy web:3000 {
+            header_up X-Forwarded-Proto {scheme}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Host {host}
+            
+            # Timeout for auth operations
+            timeout 30s
+        }
+    }
+    
+    handle /api/*/upload* {
+        rate_limit upload
+        
+        # Increase timeout for uploads
+        reverse_proxy web:3000 {
+            header_up X-Forwarded-Proto {scheme}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Host {host}
+            
+            timeout 120s
+        }
+    }
+    
+    handle /api/* {
+        rate_limit api
+        reverse_proxy web:3000 {
+            header_up X-Forwarded-Proto {scheme}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Host {host}
+            
+            timeout 60s
+        }
+    }
+    
+    # Main application (all other routes)
+    handle {
+        reverse_proxy web:3000 {
+            header_up X-Forwarded-Proto {scheme}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Host {host}
+            
+            # Health check
+            health_uri /api/health
+            health_interval 30s
+            health_timeout 10s
+            
+            # Failover configuration
+            fail_duration 30s
+            max_fails 3
+            unhealthy_latency 3s
+        }
+    }
+    
+    # Handle errors gracefully
+    handle_errors {
+        @5xx expression `{http.error.status_code} >= 500`
+        @4xx expression `{http.error.status_code} >= 400 && {http.error.status_code} < 500`
+        
+        # Log errors but don't expose internal details
+        respond @5xx "Service temporarily unavailable" 503
+        respond @4xx "Bad request" 400
+    }
+}
+
+# Redirect www to non-www (if applicable)
+www.{$DOMAIN:localhost} {
+    redir https://{$DOMAIN:localhost}{uri} permanent
+}
+
+# Health check endpoint for load balancers (no domain restriction)
+:8080 {
+    respond /healthz "OK" 200
+}

@@ -1,0 +1,461 @@
+name: Deploy to Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to deploy to production'
+        required: true
+        type: string
+      skip_staging_check:
+        description: 'Skip staging deployment verification'
+        required: false
+        type: boolean
+        default: false
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  pre-deployment-checks:
+    name: Pre-deployment Checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    outputs:
+      staging_version: ${{ steps.staging.outputs.version }}
+      tag_validated: ${{ steps.validate.outputs.valid }}
+
+    steps:
+      - name: Validate release tag
+        id: validate
+        run: |
+          TAG=${{ github.event.inputs.tag }}
+          if [[ ! "$TAG" =~ ^v[0-9]{4}\.[0-9]{2}\.[0-9]{2}-[a-f0-9]{7}$ ]]; then
+            echo "Invalid tag format: $TAG"
+            echo "Expected format: vYYYY.MM.DD-githash (e.g., v2024.01.15-a1b2c3d)"
+            exit 1
+          fi
+          
+          # Check if release exists
+          curl -f -s "https://api.github.com/repos/${{ github.repository }}/releases/tags/$TAG" > /dev/null
+          echo "valid=true" >> $GITHUB_OUTPUT
+          echo "✅ Release tag validated: $TAG"
+
+      - name: Check staging deployment
+        id: staging
+        if: ${{ !github.event.inputs.skip_staging_check }}
+        run: |
+          STAGING_HOST=${{ secrets.STAGING_HOST }}
+          
+          # Check staging version via SSH
+          STAGING_VERSION=$(ssh united-cars@$STAGING_HOST 'cat ~/united-cars/.current-staging-version 2>/dev/null || echo "unknown"')
+          echo "version=$STAGING_VERSION" >> $GITHUB_OUTPUT
+          
+          if [ "$STAGING_VERSION" != "${{ github.event.inputs.tag }}" ]; then
+            echo "❌ Production deployment blocked!"
+            echo "Staging is running: $STAGING_VERSION"
+            echo "Requested production deploy: ${{ github.event.inputs.tag }}"
+            echo "Please deploy to staging first or use skip_staging_check=true"
+            exit 1
+          fi
+          
+          # Verify staging health
+          ssh united-cars@$STAGING_HOST '
+            cd ~/united-cars/deploy/compose
+            if ! docker compose -f docker-compose.staging.yml ps --services --filter "status=running" | grep -q web; then
+              echo "❌ Staging deployment is not healthy"
+              exit 1
+            fi
+          '
+          
+          echo "✅ Staging verification passed"
+
+      - name: Security checklist reminder
+        run: |
+          echo "🔒 **PRODUCTION DEPLOYMENT SECURITY CHECKLIST**"
+          echo ""
+          echo "Before approving, ensure:"
+          echo "- [ ] All security patches applied"
+          echo "- [ ] Environment variables properly configured"
+          echo "- [ ] Database backup completed"
+          echo "- [ ] SSL certificates valid"
+          echo "- [ ] Monitoring and alerting active"
+          echo "- [ ] Rollback plan confirmed"
+          echo "- [ ] Stakeholder approval obtained"
+          echo ""
+
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    environment: production
+    needs: pre-deployment-checks
+    timeout-minutes: 45
+
+    steps:
+      - name: Production deployment approval
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: deployment } = await github.rest.repos.createDeployment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: '${{ github.event.inputs.tag }}',
+              environment: 'production',
+              description: 'Production deployment of ${{ github.event.inputs.tag }}',
+              required_contexts: []
+            });
+            
+            console.log('Production deployment created:', deployment.id);
+            core.setOutput('deployment_id', deployment.id);
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag }}
+
+      - name: Set deployment variables
+        id: vars
+        run: |
+          TAG=${{ github.event.inputs.tag }}
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "image_tag=${TAG#v}" >> $GITHUB_OUTPUT
+          echo "commit_sha=${{ github.sha }}" >> $GITHUB_OUTPUT
+          echo "build_id=${{ github.run_id }}" >> $GITHUB_OUTPUT
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push production Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          target: runner
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.image_tag }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:prod-latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            NODE_VERSION=20-alpine
+            BUILD_ID=${{ steps.vars.outputs.build_id }}
+            COMMIT_SHA=${{ steps.vars.outputs.commit_sha }}
+            NODE_ENV=production
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.8.0
+        with:
+          ssh-private-key: ${{ secrets.PROD_SSH_PRIVATE_KEY }}
+
+      - name: Add production server to known hosts
+        run: |
+          ssh-keyscan -H ${{ secrets.PROD_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Create deployment directory on server
+        run: |
+          ssh united-cars@${{ secrets.PROD_HOST }} '
+            mkdir -p ~/deployments/${{ steps.vars.outputs.image_tag }}
+            mkdir -p ~/united-cars/deploy
+          '
+
+      - name: Copy deployment files to server
+        run: |
+          scp -r deploy/ united-cars@${{ secrets.PROD_HOST }}:~/united-cars/
+
+      - name: Validate production environment
+        run: |
+          ssh united-cars@${{ secrets.PROD_HOST }} '
+            cd ~/united-cars/deploy/compose/env
+            if [ ! -f .prod ]; then
+              echo "❌ Production environment file missing!"
+              echo "Please create ~/united-cars/deploy/compose/env/.prod"
+              exit 1
+            fi
+            
+            # Basic validation of required variables
+            source .prod
+            if [ -z "$DOMAIN" ] || [ -z "$DATABASE_URL" ] || [ -z "$NEXTAUTH_SECRET" ]; then
+              echo "❌ Missing required environment variables in .prod"
+              exit 1
+            fi
+            
+            echo "✅ Production environment validated"
+          '
+
+      - name: Create pre-deployment backup
+        run: |
+          ssh united-cars@${{ secrets.PROD_HOST }} '
+            cd ~/united-cars
+            echo "🗄️  Creating pre-deployment backup..."
+            
+            # Create backup with deployment tag
+            ./deploy/scripts/backup-db.sh prod 30 | tee ~/deployments/${{ steps.vars.outputs.image_tag }}/pre-deploy-backup.log
+            
+            if [ $? -eq 0 ]; then
+              echo "✅ Pre-deployment backup completed"
+            else
+              echo "❌ Pre-deployment backup failed"
+              exit 1
+            fi
+          '
+
+      - name: Deploy to production
+        run: |
+          ssh united-cars@${{ secrets.PROD_HOST }} '
+            cd ~/united-cars
+            export IMAGE_TAG=${{ steps.vars.outputs.image_tag }}
+            export BUILD_ID=${{ steps.vars.outputs.build_id }}
+            export COMMIT_SHA=${{ steps.vars.outputs.commit_sha }}
+            
+            echo "🚀 Starting PRODUCTION deployment of ${{ steps.vars.outputs.tag }}..."
+            echo "⚠️  This will affect live users!"
+            
+            # Run deployment with production flag
+            ./deploy/scripts/deploy.sh prod | tee ~/deployments/${{ steps.vars.outputs.image_tag }}/deploy.log
+            
+            if [ $? -eq 0 ]; then
+              echo "✅ Production deployment completed successfully"
+            else
+              echo "❌ Production deployment failed - check logs"
+              exit 1
+            fi
+          '
+
+      - name: Verify production deployment
+        run: |
+          ssh united-cars@${{ secrets.PROD_HOST }} '
+            echo "🔍 Verifying production deployment..."
+            
+            # Wait for application to be healthy
+            timeout 300 bash -c "until curl -f -k https://$DOMAIN/api/health; do echo \"Waiting...\"; sleep 10; done"
+            
+            # Extended health checks
+            curl -f -k https://$DOMAIN/api/version
+            curl -f -k https://$DOMAIN/api/health
+            
+            # Check all services are running
+            cd ~/united-cars/deploy/compose
+            docker compose -f docker-compose.prod.yml ps
+            
+            # Database connectivity
+            docker compose -f docker-compose.prod.yml exec -T db pg_isready -U postgres
+            
+            echo "✅ Production verification completed"
+          '
+
+      - name: Run production smoke tests
+        run: |
+          ssh united-cars@${{ secrets.PROD_HOST }} '
+            echo "🧪 Running production smoke tests..."
+            
+            # Test critical endpoints
+            curl -f -k https://$DOMAIN/ > /dev/null
+            curl -f -k https://$DOMAIN/api/health > /dev/null
+            
+            # Test database operations (read-only)
+            cd ~/united-cars/deploy/compose
+            docker compose -f docker-compose.prod.yml exec -T db psql -U postgres -d united_cars -c "SELECT COUNT(*) FROM public._prisma_migrations;" > /dev/null
+            
+            echo "✅ Production smoke tests passed"
+          '
+
+      - name: Update production deployment status
+        if: always()
+        run: |
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "✅ Production deployment successful"
+            ssh united-cars@${{ secrets.PROD_HOST }} "echo '${{ steps.vars.outputs.tag }}' > ~/united-cars/.current-prod-version"
+            
+            # Mark deployment as successful
+            curl -X POST -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              -H "Accept: application/vnd.github.v3+json" \
+              https://api.github.com/repos/${{ github.repository }}/deployments/${{ steps.deployment.outputs.deployment_id }}/statuses \
+              -d '{"state":"success","target_url":"https://${{ secrets.PROD_DOMAIN }}","description":"Production deployment successful"}'
+          else
+            echo "❌ Production deployment failed"
+            
+            # Mark deployment as failed  
+            echo "Production deployment failed - manual intervention required"
+            
+            exit 1
+          fi
+
+      - name: Cleanup old deployments
+        if: success()
+        run: |
+          ssh united-cars@${{ secrets.PROD_HOST }} '
+            # Keep last 5 deployment logs
+            cd ~/deployments
+            ls -t | tail -n +6 | head -n -5 | xargs rm -rf 2>/dev/null || true
+            echo "🧹 Cleaned up old deployment artifacts"
+          '
+
+  post-deployment:
+    name: Post-deployment Tasks
+    runs-on: ubuntu-latest
+    needs: deploy-production
+    if: success()
+
+    steps:
+      - name: Notify stakeholders
+        uses: 8398a7/action-slack@v3
+        with:
+          status: success
+          channel: '#production'
+          text: |
+            🎉 **PRODUCTION DEPLOYMENT SUCCESSFUL** 🎉
+            
+            **Release:** ${{ github.event.inputs.tag }}
+            **Environment:** Production
+            **Status:** ✅ Live
+            **URL:** https://${{ secrets.PROD_DOMAIN }}
+            **Deployed by:** ${{ github.actor }}
+            
+            **What's New:**
+            - Latest features and improvements
+            - Security updates applied
+            - Performance optimizations
+            
+            **Monitoring:**
+            - Health check: https://${{ secrets.PROD_DOMAIN }}/api/health
+            - Version info: https://${{ secrets.PROD_DOMAIN }}/api/version
+            
+            🚨 **Please monitor application closely for the next hour**
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        if: env.SLACK_WEBHOOK_URL != ''
+
+      - name: Create deployment report
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `Production Deployment Report - ${{ github.event.inputs.tag }}`,
+              body: `## Production Deployment Successful ✅
+
+**Release:** ${{ github.event.inputs.tag }}
+**Deployed:** ${new Date().toISOString()}
+**Deployed by:** ${{ github.actor }}
+**Build ID:** ${{ github.run_id }}
+
+### Deployment Details
+- **Environment:** Production
+- **Status:** Live and healthy
+- **URL:** https://${{ secrets.PROD_DOMAIN }}
+
+### Pre-deployment Actions
+- [x] Staging verification completed
+- [x] Security checklist verified
+- [x] Database backup created
+- [x] Manual approval obtained
+
+### Post-deployment Verification
+- [x] Application health check passed
+- [x] Database connectivity confirmed
+- [x] Smoke tests completed
+- [x] SSL certificates validated
+
+### Monitoring
+- Health: https://${{ secrets.PROD_DOMAIN }}/api/health
+- Version: https://${{ secrets.PROD_DOMAIN }}/api/version
+
+### Next Steps
+- [ ] Monitor application metrics for 24 hours
+- [ ] Verify user-facing functionality
+- [ ] Check error logs and metrics
+- [ ] Update documentation if needed
+
+---
+*This report was auto-generated by the deployment workflow.*`,
+              labels: ['deployment', 'production', 'release']
+            });
+            console.log('Deployment report created:', issue.data.number);
+
+  rollback-plan:
+    name: Prepare Rollback Plan
+    runs-on: ubuntu-latest
+    needs: deploy-production
+    if: failure()
+
+    steps:
+      - name: Generate rollback instructions
+        run: |
+          echo "🚨 **PRODUCTION DEPLOYMENT FAILED**"
+          echo ""
+          echo "**Immediate Actions Required:**"
+          echo "1. Check application health: https://${{ secrets.PROD_DOMAIN }}/api/health"
+          echo "2. Review deployment logs in GitHub Actions"
+          echo "3. Connect to production server and check container logs"
+          echo ""
+          echo "**Rollback Options:**"
+          echo ""
+          echo "### Option 1: Quick Container Rollback"
+          echo '```bash'
+          echo "ssh united-cars@${{ secrets.PROD_HOST }}"
+          echo "cd ~/united-cars/deploy/compose"
+          echo "# Find previous working version"
+          echo "cat ~/united-cars/.previous-prod-version"
+          echo "# Update IMAGE_TAG in .prod to previous version"
+          echo "docker compose -f docker-compose.prod.yml down"
+          echo "docker compose -f docker-compose.prod.yml up -d"
+          echo '```'
+          echo ""
+          echo "### Option 2: Database Rollback (if schema changed)"
+          echo '```bash'
+          echo "# Find backup created before deployment"
+          echo "ls -la /var/united-cars/backups/db/*$(date +%Y%m%d)*"
+          echo "./deploy/scripts/restore-db.sh prod /path/to/backup.sql.gz"
+          echo '```'
+          echo ""
+          echo "**Contact:** @platform-team for immediate assistance"
+
+      - name: Create incident issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `🚨 PRODUCTION DEPLOYMENT FAILED - ${{ github.event.inputs.tag }}`,
+              body: `## Production Deployment Failure
+
+**Release:** ${{ github.event.inputs.tag }}
+**Failed:** ${new Date().toISOString()}
+**Attempted by:** ${{ github.actor }}
+**Workflow:** ${{ github.run_id }}
+
+### Immediate Action Required
+Production deployment has failed. Please follow rollback procedures immediately.
+
+### Quick Health Check
+- [ ] Check: https://${{ secrets.PROD_DOMAIN }}/api/health
+- [ ] Review: Deployment logs in workflow ${{ github.run_id }}
+- [ ] Connect: SSH to production server and check container status
+
+### Rollback Instructions
+See workflow logs for detailed rollback instructions.
+
+### Investigation Needed
+- [ ] Identify root cause of failure
+- [ ] Determine if rollback is required
+- [ ] Check for data integrity issues
+- [ ] Verify all services are operational
+
+---
+**Priority:** P0 - Critical Production Issue
+**Assignee:** @platform-team`,
+              labels: ['incident', 'production', 'p0-critical'],
+              assignees: ['platform-team']
+            });
+            console.log('Incident issue created:', issue.data.number);

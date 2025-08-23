@@ -1,0 +1,277 @@
+services:
+  # PostgreSQL Database with Enhanced Security
+  db:
+    image: postgres:16-alpine
+    container_name: united-cars-db-prod
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: united_cars
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - /var/united-cars/backups:/backups
+    # No external port exposure in production
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d united_cars"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.5'
+        reservations:
+          memory: 512M
+          cpus: '0.25'
+    networks:
+      - united-cars-backend
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Redis with Enhanced Configuration
+  redis:
+    image: redis:7-alpine
+    container_name: united-cars-redis-prod
+    restart: unless-stopped
+    command: >
+      redis-server 
+      --appendonly yes 
+      --maxmemory 512mb 
+      --maxmemory-policy allkeys-lru
+      --save 900 1 
+      --save 300 10 
+      --save 60 10000
+      --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "--pass", "${REDIS_PASSWORD}", "ping"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.25'
+    networks:
+      - united-cars-backend
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Production Migration Runner (no seeding)
+  migrate:
+    image: ${REGISTRY_URL}/${IMAGE_NAME}:${IMAGE_TAG}
+    container_name: united-cars-migrate-prod
+    environment:
+      DATABASE_URL: postgresql://postgres:${DB_PASSWORD}@db:5432/united_cars?schema=public&sslmode=disable
+      NODE_ENV: production
+    command: >
+      sh -c "
+        echo 'Production migration starting at $(date)'
+        while ! nc -z db 5432; do 
+          echo 'Waiting for database...' 
+          sleep 2
+        done
+        echo 'Database available. Running migrations...'
+        pnpm db:migrate:deploy
+        echo 'Migration completed successfully at $(date)'
+      "
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - united-cars-backend
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "2"
+
+  # Production Web Application with Blue-Green Support
+  web:
+    image: ${REGISTRY_URL}/${IMAGE_NAME}:${IMAGE_TAG}
+    container_name: united-cars-web-prod
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgresql://postgres:${DB_PASSWORD}@db:5432/united_cars?schema=public&connection_limit=20&pool_timeout=30&statement_timeout=60000
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      NEXTAUTH_URL: https://${DOMAIN}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
+      
+      # Application metadata
+      APP_NAME: "United Cars"
+      APP_VERSION: ${IMAGE_TAG}
+      BUILD_ID: ${IMAGE_TAG}
+      COMMIT_SHA: ${COMMIT_SHA}
+      
+      # Production security settings (strict)
+      HTTPS_REDIRECT: true
+      HSTS_ENABLED: true
+      HSTS_MAX_AGE: 31536000
+      CSP_ENABLED: true
+      CSRF_PROTECTION: true
+      RATE_LIMIT_ENABLED: true
+      RATE_LIMIT_WINDOW: 900000
+      RATE_LIMIT_MAX: 100
+      
+      # File upload settings (production limits)
+      MAX_FILE_SIZE: 5242880  # 5MB for production
+      UPLOAD_PATH: /app/uploads
+      ALLOWED_MIME_TYPES: "image/jpeg,image/png,image/webp,application/pdf"
+      VIRUS_SCANNING: false
+      
+      # Production monitoring & observability
+      LOG_LEVEL: warn
+      ENABLE_METRICS: true
+      ENABLE_TRACING: true
+      TRACING_SAMPLE_RATE: 0.1
+      SENTRY_DSN: ${SENTRY_DSN}
+      DATADOG_API_KEY: ${DATADOG_API_KEY}
+      
+      # Database connection pool settings
+      DB_MAX_CONNECTIONS: 20
+      DB_CONNECTION_TIMEOUT: 30000
+      DB_STATEMENT_TIMEOUT: 60000
+      
+    volumes:
+      - uploads:/app/uploads
+      - logs:/app/logs
+    # No external port exposure - only through Caddy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+        reservations:
+          memory: 1G
+          cpus: '0.5'
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    networks:
+      - united-cars-backend
+      - united-cars-frontend
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+  # Production Caddy with Enhanced Security
+  caddy:
+    image: caddy:2-alpine
+    container_name: united-cars-caddy-prod
+    restart: unless-stopped
+    environment:
+      DOMAIN: ${DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+      - uploads:/var/www/uploads:ro
+      - logs:/var/log/caddy
+    depends_on:
+      web:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.25'
+    networks:
+      - united-cars-frontend
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "25m"
+        max-file: "3"
+
+  # Database backup service (production only)
+  backup:
+    image: postgres:16-alpine
+    container_name: united-cars-backup-prod
+    restart: "no"
+    environment:
+      PGPASSWORD: ${DB_PASSWORD}
+    volumes:
+      - /var/united-cars/backups:/backups
+      - ./scripts:/scripts:ro
+    command: >
+      sh -c "
+        echo 'Starting backup at $(date)'
+        pg_dump -h db -U postgres -d united_cars --verbose --clean --if-exists --format=custom | gzip > /backups/backup_$(date +%Y%m%d_%H%M%S).sql.gz
+        find /backups -name 'backup_*.sql.gz' -mtime +14 -delete
+        echo 'Backup completed at $(date)'
+      "
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - united-cars-backend
+    profiles:
+      - backup
+
+volumes:
+  db_data:
+    driver: local
+  redis_data:
+    driver: local
+  caddy_data:
+    driver: local
+  caddy_config:
+    driver: local
+  uploads:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /var/united-cars/uploads
+  logs:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /var/united-cars/logs
+
+networks:
+  # Backend network - database and internal services
+  united-cars-backend:
+    driver: bridge
+    internal: true
+    ipam:
+      config:
+        - subnet: 172.21.1.0/24
+  
+  # Frontend network - web app and reverse proxy
+  united-cars-frontend:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.21.2.0/24

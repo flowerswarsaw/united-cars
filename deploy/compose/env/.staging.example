@@ -1,0 +1,97 @@
+# United Cars - Staging Environment Configuration
+# Copy this file to .staging and configure appropriate values
+
+# =============================================================================
+# DEPLOYMENT CONFIGURATION
+# =============================================================================
+DOMAIN=staging.united-cars.example.com
+ACME_EMAIL=ops@united-cars.example.com
+REGISTRY_URL=ghcr.io/your-org/united-cars
+IMAGE_NAME=web
+IMAGE_TAG=latest
+COMMIT_SHA=staging
+
+# =============================================================================
+# DATABASE CONFIGURATION
+# =============================================================================
+DB_PASSWORD=staging-super-secure-db-password-change-me
+DATABASE_URL=postgresql://postgres:${DB_PASSWORD}@db:5432/united_cars?schema=public&sslmode=disable
+
+# =============================================================================
+# REDIS CONFIGURATION
+# =============================================================================
+REDIS_PASSWORD=staging-redis-password-change-me
+REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379
+
+# =============================================================================
+# APPLICATION SECURITY
+# =============================================================================
+# CRITICAL: Must be 64+ characters for production use
+NEXTAUTH_SECRET=staging-nextauth-secret-64-characters-minimum-change-this-value
+# Internal API key for service-to-service communication
+API_KEY_INTERNAL=staging-internal-api-key-32-characters-minimum
+
+# =============================================================================
+# MONITORING & OBSERVABILITY (Optional)
+# =============================================================================
+# Error tracking
+SENTRY_DSN=https://your-staging-sentry-dsn@sentry.io/project-id
+
+# APM and metrics (optional)
+DATADOG_API_KEY=your-staging-datadog-api-key
+
+# =============================================================================
+# EMAIL CONFIGURATION (Optional)
+# =============================================================================
+SMTP_HOST=smtp.staging.example.com
+SMTP_PORT=587
+SMTP_SECURE=true
+SMTP_USER=noreply@staging.united-cars.example.com
+SMTP_PASSWORD=staging-smtp-password
+EMAIL_FROM=noreply@staging.united-cars.example.com
+EMAIL_FROM_NAME="United Cars (Staging)"
+
+# =============================================================================
+# EXTERNAL INTEGRATIONS (Optional)
+# =============================================================================
+# Carfax API
+CARFAX_API_KEY=staging-carfax-api-key
+
+# Stripe payments
+STRIPE_SECRET_KEY=sk_test_staging_stripe_secret_key
+
+# AWS services
+AWS_ACCESS_KEY_ID=staging-aws-access-key
+AWS_SECRET_ACCESS_KEY=staging-aws-secret-key
+AWS_REGION=us-west-2
+
+# =============================================================================
+# STAGING-SPECIFIC SETTINGS
+# =============================================================================
+# Logging level (debug for staging)
+LOG_LEVEL=debug
+
+# Performance monitoring
+ENABLE_METRICS=true
+ENABLE_TRACING=true
+TRACING_SAMPLE_RATE=0.5
+
+# Feature flags (staging gets new features first)
+FEATURE_NEW_DASHBOARD=true
+FEATURE_ADVANCED_SEARCH=true
+FEATURE_NOTIFICATIONS=true
+FEATURE_AUDIT_LOGGING=true
+
+# Security settings (less strict for staging)
+RATE_LIMIT_WINDOW=900000
+RATE_LIMIT_MAX=200
+MAX_FILE_SIZE=20971520  # 20MB for staging testing
+
+# =============================================================================
+# DEPLOYMENT NOTES
+# =============================================================================
+# 1. Copy this file to .staging in the same directory
+# 2. Update all placeholder values, especially passwords and secrets
+# 3. Ensure DOMAIN points to your staging server
+# 4. Configure DNS A record: staging.united-cars.example.com -> SERVER_IP
+# 5. Test deployment with: docker compose -f docker-compose.staging.yml --env-file env/.staging up -d

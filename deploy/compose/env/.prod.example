@@ -1,0 +1,166 @@
+# United Cars - Production Environment Configuration
+# Copy this file to .prod and configure appropriate values
+# CRITICAL: Use strong, randomly generated secrets for all passwords
+
+# =============================================================================
+# DEPLOYMENT CONFIGURATION
+# =============================================================================
+DOMAIN=app.united-cars.com
+ACME_EMAIL=security@united-cars.com
+REGISTRY_URL=ghcr.io/your-org/united-cars
+IMAGE_NAME=web
+IMAGE_TAG=v1.0.0
+COMMIT_SHA=production-commit-sha
+
+# =============================================================================
+# DATABASE CONFIGURATION
+# =============================================================================
+# CRITICAL: Use a strong, randomly generated password
+DB_PASSWORD=production-super-secure-database-password-64-characters-minimum
+DATABASE_URL=postgresql://postgres:${DB_PASSWORD}@db:5432/united_cars?schema=public&sslmode=disable&connection_limit=20&pool_timeout=30&statement_timeout=60000
+
+# =============================================================================
+# REDIS CONFIGURATION
+# =============================================================================
+# CRITICAL: Use a strong, randomly generated password
+REDIS_PASSWORD=production-redis-password-64-characters-minimum
+REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379
+
+# =============================================================================
+# APPLICATION SECURITY
+# =============================================================================
+# CRITICAL: Must be 64+ characters, randomly generated
+NEXTAUTH_SECRET=production-nextauth-secret-64-characters-minimum-randomly-generated
+# CRITICAL: Strong API key for service communication
+API_KEY_INTERNAL=production-internal-api-key-64-characters-minimum
+
+# =============================================================================
+# MONITORING & OBSERVABILITY
+# =============================================================================
+# Production error tracking (REQUIRED)
+SENTRY_DSN=https://your-production-sentry-dsn@sentry.io/project-id
+
+# Production APM and metrics (RECOMMENDED)
+DATADOG_API_KEY=your-production-datadog-api-key
+
+# =============================================================================
+# EMAIL CONFIGURATION (REQUIRED for production)
+# =============================================================================
+SMTP_HOST=smtp.mailgun.org
+SMTP_PORT=587
+SMTP_SECURE=true
+SMTP_USER=postmaster@mail.united-cars.com
+SMTP_PASSWORD=production-smtp-password
+EMAIL_FROM=noreply@united-cars.com
+EMAIL_FROM_NAME="United Cars"
+
+# =============================================================================
+# EXTERNAL INTEGRATIONS
+# =============================================================================
+# Carfax API (production credentials)
+CARFAX_API_KEY=production-carfax-api-key
+
+# Stripe payments (production keys)
+STRIPE_SECRET_KEY=sk_live_production_stripe_secret_key
+STRIPE_PUBLISHABLE_KEY=pk_live_production_stripe_publishable_key
+
+# AWS services (production credentials)
+AWS_ACCESS_KEY_ID=production-aws-access-key
+AWS_SECRET_ACCESS_KEY=production-aws-secret-key
+AWS_REGION=us-east-1
+
+# =============================================================================
+# PRODUCTION-SPECIFIC SETTINGS
+# =============================================================================
+# Strict logging for production
+LOG_LEVEL=warn
+
+# Performance monitoring (selective)
+ENABLE_METRICS=true
+ENABLE_TRACING=true
+TRACING_SAMPLE_RATE=0.1
+
+# Feature flags (stable features only)
+FEATURE_NEW_DASHBOARD=false
+FEATURE_ADVANCED_SEARCH=true
+FEATURE_NOTIFICATIONS=true
+FEATURE_AUDIT_LOGGING=true
+
+# Strict security settings
+RATE_LIMIT_WINDOW=900000
+RATE_LIMIT_MAX=100
+MAX_FILE_SIZE=5242880  # 5MB for production
+VIRUS_SCANNING=false
+
+# HSTS configuration (strict for production)
+HSTS_ENABLED=true
+HSTS_MAX_AGE=31536000
+HSTS_INCLUDE_SUBDOMAINS=true
+HSTS_PRELOAD=true
+
+# CSP configuration (strict for production)
+CSP_ENABLED=true
+CSP_REPORT_URI=https://your-org.report-uri.com/r/d/csp/enforce
+
+# =============================================================================
+# BACKUP CONFIGURATION
+# =============================================================================
+# Backup retention (14 days for production)
+BACKUP_RETENTION_DAYS=14
+
+# S3 backup configuration (optional but recommended)
+BACKUP_S3_BUCKET=united-cars-prod-backups
+BACKUP_S3_REGION=us-east-1
+BACKUP_S3_ACCESS_KEY=backup-specific-aws-access-key
+BACKUP_S3_SECRET_KEY=backup-specific-aws-secret-key
+
+# =============================================================================
+# COMPLIANCE & AUDIT
+# =============================================================================
+# Audit log retention (required for compliance)
+AUDIT_LOG_RETENTION_YEARS=7
+
+# PCI DSS compliance settings (if handling payments)
+PCI_COMPLIANCE_MODE=true
+DATA_ENCRYPTION_AT_REST=true
+
+# =============================================================================
+# PRODUCTION DEPLOYMENT CHECKLIST
+# =============================================================================
+# Before deploying to production, ensure:
+# 
+# 1. SECURITY REQUIREMENTS:
+#    - All passwords are 64+ characters, randomly generated
+#    - NEXTAUTH_SECRET is unique and secure
+#    - Database credentials are unique to production
+#    - SSL certificates are properly configured
+#    - Firewall rules allow only ports 80, 443, and SSH
+#    - SSH is configured with key-based authentication only
+#
+# 2. MONITORING REQUIREMENTS:
+#    - Sentry is configured for error tracking
+#    - APM monitoring is set up (Datadog/New Relic)
+#    - Log aggregation is configured
+#    - Uptime monitoring is enabled
+#    - Backup monitoring is configured
+#
+# 3. INFRASTRUCTURE REQUIREMENTS:
+#    - DNS is properly configured
+#    - Load balancing is set up (if multi-server)
+#    - Backup procedures are tested
+#    - Disaster recovery plan is documented
+#    - Resource limits are appropriate for expected load
+#
+# 4. COMPLIANCE REQUIREMENTS:
+#    - Audit logging is enabled
+#    - Data retention policies are configured
+#    - Security headers are properly set
+#    - Rate limiting is appropriately configured
+#    - File upload restrictions are properly set
+#
+# 5. OPERATIONAL REQUIREMENTS:
+#    - Health checks are properly configured
+#    - Deployment procedures are documented
+#    - Rollback procedures are tested
+#    - Team has access to monitoring dashboards
+#    - Incident response procedures are documented

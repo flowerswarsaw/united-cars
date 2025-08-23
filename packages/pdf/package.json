@@ -1,0 +1,20 @@
+{
+  "name": "@united-cars/pdf",
+  "version": "1.0.0",
+  "private": true,
+  "description": "PDF generation utilities for invoices and documents",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch"
+  },
+  "dependencies": {
+    "jspdf": "^2.5.0",
+    "html2canvas": "^1.4.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.4.0"
+  }
+}

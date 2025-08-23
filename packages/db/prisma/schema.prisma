@@ -1,0 +1,739 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// === ORG & USERS ===
+model Org {
+  id           String  @id @default(cuid())
+  name         String
+  type         OrgType
+  parentOrgId  String? @map("parent_org_id")
+  parentOrg    Org?    @relation("OrgHierarchy", fields: [parentOrgId], references: [id])
+  childOrgs    Org[]   @relation("OrgHierarchy")
+  
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  users        User[]
+  userRoles    UserRole[]
+  vehicles     Vehicle[]
+  invoices     Invoice[]
+  paymentIntents PaymentIntent[]
+  accounts     Account[]
+  journalEntries JournalEntry[]
+  purchases    Purchase[]
+  serviceRequests ServiceRequest[]
+  insuranceClaims InsuranceClaim[]
+  carfaxRequests CarfaxRequest[]
+  auditLogs    AuditLog[]
+  vehicleIntakes VehicleIntake[]
+
+  @@map("orgs")
+}
+
+model User {
+  id           String  @id @default(cuid())
+  email        String  @unique
+  name         String?
+  passwordHash String  @map("password_hash")
+  orgId        String  @map("org_id")
+  status       UserStatus @default(ACTIVE)
+  
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  org          Org      @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  roles        UserRole[]
+  createdPaymentIntents PaymentIntent[] @relation("PaymentIntentCreator")
+  auditLogs    AuditLog[]
+  createdIntakes VehicleIntake[] @relation("IntakeCreatedBy")
+  reviewedIntakes VehicleIntake[] @relation("IntakeReviewedBy")
+
+  @@map("users")
+}
+
+model Role {
+  id    String @id @default(cuid())
+  key   RoleKey @unique
+  
+  // Relations
+  userRoles UserRole[]
+
+  @@map("roles")
+}
+
+model UserRole {
+  id     String @id @default(cuid())
+  userId String @map("user_id")
+  roleId String @map("role_id")
+  orgId  String @map("org_id")
+  
+  // Relations
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role   Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  org    Org  @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roleId, orgId])
+  @@map("user_roles")
+}
+
+// === FINANCIALS ===
+model Invoice {
+  id         String        @id @default(cuid())
+  orgId      String        @map("org_id")
+  number     String
+  status     InvoiceStatus @default(DRAFT)
+  currency   String        @default("USD")
+  issuedAt   DateTime?     @map("issued_at")
+  total      Decimal       @default(0) @db.Decimal(10, 2)
+  subtotal   Decimal       @default(0) @db.Decimal(10, 2)
+  vat        Decimal       @default(0) @db.Decimal(10, 2)
+  notes      String?
+  
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  org        Org           @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  lines      InvoiceLine[]
+  paymentIntents PaymentIntent[]
+
+  @@unique([orgId, number])
+  @@map("invoices")
+}
+
+model InvoiceLine {
+  id          String  @id @default(cuid())
+  invoiceId   String  @map("invoice_id")
+  itemType    String  @map("item_type")
+  description String
+  qty         Decimal @default(1) @db.Decimal(10, 2)
+  unitPrice   Decimal @db.Decimal(10, 2)
+  vehicleId   String? @map("vehicle_id")
+  
+  // Relations
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  vehicle     Vehicle? @relation(fields: [vehicleId], references: [id])
+
+  @@map("invoice_lines")
+}
+
+model PaymentIntent {
+  id         String              @id @default(cuid())
+  orgId      String              @map("org_id")
+  invoiceId  String?             @map("invoice_id")
+  method     String
+  amount     Decimal             @db.Decimal(10, 2)
+  currency   String              @default("USD")
+  status     PaymentIntentStatus @default(SUBMITTED)
+  proofUrl   String?             @map("proof_url")
+  ref        String?
+  createdByUserId String         @map("created_by_user_id")
+  version    Int                 @default(0) // Optimistic concurrency control
+  
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  org        Org      @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  invoice    Invoice? @relation(fields: [invoiceId], references: [id])
+  createdBy  User     @relation("PaymentIntentCreator", fields: [createdByUserId], references: [id])
+
+  @@map("payment_intents")
+}
+
+model Account {
+  id       String @id @default(cuid())
+  orgId    String @map("org_id")
+  code     String
+  name     String
+  currency String @default("USD")
+  
+  // Relations
+  org      Org           @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  journalLines JournalLine[]
+
+  @@unique([orgId, code])
+  @@map("accounts")
+}
+
+model JournalEntry {
+  id        String   @id @default(cuid())
+  orgId     String   @map("org_id")
+  timestamp DateTime @default(now())
+  memo      String?
+  
+  // Relations
+  org       Org           @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  lines     JournalLine[]
+
+  @@map("journal_entries")
+}
+
+model JournalLine {
+  id         String  @id @default(cuid())
+  entryId    String  @map("entry_id")
+  accountId  String  @map("account_id")
+  debit      Decimal @default(0) @db.Decimal(10, 2)
+  credit     Decimal @default(0) @db.Decimal(10, 2)
+  currency   String  @default("USD")
+  fxRateToBase Decimal @default(1) @db.Decimal(10, 6) @map("fx_rate_to_base")
+  vehicleId  String? @map("vehicle_id")
+  
+  // Relations
+  entry      JournalEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  account    Account      @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  vehicle    Vehicle?     @relation(fields: [vehicleId], references: [id])
+
+  @@map("journal_lines")
+}
+
+// === VEHICLES & AUCTION ===
+model Vehicle {
+  id             String        @id @default(cuid())
+  orgId          String        @map("org_id")
+  vin            String
+  make           String?
+  model          String?
+  year           Int?
+  purchasePriceUSD Decimal?    @db.Decimal(10, 2) @map("purchase_price_usd")
+  status         VehicleStatus @default(SOURCING)
+  currentStage   String?       @map("current_stage")
+  
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  org            Org                    @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  stageHistory   VehicleStageHistory[]
+  purchases      Purchase[]
+  titles         Title[]
+  serviceRequests ServiceRequest[]
+  insuranceClaims InsuranceClaim[]
+  carfaxRequests CarfaxRequest[]
+  invoiceLines   InvoiceLine[]
+  journalLines   JournalLine[]
+
+  @@unique([orgId, vin])
+  @@map("vehicles")
+}
+
+model VehicleStageHistory {
+  id        String   @id @default(cuid())
+  vehicleId String   @map("vehicle_id")
+  stage     String
+  at        DateTime @default(now())
+  dataJson  Json?    @map("data_json")
+  
+  // Relations
+  vehicle   Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@map("vehicle_stage_history")
+}
+
+model AuctionLot {
+  id          String      @id @default(cuid())
+  source      AuctionSource
+  lotNumber   String      @map("lot_number")
+  locationId  String      @map("location_id")
+  vin         String
+  detailsJson Json?       @map("details_json")
+  
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  location    AuctionLocation @relation(fields: [locationId], references: [id])
+  purchases   Purchase[]
+
+  @@unique([source, lotNumber])
+  @@map("auction_lots")
+}
+
+model Purchase {
+  id            String   @id @default(cuid())
+  orgId         String   @map("org_id")
+  vehicleId     String   @map("vehicle_id")
+  auctionLotId  String   @map("auction_lot_id")
+  finalBidUSD   Decimal  @db.Decimal(10, 2) @map("final_bid_usd")
+  feesUSD       Decimal  @db.Decimal(10, 2) @map("fees_usd")
+  boughtAt      DateTime @map("bought_at")
+  
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  // Relations
+  org           Org        @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  vehicle       Vehicle    @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  auctionLot    AuctionLot @relation(fields: [auctionLotId], references: [id])
+
+  @@map("purchases")
+}
+
+// === LOGISTICS & TITLES ===
+model AuctionLocation {
+  id        String @id @default(cuid())
+  auction   AuctionSource
+  code      String
+  name      String
+  state     String?
+  country   String @default("US")
+  
+  // Relations
+  auctionLots AuctionLot[]
+  towingRules TowingRule[]
+  vehicleIntakes VehicleIntake[]
+
+  @@unique([auction, code])
+  @@map("auction_locations")
+}
+
+model Port {
+  id      String @id @default(cuid())
+  name    String
+  state   String?
+  country String @default("US")
+  code    String?
+  
+  // Relations
+  towingRulesDelivery TowingRule[] @relation("TowingRuleDeliveryPort")
+  shippingRulesExit   ShippingRule[] @relation("ShippingRuleExitPort")
+
+  @@map("ports")
+}
+
+model Shipper {
+  id       String     @id @default(cuid())
+  name     String
+  ruleType RuleType
+  
+  // Relations
+  towingRules   TowingRule[]
+  shippingRules ShippingRule[]
+  generalFees   GeneralFee[]
+
+  @@map("shippers")
+}
+
+model VehicleType {
+  id         String  @id @default(cuid())
+  key        VehicleTypeKey @unique
+  multiplier Decimal @default(1) @db.Decimal(3, 2)
+  category   String?
+  
+  @@map("vehicle_types")
+}
+
+model TowingRule {
+  id                String   @id @default(cuid())
+  shipperId         String   @map("shipper_id")
+  auctionLocationId String   @map("auction_location_id")
+  deliveryPortId    String   @map("delivery_port_id")
+  ruleType          RuleType @map("rule_type")
+  basePrice         Decimal  @db.Decimal(10, 2) @map("base_price")
+  perTypeJson       Json?    @map("per_type_json")
+  
+  // Relations
+  shipper           Shipper         @relation(fields: [shipperId], references: [id], onDelete: Cascade)
+  auctionLocation   AuctionLocation @relation(fields: [auctionLocationId], references: [id], onDelete: Cascade)
+  deliveryPort      Port            @relation("TowingRuleDeliveryPort", fields: [deliveryPortId], references: [id], onDelete: Cascade)
+
+  @@unique([shipperId, auctionLocationId, deliveryPortId])
+  @@map("towing_rules")
+}
+
+model ShippingRule {
+  id                String @id @default(cuid())
+  shipperId         String @map("shipper_id")
+  exitPortId        String @map("exit_port_id")
+  destinationCountry String @map("destination_country")
+  destinationPort   String @map("destination_port")
+  pricingJson       Json?  @map("pricing_json")
+  
+  // Relations
+  shipper           Shipper @relation(fields: [shipperId], references: [id], onDelete: Cascade)
+  exitPort          Port    @relation("ShippingRuleExitPort", fields: [exitPortId], references: [id], onDelete: Cascade)
+
+  @@unique([shipperId, exitPortId, destinationCountry, destinationPort])
+  @@map("shipping_rules")
+}
+
+model CustomsRule {
+  id                String  @id @default(cuid())
+  country           String
+  vatPct            Decimal @db.Decimal(5, 2) @map("vat_pct")
+  dutyPctDefault    Decimal @db.Decimal(5, 2) @map("duty_pct_default")
+  serviceFeesJson   Json?   @map("service_fees_json")
+  formulaVersion    String  @map("formula_version")
+  
+  @@unique([country, formulaVersion])
+  @@map("customs_rules")
+}
+
+model Title {
+  id        String      @id @default(cuid())
+  vehicleId String      @map("vehicle_id")
+  status    TitleStatus @default(pending)
+  location  String?
+  notes     String?
+  packageId String?     @map("package_id")
+  
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  vehicle   Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  package   Package? @relation(fields: [packageId], references: [id])
+
+  @@map("titles")
+}
+
+model Package {
+  id                 String       @id @default(cuid())
+  type               PackageType
+  trackingNumber     String?      @map("tracking_number")
+  provider           String?
+  senderContactId    String?      @map("sender_contact_id")
+  recipientContactId String?      @map("recipient_contact_id")
+  status             PackageStatus @default(PENDING)
+  
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  titles             Title[]
+
+  @@map("packages")
+}
+
+// === SERVICES & CLAIMS & CARFAX ===
+model ServiceRequest {
+  id        String      @id @default(cuid())
+  orgId     String      @map("org_id")
+  vehicleId String      @map("vehicle_id")
+  type      ServiceType
+  status    ServiceStatus @default(pending)
+  priceUSD  Decimal?    @db.Decimal(18,2) @map("price_usd")
+  notes     String?
+  version   Int         @default(0) // Optimistic concurrency control
+  
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  org       Org     @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  vehicle   Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@map("service_requests")
+}
+
+model InsuranceClaim {
+  id          String      @id @default(cuid())
+  orgId       String      @map("org_id")
+  vehicleId   String      @map("vehicle_id")
+  status      ClaimStatus @default(new)
+  incidentAt  DateTime?   @map("incident_at")
+  description String?
+  photos      Json?
+  version     Int         @default(0) // Optimistic concurrency control
+  
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  org         Org     @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  vehicle     Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@map("insurance_claims")
+}
+
+model CarfaxRequest {
+  id        String              @id @default(cuid())
+  orgId     String              @map("org_id")
+  vehicleId String              @map("vehicle_id")
+  status    CarfaxRequestStatus @default(PENDING)
+  cost      Decimal?            @db.Decimal(10, 2)
+  reportUrl String?             @map("report_url")
+  
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  org       Org     @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  vehicle   Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@map("carfax_requests")
+}
+
+// === PRICING ===
+model AuctionFeeMatrix {
+  id           String             @id @default(cuid())
+  auction      AuctionSource
+  accountType  AuctionAccountType @map("account_type")
+  title        TitleType
+  payment      PaymentType
+  bracketsJson Json               @map("brackets_json")
+  
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@unique([auction, accountType, title, payment])
+  @@map("auction_fee_matrices")
+}
+
+model GeneralFee {
+  id        String  @id @default(cuid())
+  shipperId String? @map("shipper_id")
+  key       String
+  value     Decimal @db.Decimal(10, 2)
+  currency  String  @default("USD")
+  
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  shipper   Shipper? @relation(fields: [shipperId], references: [id])
+
+  @@unique([shipperId, key])
+  @@map("general_fees")
+}
+
+// === AUDIT ===
+model AuditLog {
+  id           String   @id @default(cuid())
+  actorUserId  String   @map("actor_user_id")
+  orgId        String   @map("org_id")
+  action       String
+  entity       String
+  entityId     String   @map("entity_id")
+  diffJson     Json?    @map("diff_json")
+  at           DateTime @default(now())
+
+  // Relations
+  actor        User @relation(fields: [actorUserId], references: [id])
+  org          Org  @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@map("audit_logs")
+}
+
+// Idempotency tracking for preventing duplicate operations  
+model IdempotencyKey {
+  id         String   @id @default(cuid())
+  key        String   @unique // Client-generated unique key
+  entityType String   @map("entity_type")
+  userId     String   @map("user_id")
+  operation  String   // Operation type (e.g., "create_claim", "update_status")
+  result     String?  // JSON result of the operation
+  
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@map("idempotency_keys")
+}
+
+model OutboxEvent {
+  id          String            @id @default(cuid())
+  type        String
+  payloadJson Json              @map("payload_json")
+  status      OutboxEventStatus @default(PENDING)
+  retries     Int               @default(0)
+  
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("outbox_events")
+}
+
+// === ENUMS ===
+enum OrgType {
+  DEALER
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum RoleKey {
+  ADMIN
+  ACCOUNTANT
+  OPS
+  DEALER
+  SUBDEALER
+}
+
+enum InvoiceStatus {
+  DRAFT
+  ISSUED
+  PAID
+  VOID
+}
+
+enum PaymentIntentStatus {
+  SUBMITTED
+  CONFIRMED
+  REJECTED
+}
+
+enum VehicleStatus {
+  SOURCING
+  PURCHASED
+  IN_TRANSIT
+  AT_PORT
+  SHIPPED
+  DELIVERED
+  SOLD
+}
+
+enum AuctionSource {
+  COPART
+  IAA
+}
+
+enum RuleType {
+  FLAT
+  MULTIPLIER
+  CATEGORY
+}
+
+enum VehicleTypeKey {
+  SEDAN
+  SUV
+  BIGSUV
+  VAN
+  PICKUP
+}
+
+enum TitleStatus {
+  pending
+  received
+  packed
+  sent
+}
+
+enum PackageType {
+  RECEIVING
+  SENDING
+}
+
+enum PackageStatus {
+  PENDING
+  IN_TRANSIT
+  DELIVERED
+  LOST
+}
+
+enum ServiceType {
+  inspection
+  cleaning
+  repair
+  storage
+  titlework
+}
+
+enum ServiceStatus {
+  pending
+  approved
+  in_progress
+  completed
+  rejected
+}
+
+enum ClaimStatus {
+  new
+  review
+  approved
+  rejected
+  paid
+}
+
+enum CarfaxRequestStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+}
+
+enum AuctionAccountType {
+  C
+  A
+}
+
+enum TitleType {
+  CLEAN
+  NONCLEAN
+}
+
+enum PaymentType {
+  SECURED
+  UNSECURED
+}
+
+enum OutboxEventStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+// === VEHICLE INTAKE ===
+model VehicleIntake {
+  id             String   @id @default(cuid())
+  orgId          String   @map("org_id")
+  createdById    String   @map("created_by_id")
+  status         IntakeStatus @default(PENDING)
+  auction        AuctionSource
+  auctionLot     String?  @map("auction_lot")
+  vin            String
+  make           String?
+  model          String?
+  year           Int?
+  purchasePriceUSD Decimal? @db.Decimal(18,2) @map("purchase_price_usd")
+  auctionLocationId String? @map("auction_location_id")
+  destinationPort String  @map("destination_port")
+  notes          String?
+  createdAt      DateTime @default(now()) @map("created_at")
+  reviewedAt     DateTime? @map("reviewed_at")
+  reviewedById   String?  @map("reviewed_by_id")
+
+  // Relations
+  org            Org      @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  createdBy      User     @relation("IntakeCreatedBy", fields: [createdById], references: [id], onDelete: Cascade)
+  reviewedBy     User?    @relation("IntakeReviewedBy", fields: [reviewedById], references: [id])
+  auctionLocation AuctionLocation? @relation(fields: [auctionLocationId], references: [id])
+  attachments    VehicleIntakeAttachment[]
+
+  @@map("vehicle_intakes")
+}
+
+model VehicleIntakeAttachment {
+  id         String   @id @default(cuid())
+  intakeId   String   @map("intake_id")
+  kind       AttachmentKind
+  url        String
+  filename   String
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  // Relations
+  intake     VehicleIntake @relation(fields: [intakeId], references: [id], onDelete: Cascade)
+
+  @@map("vehicle_intake_attachments")
+}
+
+enum IntakeStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum AttachmentKind {
+  INVOICE
+  PHOTO
+  OTHER
+}
