@@ -1,0 +1,28 @@
+name: united-cars
+services:
+- name: web
+  source_dir: /
+  github:
+    repo: flowerswarsaw/united-cars
+    branch: main
+  run_command: cd apps/web && npm start
+  environment_slug: node-js
+  instance_count: 1
+  instance_size_slug: basic-xxs
+  build_command: |
+    npm install -g pnpm
+    pnpm install
+    cd packages/db && npx prisma generate
+    cd ../.. && pnpm run build:packages
+    cd apps/web && pnpm run build
+  envs:
+  - key: NODE_ENV
+    value: production
+  - key: NEXTAUTH_SECRET
+    value: qmJAym2xeF0lfdhETneV1pQYCs6q8xd+8Xh/8hg1LM0=
+  - key: DATABASE_URL
+    value: ${db.DATABASE_URL}
+databases:
+- name: db
+  engine: PG
+  version: "15"

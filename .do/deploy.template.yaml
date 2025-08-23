@@ -1,0 +1,19 @@
+name: united-cars-production
+services:
+- build_command: npm install -g pnpm && pnpm install && cd packages/db && npx prisma generate && cd ../.. && pnpm run build:packages && cd apps/web && pnpm run build
+  environment_slug: node-js
+  github:
+    branch: main
+    deploy_on_push: true
+    repo: flowerswarsaw/united-cars
+  name: web
+  routes:
+  - path: /
+  run_command: cd apps/web && pnpm start
+  source_dir: /
+databases:
+- engine: PG
+  name: united-cars-db
+  num_nodes: 1
+  size: db-s-dev-database
+  version: "15"
