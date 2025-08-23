@@ -1,0 +1,33 @@
+# Simple Dockerfile for cloud deployment
+FROM node:18-alpine
+
+WORKDIR /app
+
+# Install pnpm
+RUN npm install -g pnpm
+
+# Copy package files
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
+COPY apps/web/package.json ./apps/web/
+COPY packages/*/package.json ./packages/*/
+
+# Install dependencies
+RUN pnpm install --frozen-lockfile
+
+# Copy source code
+COPY . .
+
+# Generate Prisma client
+RUN pnpm db:generate
+
+# Build packages
+RUN pnpm run build:packages
+
+# Build web app
+RUN cd apps/web && pnpm run build
+
+# Expose port
+EXPOSE 3000
+
+# Start command
+CMD ["sh", "-c", "pnpm db:migrate && pnpm db:seed && cd apps/web && pnpm start"]
