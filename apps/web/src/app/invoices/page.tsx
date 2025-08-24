@@ -9,6 +9,7 @@ import { LoadingState } from '@/components/ui/loading-state'
 import { EmptyState } from '@/components/ui/empty-state'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
+import { useSession } from '@/hooks/useSession'
 
 interface Invoice {
   id: string
@@ -47,12 +48,7 @@ export default function InvoicesPage() {
     total: 0,
     totalPages: 0
   })
-  const [user] = useState({
-    name: 'John Doe',
-    email: 'john@demo.com',
-    roles: ['DEALER'],
-    orgName: 'Demo Dealer'
-  })
+  const { user, loading: sessionLoading } = useSession()
 
   useEffect(() => {
     fetchInvoices()
@@ -186,7 +182,7 @@ export default function InvoicesPage() {
           </div>
 
           <div className="p-6">
-            {loading ? (
+            {loading || sessionLoading ? (
               <LoadingState text="Loading invoices..." />
             ) : filteredInvoices.length === 0 ? (
               <EmptyState

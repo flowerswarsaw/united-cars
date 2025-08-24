@@ -3,6 +3,10 @@
 import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { AppLayout } from '@/components/layout/app-layout'
+import { PageHeader } from '@/components/layout/page-header'
+import { LoadingState } from '@/components/ui/loading-state'
+import { useSession } from '@/hooks/useSession'
 
 interface IntakeData {
   id: string
@@ -36,6 +40,7 @@ export default function IntakeListPage() {
     total: 0,
     totalPages: 0
   })
+  const { user, loading: sessionLoading } = useSession()
 
   useEffect(() => {
     fetchIntakes()
@@ -95,23 +100,30 @@ export default function IntakeListPage() {
     setPagination(prev => ({ ...prev, page: newPage }))
   }
 
+  if (isLoading || sessionLoading) {
+    return (
+      <AppLayout user={user}>
+        <LoadingState text="Loading intakes..." />
+      </AppLayout>
+    )
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto py-8 px-4">
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">My Vehicle Intakes</h1>
-            <p className="text-gray-600">
-              Track your vehicle intake requests and their approval status
-            </p>
-          </div>
+    <AppLayout user={user}>
+      <PageHeader 
+        title="My Vehicle Intakes"
+        description="Track your vehicle intake requests and their approval status"
+        action={
           <Link
             href="/intake/new"
             className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
           >
             + New Intake Request
           </Link>
-        </div>
+        }
+      />
+      
+      <div className="px-4 sm:px-6 lg:px-8 py-8">
 
         <div className="bg-white shadow rounded-lg">
           <div className="px-6 py-4 border-b">
@@ -259,6 +271,6 @@ export default function IntakeListPage() {
           </div>
         </div>
       </div>
-    </div>
+    </AppLayout>
   )
 }
