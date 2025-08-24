@@ -1,0 +1,27 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "apps/web/package.json",
+      "use": "@vercel/node",
+      "config": {
+        "includeFiles": ["packages/**", "apps/web/**"]
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/apps/web/$1"
+    }
+  ],
+  "installCommand": "pnpm install && cd packages/db && npx prisma generate",
+  "buildCommand": "cd packages/db && npx prisma generate && cd ../.. && pnpm run build:packages && cd apps/web && pnpm run build",
+  "outputDirectory": "apps/web/.next",
+  "framework": "nextjs",
+  "functions": {
+    "apps/web/src/app/api/**/*.ts": {
+      "runtime": "nodejs18.x"
+    }
+  }
+}

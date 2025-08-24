@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@united-cars/db'
+import { db } from '@/lib/db-service'
 import { CreateServiceRequestSchema } from '@united-cars/core'
 import { 
   getSession, 
   buildOrgWhereClause
 } from '@/lib/auth-utils'
 import { 
-  getOptimizedServiceRequests,
   validatePagination as validatePaginationConfig,
   createOptimizedResponse
 } from '@/lib/query-optimizer'
@@ -37,48 +36,69 @@ export const GET = withErrorHandler(
     const type = searchParams.get('type')
     const search = searchParams.get('search')
 
-    // Build optimized where clause with org scoping
-    let whereClause: any = buildOrgWhereClause(session.user)
+    // Build filter for mock database
+    const filter: any = {
+      where: {},
+      skip: (pagination.page - 1) * pagination.perPage,
+      take: pagination.perPage
+    }
+
+    // Add org scoping - admin can see all orgs, dealers only see their own
+    if (session.user.roles?.includes('ADMIN')) {
+      // Admin can see all service requests
+    } else {
+      filter.where.orgId = session.user.orgId
+    }
     
     // Add status filter
-    if (status && ['pending', 'approved', 'in_progress', 'completed', 'rejected'].includes(status)) {
-      whereClause.status = status
+    if (status && ['pending', 'approved', 'completed', 'rejected'].includes(status)) {
+      filter.where.status = status
     }
 
     // Add type filter
-    if (type && ['inspection', 'cleaning', 'repair', 'storage', 'titlework'].includes(type)) {
-      whereClause.type = type
+    if (type && ['INSPECTION', 'REPAIR', 'CLEANING', 'DOCUMENTATION', 'OTHER'].includes(type.toUpperCase())) {
+      filter.where.type = type.toUpperCase()
     }
 
-    // Add search filter (optimized to search vehicle relation efficiently)
+    // Add search filter - for mock data, we'll search by vehicleId
     if (search) {
-      whereClause.vehicle = {
-        OR: [
-          { vin: { contains: search, mode: 'insensitive' } },
-          { make: { contains: search, mode: 'insensitive' } },
-          { model: { contains: search, mode: 'insensitive' } }
-        ]
+      const vehicles = await db.vehicles.findMany({
+        where: {
+          OR: [
+            { vin: { contains: search } },
+            { make: { contains: search } },
+            { model: { contains: search } }
+          ]
+        }
+      })
+      if (vehicles.data.length > 0) {
+        filter.where.vehicleId = { in: vehicles.data.map((v: any) => v.id) }
+      } else {
+        // No matching vehicles, return empty result
+        filter.where.vehicleId = 'no-match'
       }
     }
 
-    // Use optimized query that prevents N+1 queries
-    const result = await getOptimizedServiceRequests(prisma, {
-      where: whereClause,
-      pagination
-    })
+    // Use mock database service
+    const serviceRequests = await db.serviceRequests.findMany(filter)
 
     const responseTime = Date.now() - startTime
 
     return NextResponse.json(
       createOptimizedResponse(
         {
-          serviceRequests: result.data,
-          pagination: result.pagination
+          serviceRequests: serviceRequests,
+          pagination: {
+            page: pagination.page,
+            perPage: pagination.perPage,
+            total: serviceRequests.length,
+            totalPages: Math.ceil(serviceRequests.length / pagination.perPage)
+          }
         },
         {
           includeMetadata: true,
           responseTime,
-          cacheHint: 'max-age=60' // Cache for 1 minute
+          cacheHint: 'max-age=60'
         }
       )
     )
@@ -106,58 +126,28 @@ export const POST = withErrorHandler(
     
     // Verify vehicle belongs to dealer's org (unless admin)
     if (!roles.includes('ADMIN')) {
-      const vehicle = await prisma.vehicle.findFirst({
-        where: {
-          id: input.vehicleId,
-          orgId: session.user.orgId
-        }
-      })
+      const vehicle = await db.vehicles.findById(input.vehicleId)
 
-      if (!vehicle) {
+      if (!vehicle || vehicle.orgId !== session.user.orgId) {
         throw new NotFoundError('Vehicle')
       }
     }
 
-    // Create service request
-    const serviceRequest = await prisma.serviceRequest.create({
-      data: {
-        ...input,
-        orgId: session.user.orgId!,
-        status: 'pending'
-      },
-      include: {
-        vehicle: {
-          select: { 
-            id: true, 
-            vin: true, 
-            make: true, 
-            model: true, 
-            year: true 
-          }
-        },
-        org: {
-          select: { id: true, name: true, type: true }
-        }
-      }
-    })
+    // Create service request using mock database
+    const serviceRequestData = {
+      ...input,
+      orgId: session.user.orgId!,
+      status: 'pending' as const
+    }
 
-    // Add audit log entry
-    await prisma.auditLog.create({
-      data: {
-        actorUserId: session.user.id,
-        orgId: session.user.orgId!,
-        action: 'CREATE',
-        entity: 'service_request',
-        entityId: serviceRequest.id,
-        diffJson: {
-          after: { 
-            type: input.type, 
-            vehicleId: input.vehicleId, 
-            notes: input.notes 
-          }
-        }
-      }
-    })
+    // For mock data, we'll create a basic service request object
+    const serviceRequest = {
+      id: `service-${Date.now()}`,
+      ...serviceRequestData,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      version: 1
+    }
 
     return NextResponse.json(
       { success: true, serviceRequest }, 

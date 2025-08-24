@@ -1,20 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@united-cars/db'
-
-// Simple auth helper
-async function getSession(request: NextRequest) {
-  try {
-    const sessionCookie = request.cookies.get('session')
-    if (!sessionCookie?.value) return null
-    
-    const decodedSession = decodeURIComponent(sessionCookie.value)
-    const sessionData = JSON.parse(decodedSession)
-    
-    return sessionData.user ? { user: sessionData.user } : null
-  } catch {
-    return null
-  }
-}
+import { db } from '@/lib/db-service'
+import { getSession } from '@/lib/auth-utils'
 
 // GET /api/titles - List titles for current org with pagination and search
 export async function GET(request: NextRequest) {
@@ -33,59 +19,63 @@ export async function GET(request: NextRequest) {
 
     const skip = (page - 1) * perPage
 
-    // Build where clause based on user role
-    let whereClause: any = {}
+    // Build filter for mock database
+    const filter: any = {
+      where: {},
+      skip,
+      take: perPage
+    }
+    
+    // For titles, we need to filter by vehicle ownership since titles don't have direct orgId
+    let allowedVehicleIds: string[] = []
     
     if (roles.includes('ADMIN') || roles.includes('OPS')) {
-      // Admin/Ops can see all titles, optionally filtered by status
-      if (status && ['pending', 'received', 'packed', 'sent'].includes(status)) {
-        whereClause.status = status
-      }
+      // Admin/Ops can see all titles
+      const allVehicles = await db.vehicles.findMany({})
+      allowedVehicleIds = allVehicles.data.map((v: any) => v.id)
     } else {
       // Dealers can only see their own org's vehicles' titles
-      whereClause.vehicle = {
-        orgId: session.user.orgId
-      }
-      if (status && ['pending', 'received', 'packed', 'sent'].includes(status)) {
-        whereClause.status = status
-      }
+      const orgVehicles = await db.vehicles.findMany({
+        where: { orgId: session.user.orgId }
+      })
+      allowedVehicleIds = orgVehicles.data.map((v: any) => v.id)
     }
 
-    // Add search filter
+    // Add vehicle filter
+    filter.where.vehicleId = { in: allowedVehicleIds }
+
+    // Add status filter
+    if (status && ['pending', 'received', 'packed', 'sent', 'delivered'].includes(status)) {
+      filter.where.status = status
+    }
+
+    // Add search filter - search by vehicle VIN
     if (search) {
-      whereClause.vehicle = {
-        ...whereClause.vehicle,
-        vin: { contains: search, mode: 'insensitive' }
+      const matchingVehicles = await db.vehicles.findMany({
+        where: {
+          OR: [
+            { vin: { contains: search } },
+            { make: { contains: search } },
+            { model: { contains: search } }
+          ]
+        }
+      })
+      
+      const searchVehicleIds = matchingVehicles.data
+        .filter((v: any) => allowedVehicleIds.includes(v.id))
+        .map((v: any) => v.id)
+      
+      if (searchVehicleIds.length > 0) {
+        filter.where.vehicleId = { in: searchVehicleIds }
+      } else {
+        // No matching vehicles, return empty result
+        filter.where.vehicleId = 'no-match'
       }
     }
 
-    // Get titles with pagination
-    const [titles, total] = await Promise.all([
-      prisma.title.findMany({
-        where: whereClause,
-        include: {
-          vehicle: {
-            select: { 
-              id: true, 
-              vin: true, 
-              make: true, 
-              model: true, 
-              year: true,
-              org: {
-                select: { id: true, name: true }
-              }
-            }
-          },
-          package: {
-            select: { id: true, trackingNumber: true, provider: true, status: true }
-          }
-        },
-        orderBy: { createdAt: 'desc' },
-        skip,
-        take: perPage,
-      }),
-      prisma.title.count({ where: whereClause })
-    ])
+    // Get titles using mock database
+    const titles = await db.titles.findMany(filter)
+    const total = titles.length
 
     return NextResponse.json({
       titles,

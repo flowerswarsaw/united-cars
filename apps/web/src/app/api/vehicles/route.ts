@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@united-cars/db'
+import { db } from '@/lib/db-service'
 import { 
   getSession, 
   buildOrgWhereClause
 } from '@/lib/auth-utils'
 import { 
-  getOptimizedVehicles,
   validatePagination,
   createOptimizedResponse
 } from '@/lib/query-optimizer'
@@ -35,29 +34,36 @@ export const GET = withErrorHandler(
     const search = searchParams.get('search')
     const includeRelations = searchParams.get('include') === 'relations'
 
-    // Build optimized where clause with org scoping
-    let whereClause: any = buildOrgWhereClause(session.user)
+    // Build filter for mock database
+    const filter: any = {
+      where: {},
+      skip: (pagination.page - 1) * pagination.perPage,
+      take: pagination.perPage
+    }
+
+    // Add org scoping - admin can see all orgs, dealers only see their own
+    if (session.user.roles?.includes('ADMIN')) {
+      // Admin can see all vehicles
+    } else {
+      filter.where.orgId = session.user.orgId
+    }
 
     // Add status filter
     if (status && status !== 'all') {
-      whereClause.status = status
+      filter.where.status = status
     }
 
-    // Add search filter (optimized for performance)
+    // Add search filter
     if (search) {
-      whereClause.OR = [
-        { vin: { contains: search, mode: 'insensitive' } },
-        { make: { contains: search, mode: 'insensitive' } },
-        { model: { contains: search, mode: 'insensitive' } }
+      filter.where.OR = [
+        { vin: { contains: search } },
+        { make: { contains: search } },
+        { model: { contains: search } }
       ]
     }
 
-    // Use optimized query that prevents N+1 queries and includes relationship counts
-    const result = await getOptimizedVehicles(prisma, {
-      where: whereClause,
-      pagination,
-      includeRelations
-    })
+    // Use mock database service
+    const result = await db.vehicles.findMany(filter)
 
     const responseTime = Date.now() - startTime
 
@@ -65,12 +71,17 @@ export const GET = withErrorHandler(
       createOptimizedResponse(
         {
           vehicles: result.data,
-          pagination: result.pagination
+          pagination: {
+            page: result.page,
+            perPage: result.perPage,
+            total: result.total,
+            totalPages: result.totalPages
+          }
         },
         {
           includeMetadata: true,
           responseTime,
-          cacheHint: includeRelations ? 'max-age=30' : 'max-age=120' // Different cache based on complexity
+          cacheHint: includeRelations ? 'max-age=30' : 'max-age=120'
         }
       )
     )

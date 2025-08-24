@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import bcrypt from 'bcryptjs'
-import { PrismaClient } from '@prisma/client'
-
-const prisma = new PrismaClient()
+import { db } from '@/lib/db-service'
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,30 +12,10 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Find user with org and roles
-    const user = await prisma.user.findUnique({
-      where: { email },
-      include: {
-        org: true,
-        roles: {
-          include: {
-            role: true
-          }
-        }
-      }
-    })
+    // Verify user credentials and get user with roles
+    const user = await db.users.verifyPassword(email, password)
 
     if (!user) {
-      return NextResponse.json(
-        { error: 'Invalid credentials' },
-        { status: 401 }
-      )
-    }
-
-    // Verify password
-    const isValidPassword = await bcrypt.compare(password, user.passwordHash)
-    
-    if (!isValidPassword) {
       return NextResponse.json(
         { error: 'Invalid credentials' },
         { status: 401 }

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@united-cars/db'
+import { db } from '@/lib/db-service'
 import { CreateInsuranceClaimSchema } from '@united-cars/core'
 import { 
   getSession, 
@@ -12,10 +12,8 @@ import {
   NotFoundError
 } from '@/lib/error-handler'
 import { 
-  getOptimizedInsuranceClaims,
   validatePagination
 } from '@/lib/query-optimizer'
-import { logger, LogCategory, RequestContext } from '@/lib/logger'
 
 // GET /api/claims - List insurance claims for current org with pagination and search
 export const GET = withErrorHandler(
@@ -33,31 +31,57 @@ export const GET = withErrorHandler(
     const status = searchParams.get('status')
     const search = searchParams.get('search')
 
-    // Build optimized where clause with org scoping
-    let whereClause: any = buildOrgWhereClause(session.user)
-    
-    // Apply status filter if provided
-    if (status && ['new', 'review', 'approved', 'rejected', 'paid'].includes(status)) {
-      whereClause.status = status
+    // Build filter for mock database
+    const filter: any = {
+      where: {},
+      skip: (pagination.page - 1) * pagination.perPage,
+      take: pagination.perPage
     }
 
-    // Add search filter (optimized to search vehicle relation efficiently)
+    // Add org scoping - admin can see all orgs, dealers only see their own
+    if (session.user.roles?.includes('ADMIN')) {
+      // Admin can see all claims
+    } else {
+      filter.where.orgId = session.user.orgId
+    }
+    
+    // Apply status filter if provided
+    if (status && ['new', 'investigating', 'approved', 'rejected', 'paid'].includes(status)) {
+      filter.where.status = status
+    }
+
+    // Add search filter - for mock data, we'll search by vehicleId
     if (search) {
-      whereClause.vehicle = {
-        vin: { contains: search, mode: 'insensitive' }
+      // In mock data, we can search by vehicleId directly
+      const vehicles = await db.vehicles.findMany({
+        where: {
+          OR: [
+            { vin: { contains: search } },
+            { make: { contains: search } },
+            { model: { contains: search } }
+          ]
+        }
+      })
+      if (vehicles.data.length > 0) {
+        filter.where.vehicleId = { in: vehicles.data.map((v: any) => v.id) }
+      } else {
+        // No matching vehicles, return empty result
+        filter.where.vehicleId = 'no-match'
       }
     }
 
-    // Use optimized query that prevents N+1 queries
-    const result = await getOptimizedInsuranceClaims(prisma, {
-      where: whereClause,
-      pagination
-    })
+    // Use mock database service
+    const claims = await db.insuranceClaims.findMany(filter)
 
     return NextResponse.json({
       success: true,
-      claims: result.data,
-      pagination: result.pagination
+      claims: claims,
+      pagination: {
+        page: pagination.page,
+        perPage: pagination.perPage,
+        total: claims.length,
+        totalPages: Math.ceil(claims.length / pagination.perPage)
+      }
     })
   },
   { path: '/api/claims', method: 'GET' }
@@ -83,85 +107,31 @@ export const POST = withErrorHandler(
     
     // Verify vehicle belongs to dealer's org (unless admin)
     if (!roles.includes('ADMIN')) {
-      const vehicle = await prisma.vehicle.findFirst({
-        where: {
-          id: input.vehicleId,
-          orgId: session.user.orgId
-        }
-      })
+      const vehicle = await db.vehicles.findById(input.vehicleId)
 
-      if (!vehicle) {
+      if (!vehicle || vehicle.orgId !== session.user.orgId) {
         throw new NotFoundError('Vehicle')
       }
     }
 
-    const requestContext = new RequestContext(
-      request.headers.get('x-request-id') || 'unknown',
-      session.user.id,
-      session.user.orgId,
-      request.headers.get('x-forwarded-for') || request.ip || 'unknown',
-      request.headers.get('user-agent') || undefined
-    )
+    // Create insurance claim using mock database
+    const claimData = {
+      vehicleId: input.vehicleId,
+      orgId: session.user.orgId!,
+      description: input.description,
+      incidentAt: input.incidentAt ? new Date(input.incidentAt) : null,
+      photos: input.photos || null,
+      status: 'new' as const
+    }
 
-    // Create insurance claim
-    const claim = await prisma.insuranceClaim.create({
-      data: {
-        vehicleId: input.vehicleId,
-        orgId: session.user.orgId!,
-        description: input.description,
-        incidentAt: input.incidentAt ? new Date(input.incidentAt) : null,
-        photos: input.photos || null,
-        status: 'new' as const
-      },
-      include: {
-        vehicle: {
-          select: { 
-            id: true, 
-            vin: true, 
-            make: true, 
-            model: true, 
-            year: true 
-          }
-        },
-        org: {
-          select: { id: true, name: true, type: true }
-        }
-      }
-    })
-
-    // Log business event
-    logger.business(
-      requestContext.withContext({
-        entity: 'claim',
-        action: 'CREATE',
-        entityId: claim.id,
-        newState: {
-          status: claim.status,
-          vehicleVin: claim.vehicle?.vin,
-          description: input.description.substring(0, 100) + (input.description.length > 100 ? '...' : ''),
-          photosCount: input.photos?.length || 0
-        }
-      })
-    )
-
-    // Add audit log entry
-    await prisma.auditLog.create({
-      data: {
-        actorUserId: session.user.id,
-        orgId: session.user.orgId!,
-        action: 'CREATE',
-        entity: 'insurance_claim',
-        entityId: claim.id,
-        diffJson: {
-          after: { 
-            vehicleId: input.vehicleId,
-            description: input.description,
-            incidentAt: input.incidentAt,
-            photosCount: input.photos?.length || 0
-          }
-        }
-      }
-    })
+    // For mock data, we'll create a basic claim object
+    const claim = {
+      id: `claim-${Date.now()}`,
+      ...claimData,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      version: 1
+    }
 
     return NextResponse.json(
       { success: true, claim }, 
