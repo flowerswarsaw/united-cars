@@ -168,13 +168,74 @@ class MockDatabase {
         result = result.filter(s => s.orgId === filter.where.orgId);
       }
       if (filter?.where?.vehicleId) {
-        result = result.filter(s => s.vehicleId === filter.where.vehicleId);
+        if (typeof filter.where.vehicleId === 'string') {
+          result = result.filter(s => s.vehicleId === filter.where.vehicleId);
+        } else if (filter.where.vehicleId.in) {
+          result = result.filter(s => filter.where.vehicleId.in.includes(s.vehicleId));
+        } else if (filter.where.vehicleId === 'no-match') {
+          result = [];
+        }
       }
-      return Promise.resolve(result);
+      
+      // Enrich service requests with vehicle and org information
+      const enrichedResult = result.map(service => {
+        const vehicle = this.data.vehicles.find(v => v.id === service.vehicleId);
+        const org = this.data.organizations.find(o => o.id === service.orgId);
+        
+        return {
+          ...service,
+          vehicle: vehicle ? {
+            id: vehicle.id,
+            vin: vehicle.vin,
+            make: vehicle.make,
+            model: vehicle.model,
+            year: vehicle.year,
+            status: vehicle.status,
+            org: org ? {
+              id: org.id,
+              name: org.name,
+              type: org.type
+            } : null
+          } : null,
+          org: org ? {
+            id: org.id,
+            name: org.name,
+            type: org.type
+          } : null
+        };
+      });
+      
+      return Promise.resolve(enrichedResult);
     },
     
     findById: (id: string) => {
-      return Promise.resolve(this.data.serviceRequests.find(s => s.id === id) || null);
+      const service = this.data.serviceRequests.find(s => s.id === id);
+      if (!service) return Promise.resolve(null);
+      
+      const vehicle = this.data.vehicles.find(v => v.id === service.vehicleId);
+      const org = this.data.organizations.find(o => o.id === service.orgId);
+      
+      return Promise.resolve({
+        ...service,
+        vehicle: vehicle ? {
+          id: vehicle.id,
+          vin: vehicle.vin,
+          make: vehicle.make,
+          model: vehicle.model,
+          year: vehicle.year,
+          status: vehicle.status,
+          org: org ? {
+            id: org.id,
+            name: org.name,
+            type: org.type
+          } : null
+        } : null,
+        org: org ? {
+          id: org.id,
+          name: org.name,
+          type: org.type
+        } : null
+      });
     },
     
     updateStatus: (id: string, status: any) => {
@@ -197,13 +258,74 @@ class MockDatabase {
         result = result.filter(c => c.orgId === filter.where.orgId);
       }
       if (filter?.where?.vehicleId) {
-        result = result.filter(c => c.vehicleId === filter.where.vehicleId);
+        if (typeof filter.where.vehicleId === 'string') {
+          result = result.filter(c => c.vehicleId === filter.where.vehicleId);
+        } else if (filter.where.vehicleId.in) {
+          result = result.filter(c => filter.where.vehicleId.in.includes(c.vehicleId));
+        } else if (filter.where.vehicleId === 'no-match') {
+          result = [];
+        }
       }
-      return Promise.resolve(result);
+      
+      // Enrich claims with vehicle and org information
+      const enrichedResult = result.map(claim => {
+        const vehicle = this.data.vehicles.find(v => v.id === claim.vehicleId);
+        const org = this.data.organizations.find(o => o.id === claim.orgId);
+        
+        return {
+          ...claim,
+          vehicle: vehicle ? {
+            id: vehicle.id,
+            vin: vehicle.vin,
+            make: vehicle.make,
+            model: vehicle.model,
+            year: vehicle.year,
+            status: vehicle.status,
+            org: org ? {
+              id: org.id,
+              name: org.name,
+              type: org.type
+            } : null
+          } : null,
+          org: org ? {
+            id: org.id,
+            name: org.name,
+            type: org.type
+          } : null
+        };
+      });
+      
+      return Promise.resolve(enrichedResult);
     },
     
     findById: (id: string) => {
-      return Promise.resolve(this.data.insuranceClaims.find(c => c.id === id) || null);
+      const claim = this.data.insuranceClaims.find(c => c.id === id);
+      if (!claim) return Promise.resolve(null);
+      
+      const vehicle = this.data.vehicles.find(v => v.id === claim.vehicleId);
+      const org = this.data.organizations.find(o => o.id === claim.orgId);
+      
+      return Promise.resolve({
+        ...claim,
+        vehicle: vehicle ? {
+          id: vehicle.id,
+          vin: vehicle.vin,
+          make: vehicle.make,
+          model: vehicle.model,
+          year: vehicle.year,
+          status: vehicle.status,
+          org: org ? {
+            id: org.id,
+            name: org.name,
+            type: org.type
+          } : null
+        } : null,
+        org: org ? {
+          id: org.id,
+          name: org.name,
+          type: org.type
+        } : null
+      });
     },
     
     updateStatus: (id: string, status: any) => {
@@ -234,11 +356,67 @@ class MockDatabase {
           result = [];
         }
       }
-      return Promise.resolve(result);
+      
+      // Enrich titles with vehicle information
+      const enrichedResult = result.map(title => {
+        const vehicle = this.data.vehicles.find(v => v.id === title.vehicleId);
+        if (vehicle) {
+          const org = this.data.organizations.find(o => o.id === vehicle.orgId);
+          return {
+            ...title,
+            vehicle: {
+              id: vehicle.id,
+              vin: vehicle.vin,
+              make: vehicle.make,
+              model: vehicle.model,
+              year: vehicle.year,
+              status: vehicle.status,
+              org: org ? {
+                id: org.id,
+                name: org.name,
+                type: org.type
+              } : null
+            }
+          };
+        }
+        return {
+          ...title,
+          vehicle: null
+        };
+      });
+      
+      return Promise.resolve(enrichedResult);
     },
     
     findById: (id: string) => {
-      return Promise.resolve(this.data.titles.find(t => t.id === id) || null);
+      const title = this.data.titles.find(t => t.id === id);
+      if (!title) return Promise.resolve(null);
+      
+      const vehicle = this.data.vehicles.find(v => v.id === title.vehicleId);
+      if (vehicle) {
+        const org = this.data.organizations.find(o => o.id === vehicle.orgId);
+        return Promise.resolve({
+          ...title,
+          vehicle: {
+            id: vehicle.id,
+            vin: vehicle.vin,
+            make: vehicle.make,
+            model: vehicle.model,
+            year: vehicle.year,
+            status: vehicle.status,
+            org: org ? {
+              id: org.id,
+              name: org.name,
+              type: org.type
+            } : null
+          }
+        });
+      }
+      
+      return Promise.resolve({
+        ...title,
+        vehicle: null
+      });
     },
     
     updateStatus: (id: string, status: any) => {
