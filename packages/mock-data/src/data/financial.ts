@@ -1,0 +1,152 @@
+import { Invoice, PaymentIntent } from '../types';
+
+export const invoices: Invoice[] = [
+  {
+    id: 'invoice-1',
+    orgId: 'org-admin',
+    number: 'INV-2024-001',
+    status: 'ISSUED',
+    currency: 'USD',
+    issuedAt: new Date('2024-03-01'),
+    total: 15750,
+    subtotal: 15000,
+    vat: 750,
+    notes: 'Vehicle purchase - Honda Accord 2020',
+    createdAt: new Date('2024-03-01'),
+    updatedAt: new Date('2024-03-01')
+  },
+  {
+    id: 'invoice-2',
+    orgId: 'org-dealer-1',
+    number: 'INV-2024-002',
+    status: 'PAID',
+    currency: 'USD',
+    issuedAt: new Date('2024-03-02'),
+    total: 23100,
+    subtotal: 22000,
+    vat: 1100,
+    notes: 'Vehicle purchase - Toyota Camry 2019',
+    createdAt: new Date('2024-03-02'),
+    updatedAt: new Date('2024-03-05')
+  },
+  {
+    id: 'invoice-3',
+    orgId: 'org-admin',
+    number: 'INV-2024-003',
+    status: 'DRAFT',
+    currency: 'USD',
+    issuedAt: null,
+    total: 36750,
+    subtotal: 35000,
+    vat: 1750,
+    notes: 'Vehicle purchase - Ford F-150 2020',
+    createdAt: new Date('2024-03-11'),
+    updatedAt: new Date('2024-03-11')
+  },
+  {
+    id: 'invoice-4',
+    orgId: 'org-dealer-2',
+    number: 'INV-2024-004',
+    status: 'CANCELLED',
+    currency: 'USD',
+    issuedAt: new Date('2024-03-05'),
+    total: 20475,
+    subtotal: 19500,
+    vat: 975,
+    notes: 'CANCELLED - Vehicle purchase - Jeep Grand Cherokee 2015',
+    createdAt: new Date('2024-03-05'),
+    updatedAt: new Date('2024-03-06')
+  },
+  {
+    id: 'invoice-5',
+    orgId: 'org-dealer-3',
+    number: 'INV-2024-005',
+    status: 'PAID',
+    currency: 'USD',
+    issuedAt: new Date('2024-02-10'),
+    total: 75600,
+    subtotal: 72000,
+    vat: 3600,
+    notes: 'Vehicle purchase - Audi RS7 2017',
+    createdAt: new Date('2024-02-10'),
+    updatedAt: new Date('2024-02-15')
+  }
+];
+
+export const paymentIntents: PaymentIntent[] = [
+  {
+    id: 'payment-1',
+    orgId: 'org-dealer-1',
+    invoiceId: 'invoice-2',
+    method: 'WIRE_TRANSFER',
+    amount: 23100,
+    currency: 'USD',
+    status: 'COMPLETED',
+    proofUrl: 'https://example.com/proof/wire-001.pdf',
+    ref: 'WT-2024-03-05-001',
+    createdByUserId: 'user-dealer-1',
+    createdAt: new Date('2024-03-05'),
+    updatedAt: new Date('2024-03-05'),
+    version: 1
+  },
+  {
+    id: 'payment-2',
+    orgId: 'org-admin',
+    invoiceId: 'invoice-1',
+    method: 'ACH',
+    amount: 15750,
+    currency: 'USD',
+    status: 'PROCESSING',
+    proofUrl: null,
+    ref: 'ACH-2024-03-10-001',
+    createdByUserId: 'user-admin-1',
+    createdAt: new Date('2024-03-10'),
+    updatedAt: new Date('2024-03-10'),
+    version: 0
+  },
+  {
+    id: 'payment-3',
+    orgId: 'org-dealer-3',
+    invoiceId: 'invoice-5',
+    method: 'WIRE_TRANSFER',
+    amount: 75600,
+    currency: 'USD',
+    status: 'COMPLETED',
+    proofUrl: 'https://example.com/proof/wire-002.pdf',
+    ref: 'WT-2024-02-15-001',
+    createdByUserId: 'user-dealer-1',
+    createdAt: new Date('2024-02-15'),
+    updatedAt: new Date('2024-02-15'),
+    version: 1
+  },
+  {
+    id: 'payment-4',
+    orgId: 'org-dealer-2',
+    invoiceId: null,
+    method: 'CHECK',
+    amount: 5000,
+    currency: 'USD',
+    status: 'SUBMITTED',
+    proofUrl: null,
+    ref: 'CHK-2024-03-12-001',
+    createdByUserId: 'user-dealer-1',
+    createdAt: new Date('2024-03-12'),
+    updatedAt: new Date('2024-03-12'),
+    version: 0
+  },
+  {
+    id: 'payment-5',
+    orgId: 'org-admin',
+    invoiceId: null,
+    method: 'WIRE_TRANSFER',
+    amount: 10000,
+    currency: 'USD',
+    status: 'FAILED',
+    proofUrl: null,
+    ref: 'WT-2024-03-08-002',
+    createdByUserId: 'user-admin-1',
+    createdAt: new Date('2024-03-08'),
+    updatedAt: new Date('2024-03-09'),
+    version: 2
+  }
+];
