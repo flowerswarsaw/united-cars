@@ -52,20 +52,46 @@ interface PendingItem {
   href: string
 }
 
+interface User {
+  id: string
+  name: string
+  email: string
+  roles: string[]
+  orgId: string
+  orgName: string
+  orgType: string
+}
+
 export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [pendingItems, setPendingItems] = useState<PendingItem[]>([])
   const [loading, setLoading] = useState(true)
-  const [user] = useState({
-    name: 'John Doe',
-    email: 'john@demo.com',
-    roles: ['DEALER'],
-    orgName: 'Demo Dealer'
-  })
+  const [user, setUser] = useState<User | null>(null)
 
   useEffect(() => {
-    fetchDashboardData()
+    fetchSessionAndDashboardData()
   }, [])
+
+  const fetchSessionAndDashboardData = async () => {
+    try {
+      // First fetch session data
+      const sessionRes = await fetch('/api/auth/session')
+      if (!sessionRes.ok) {
+        // Redirect to login if not authenticated
+        window.location.href = '/login'
+        return
+      }
+      
+      const sessionData = await sessionRes.json()
+      setUser(sessionData.user)
+      
+      // Then fetch dashboard data
+      await fetchDashboardData()
+    } catch (error) {
+      console.error('Failed to fetch session:', error)
+      window.location.href = '/login'
+    }
+  }
 
   const fetchDashboardData = async () => {
     try {
@@ -162,7 +188,7 @@ export default function DashboardPage() {
     }
   }
 
-  if (loading) {
+  if (loading || !user) {
     return (
       <AppLayout user={user}>
         <LoadingState text="Loading dashboard..." />
