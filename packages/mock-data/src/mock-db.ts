@@ -223,7 +223,16 @@ class MockDatabase {
     findMany: (filter?: any) => {
       let result = [...this.data.titles];
       if (filter?.where?.vehicleId) {
-        result = result.filter(t => t.vehicleId === filter.where.vehicleId);
+        if (typeof filter.where.vehicleId === 'string') {
+          // Single vehicleId filter
+          result = result.filter(t => t.vehicleId === filter.where.vehicleId);
+        } else if (filter.where.vehicleId.in) {
+          // Multiple vehicleIds filter
+          result = result.filter(t => filter.where.vehicleId.in.includes(t.vehicleId));
+        } else if (filter.where.vehicleId === 'no-match') {
+          // No match case
+          result = [];
+        }
       }
       return Promise.resolve(result);
     },

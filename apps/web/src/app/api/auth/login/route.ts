@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
         orgId: user.orgId,
         orgName: user.org.name,
         orgType: user.org.type,
-        roles: user.roles.map(ur => ur.role.key)
+        roles: user.roles // Mock DB already returns role keys as strings
       }
     }
 
