@@ -7,6 +7,7 @@ import { PageHeader } from '@/components/layout/page-header'
 import { StatusBadge } from '@/components/ui/status-badge'
 import { LoadingState } from '@/components/ui/loading-state'
 import { EmptyState } from '@/components/ui/empty-state'
+import { useSession } from '@/hooks/useSession'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
 
@@ -50,12 +51,7 @@ export default function ServicesPage() {
     type: 'inspection' as const,
     notes: ''
   })
-  const [user] = useState({
-    name: 'John Doe',
-    email: 'john@demo.com',
-    roles: ['DEALER'],
-    orgName: 'Demo Dealer'
-  })
+  const { user, loading: sessionLoading } = useSession()
 
   useEffect(() => {
     fetchServiceRequests()
@@ -373,7 +369,7 @@ export default function ServicesPage() {
           </div>
 
           <div className="p-6">
-            {loading ? (
+            {loading || sessionLoading ? (
               <LoadingState text="Loading service requests..." />
             ) : serviceRequests.length === 0 ? (
               <EmptyState

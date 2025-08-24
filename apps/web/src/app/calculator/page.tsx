@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Calculator, Car, Truck, Ship, FileText, TrendingUp } from 'lucide-react'
 import { AppLayout } from '@/components/layout/app-layout'
 import { PageHeader } from '@/components/layout/page-header'
+import { useSession } from '@/hooks/useSession'
 import toast from 'react-hot-toast'
 
 interface CalculationResult {
@@ -66,12 +67,7 @@ export default function CalculatorPage() {
     destination: 'netherlands'
   })
 
-  const [user] = useState({
-    name: 'John Doe',
-    email: 'john@demo.com',
-    roles: ['DEALER'],
-    orgName: 'Demo Dealer'
-  })
+  const { user, loading: sessionLoading } = useSession()
 
   const handleCalculate = async () => {
     setLoading(true)

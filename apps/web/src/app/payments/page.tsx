@@ -9,6 +9,7 @@ import { LoadingState } from '@/components/ui/loading-state'
 import { EmptyState } from '@/components/ui/empty-state'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
+import { useSession } from '@/hooks/useSession'
 
 interface Payment {
   id: string
@@ -43,12 +44,7 @@ export default function PaymentsPage() {
     total: 0,
     totalPages: 0
   })
-  const [user] = useState({
-    name: 'John Doe',
-    email: 'john@demo.com',
-    roles: ['DEALER'],
-    orgName: 'Demo Dealer'
-  })
+  const { user, loading: sessionLoading } = useSession()
 
   useEffect(() => {
     fetchPayments()
@@ -177,7 +173,7 @@ export default function PaymentsPage() {
           </div>
 
           <div className="p-6">
-            {loading ? (
+            {loading || sessionLoading ? (
               <LoadingState text="Loading payments..." />
             ) : filteredPayments.length === 0 ? (
               <EmptyState

@@ -7,6 +7,7 @@ import { PageHeader } from '@/components/layout/page-header'
 import { StatusBadge } from '@/components/ui/status-badge'
 import { LoadingState } from '@/components/ui/loading-state'
 import { EmptyState } from '@/components/ui/empty-state'
+import { useSession } from '@/hooks/useSession'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
 
@@ -36,12 +37,7 @@ export default function VehiclesPage() {
     total: 0,
     totalPages: 0
   })
-  const [user] = useState({
-    name: 'John Doe',
-    email: 'john@demo.com',
-    roles: ['DEALER'],
-    orgName: 'Demo Dealer'
-  })
+  const { user, loading: sessionLoading } = useSession()
 
   useEffect(() => {
     fetchVehicles()
@@ -204,7 +200,7 @@ export default function VehiclesPage() {
           </div>
 
           <div className="p-6">
-            {loading ? (
+            {loading || sessionLoading ? (
               <LoadingState text="Loading vehicles..." />
             ) : filteredVehicles.length === 0 ? (
               <EmptyState

@@ -7,6 +7,7 @@ import { PageHeader } from '@/components/layout/page-header'
 import { StatusBadge } from '@/components/ui/status-badge'
 import { LoadingState } from '@/components/ui/loading-state'
 import { EmptyState } from '@/components/ui/empty-state'
+import { useSession } from '@/hooks/useSession'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
 
@@ -48,12 +49,7 @@ export default function ClaimsPage() {
     incidentAt: '',
     photos: [] as Array<{ filename: string; url: string }>
   })
-  const [user] = useState({
-    name: 'John Doe',
-    email: 'john@demo.com',
-    roles: ['DEALER'],
-    orgName: 'Demo Dealer'
-  })
+  const { user, loading: sessionLoading } = useSession()
 
   useEffect(() => {
     fetchClaims()
@@ -326,7 +322,7 @@ export default function ClaimsPage() {
           </div>
 
           <div className="p-6">
-            {loading ? (
+            {loading || sessionLoading ? (
               <LoadingState text="Loading insurance claims..." />
             ) : claims.length === 0 ? (
               <EmptyState
