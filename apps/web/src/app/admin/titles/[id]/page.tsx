@@ -1,7 +1,7 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import React, { useState, useEffect, use } from 'react'
+import { useRouter } from 'next/navigation'
 import { AppLayout } from '@/components/layout/app-layout'
 import { PageHeader } from '@/components/layout/page-header'
 import { StatusBadge } from '@/components/ui/status-badge'
@@ -84,9 +84,17 @@ const statusConfig = {
   }
 }
 
-export default function AdminTitleDetailPage() {
-  const params = useParams()
+interface AdminTitleDetailPageProps {
+  params: Promise<{
+    id: string
+  }>
+}
+
+export default function AdminTitleDetailPage({ params }: AdminTitleDetailPageProps) {
   const router = useRouter()
+  
+  // Unwrap params promise
+  const { id } = use(params)
   const [title, setTitle] = useState<TitleDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const { user, loading: sessionLoading } = useSession()
@@ -105,11 +113,9 @@ export default function AdminTitleDetailPage() {
         router.push('/titles')
         return
       }
-      if (params.id) {
-        fetchTitleDetail(params.id as string)
-      }
+      fetchTitleDetail(id)
     }
-  }, [user, sessionLoading, params.id])
+  }, [user, sessionLoading, id])
 
   const fetchTitleDetail = async (titleId: string) => {
     try {

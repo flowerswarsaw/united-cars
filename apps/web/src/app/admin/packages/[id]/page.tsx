@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, use } from 'react'
 import { useRouter } from 'next/navigation'
 import { AppLayout } from '@/components/layout/app-layout'
 import { PageHeader } from '@/components/layout/page-header'
@@ -23,9 +23,9 @@ import { formatDate } from '@/lib/title-mock-data'
 import type { EnhancedPackage } from '@/types/title-enhanced'
 
 interface PackageDetailPageProps {
-  params: {
+  params: Promise<{
     id: string
-  }
+  }>
 }
 
 export default function PackageDetailPage({ params }: PackageDetailPageProps) {
@@ -33,6 +33,9 @@ export default function PackageDetailPage({ params }: PackageDetailPageProps) {
   const { user, loading: sessionLoading } = useSession()
   const [loading, setLoading] = useState(true)
   const [pkg, setPkg] = useState<EnhancedPackage | null>(null)
+  
+  // Unwrap params promise
+  const { id } = use(params)
 
   useEffect(() => {
     if (!sessionLoading && !user) {
@@ -43,14 +46,14 @@ export default function PackageDetailPage({ params }: PackageDetailPageProps) {
     if (user) {
       fetchPackageData()
     }
-  }, [user, sessionLoading, params.id])
+  }, [user, sessionLoading, id])
 
   const fetchPackageData = async () => {
     try {
       setLoading(true)
       
       // Find package in mock data
-      const foundPackage = mockPackageData.find(p => p.id === params.id)
+      const foundPackage = mockPackageData.find(p => p.id === id)
       
       if (!foundPackage) {
         toast.error('Package not found')
