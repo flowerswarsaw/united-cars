@@ -60,6 +60,17 @@ export default function AdminTitlePackagesPage() {
   const [dateFilter, setDateFilter] = useState('all')
   const [sortField, setSortField] = useState<string>('createdAt')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
+  const [showCreateModal, setShowCreateModal] = useState(false)
+  const [createForm, setCreateForm] = useState({
+    titleType: 'clean',
+    issuingState: 'TX',
+    vin: '',
+    make: '',
+    model: '',
+    year: '',
+    priority: 'normal',
+    notes: ''
+  })
   
   const [titleStatusCounts, setTitleStatusCounts] = useState({
     all: 0,
@@ -343,14 +354,72 @@ export default function AdminTitlePackagesPage() {
 
   const handleCreateNew = () => {
     if (viewMode === 'titles') {
-      // For now, show toast - will implement full form later
-      toast.success('New Title form - Coming soon!')
+      setShowCreateModal(true)
+      toast.success('Opening new title form!')
       console.log('Creating new title...')
     } else {
-      // For now, show toast - will implement full form later  
-      toast.success('New Package form - Coming soon!')
+      toast.success('Package creation - Coming soon!')
       console.log('Creating new package...')
     }
+  }
+
+  const handleCreateSubmit = () => {
+    // Validate form
+    if (!createForm.vin || !createForm.make || !createForm.model) {
+      toast.error('Please fill in VIN, Make, and Model')
+      return
+    }
+
+    // Create new title (in a real app, this would call an API)
+    const newTitle = {
+      id: `title-new-${Date.now()}`,
+      titleNumber: null,
+      titleType: createForm.titleType as any,
+      issuingState: createForm.issuingState,
+      issuingCountry: 'US',
+      vehicle: {
+        id: `vehicle-new-${Date.now()}`,
+        vin: createForm.vin,
+        make: createForm.make,
+        model: createForm.model,
+        year: createForm.year ? parseInt(createForm.year) : null,
+        org: { id: 'org-dealer-1', name: 'New Customer' }
+      },
+      status: 'received' as any,
+      priority: createForm.priority as any,
+      receivedDate: new Date().toISOString(),
+      processedDate: null,
+      expectedCompletionDate: null,
+      actualCompletionDate: null,
+      assignedTo: null,
+      location: 'Receiving Dock',
+      package: null,
+      processingFee: 15.00,
+      rushFee: null,
+      notes: createForm.notes,
+      internalNotes: null,
+      tags: [],
+      documents: [],
+      statusHistory: [],
+      activityLogs: [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      createdBy: { id: 'user-1', name: 'Admin User', email: 'admin@unitedcars.com' }
+    }
+
+    // In a real app, you would add this to the database/state
+    toast.success(`New title created for ${createForm.make} ${createForm.model}!`)
+    setShowCreateModal(false)
+    setCreateForm({
+      titleType: 'clean',
+      issuingState: 'TX',
+      vin: '',
+      make: '',
+      model: '',
+      year: '',
+      priority: 'normal',
+      notes: ''
+    })
   }
 
   const getSortIcon = (field: string) => {
@@ -914,6 +983,144 @@ export default function AdminTitlePackagesPage() {
           )}
         </div>
       </div>
+
+      {/* Create Title Modal */}
+      {showCreateModal && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div className="mt-3">
+              <h3 className="text-lg font-medium text-gray-900 text-center mb-4">
+                Create New Title
+              </h3>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">VIN *</label>
+                  <input
+                    type="text"
+                    value={createForm.vin}
+                    onChange={(e) => setCreateForm({...createForm, vin: e.target.value.toUpperCase()})}
+                    placeholder="17-character VIN"
+                    maxLength={17}
+                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                  />
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Make *</label>
+                    <input
+                      type="text"
+                      value={createForm.make}
+                      onChange={(e) => setCreateForm({...createForm, make: e.target.value})}
+                      className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Model *</label>
+                    <input
+                      type="text"
+                      value={createForm.model}
+                      onChange={(e) => setCreateForm({...createForm, model: e.target.value})}
+                      className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                    />
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Year</label>
+                    <input
+                      type="number"
+                      value={createForm.year}
+                      onChange={(e) => setCreateForm({...createForm, year: e.target.value})}
+                      placeholder="2024"
+                      min="1900"
+                      max="2030"
+                      className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">State</label>
+                    <select
+                      value={createForm.issuingState}
+                      onChange={(e) => setCreateForm({...createForm, issuingState: e.target.value})}
+                      className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                    >
+                      <option value="TX">Texas</option>
+                      <option value="CA">California</option>
+                      <option value="FL">Florida</option>
+                      <option value="NY">New York</option>
+                      <option value="LA">Louisiana</option>
+                      <option value="AZ">Arizona</option>
+                    </select>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Title Type</label>
+                    <select
+                      value={createForm.titleType}
+                      onChange={(e) => setCreateForm({...createForm, titleType: e.target.value})}
+                      className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                    >
+                      <option value="clean">Clean</option>
+                      <option value="salvage">Salvage</option>
+                      <option value="flood">Flood</option>
+                      <option value="rebuilt">Rebuilt</option>
+                      <option value="lemon">Lemon</option>
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Priority</label>
+                    <select
+                      value={createForm.priority}
+                      onChange={(e) => setCreateForm({...createForm, priority: e.target.value})}
+                      className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                    >
+                      <option value="low">Low</option>
+                      <option value="normal">Normal</option>
+                      <option value="high">High</option>
+                      <option value="rush">Rush</option>
+                      <option value="emergency">Emergency</option>
+                    </select>
+                  </div>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Notes</label>
+                  <textarea
+                    value={createForm.notes}
+                    onChange={(e) => setCreateForm({...createForm, notes: e.target.value})}
+                    rows={3}
+                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                    placeholder="Any additional information..."
+                  />
+                </div>
+              </div>
+              
+              <div className="flex justify-end space-x-3 mt-6">
+                <button
+                  onClick={() => setShowCreateModal(false)}
+                  className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleCreateSubmit}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                >
+                  Create Title
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </AppLayout>
   )
 }
