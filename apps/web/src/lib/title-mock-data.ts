@@ -14,7 +14,10 @@ import {
   BulkImport,
   TitleMetrics,
   VinValidation,
-  TitleStatusConfig
+  TitleStatusConfig,
+  DynamicTitleStatus,
+  PACKAGE_TO_TITLE_STATUS_MAP,
+  DYNAMIC_STATUS_CONFIG
 } from '@/types/title-enhanced'
 import { 
   Clock, 
@@ -27,6 +30,9 @@ import {
   Eye,
   FileText
 } from 'lucide-react'
+
+// Import package mock data for dynamic status calculation
+import { mockPackageDatabase } from './package-mock-data'
 
 // VIN Validation System
 export const validateVIN = (vin: string): VinValidation => {
@@ -178,11 +184,12 @@ const mockUsers = [
 
 // Generate realistic mock organizations
 const mockOrgs = [
-  { id: 'org-1', name: 'Premium Auto Dealers' },
-  { id: 'org-2', name: 'Auto World LLC' },
-  { id: 'org-3', name: 'Gulf Coast Motors' },
-  { id: 'org-4', name: 'Mountain View Auto' },
-  { id: 'org-5', name: 'Pacific Coast Imports' }
+  { id: 'org-auction-1', name: 'Copart Dallas' },
+  { id: 'org-auction-2', name: 'Copart Phoenix' },
+  { id: 'org-auction-3', name: 'IAAI Houston' },
+  { id: 'org-dealer-1', name: 'Premium Auto Dealers' },
+  { id: 'org-dealer-2', name: 'Elite Car Sales' },
+  { id: 'org-processing-1', name: 'United Cars Processing' }
 ]
 
 // Generate realistic VIN numbers
@@ -448,14 +455,18 @@ export const generateEnhancedTitleData = (): EnhancedTitle[] => {
         ? ['Warehouse A-1', 'Processing Room 2', 'DMV Office', 'Storage B-3', 'Quality Control'][index % 5] 
         : null,
       
-      package: ['ready_to_ship', 'shipped', 'completed'].includes(scenario.status) ? {
-        id: `package-${titleId}`,
+      // Add packageIds for titles assigned to multiple packages (many-to-many)
+      packageIds: index < 12 ? [`package-enhanced-${String(Math.floor(index/3) + 1).padStart(3, '0')}`] : [],
+      
+      packages: ['ready_to_ship', 'shipped', 'completed'].includes(scenario.status) ? [{
+        id: `package-enhanced-${String(Math.floor(index/3) + 1).padStart(3, '0')}`,
         trackingNumber: scenario.status === 'shipped' || scenario.status === 'completed' 
           ? `1Z999${String(Math.floor(Math.random() * 1000000000)).padStart(9, '0')}`
           : null,
         provider: ['FedEx', 'UPS', 'DHL', 'USPS'][index % 4],
+        type: 'SENDING' as const,
         status: scenario.status === 'completed' ? 'delivered' : scenario.status === 'shipped' ? 'in_transit' : 'prepared'
-      } : null,
+      }] : [],
       
       processingFee: scenario.priority === 'rush' || scenario.priority === 'emergency' ? 25.00 : 15.00,
       rushFee: scenario.priority === 'rush' ? 50.00 : scenario.priority === 'emergency' ? 100.00 : null,
@@ -593,6 +604,326 @@ export const formatDateTime = (dateString: string | null): string => {
   })
 }
 
+// Create a persistent mock database using localStorage
+class MockTitleDatabase {
+  private static instance: MockTitleDatabase;
+  private titleData: EnhancedTitle[] = [];
+  private storageKey = 'mockTitleData';
+
+  private constructor() {
+    this.loadFromStorage();
+  }
+
+  public static getInstance(): MockTitleDatabase {
+    if (!MockTitleDatabase.instance) {
+      MockTitleDatabase.instance = new MockTitleDatabase();
+    }
+    return MockTitleDatabase.instance;
+  }
+
+  private loadFromStorage() {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem(this.storageKey);
+      if (stored) {
+        try {
+          this.titleData = JSON.parse(stored);
+          return;
+        } catch (e) {
+          console.warn('Failed to parse stored title data, generating fresh data');
+        }
+      }
+    }
+    // Generate fresh data if nothing in storage or on server
+    this.titleData = generateEnhancedTitleData();
+    this.initializePackageRelationships();
+    this.saveToStorage();
+  }
+
+  private saveToStorage() {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(this.storageKey, JSON.stringify(this.titleData));
+    }
+  }
+
+  public getAll(): EnhancedTitle[] {
+    return this.titleData;
+  }
+
+  public findById(id: string): EnhancedTitle | undefined {
+    return this.titleData.find(title => title.id === id);
+  }
+
+  public updateTitle(id: string, updatedTitle: EnhancedTitle): void {
+    const index = this.titleData.findIndex(title => title.id === id);
+    if (index !== -1) {
+      this.titleData[index] = updatedTitle;
+      this.saveToStorage();
+    }
+  }
+
+  public addTitleToPackage(titleId: string, packageId: string): void {
+    const index = this.titleData.findIndex(title => title.id === titleId);
+    if (index !== -1) {
+      const title = this.titleData[index];
+      // Initialize packageIds if it doesn't exist (migration from old format)
+      if (!title.packageIds) {
+        title.packageIds = [];
+      }
+      if (!title.packageIds.includes(packageId)) {
+        title.packageIds.push(packageId);
+        
+        // Add status history entry for package assignment
+        this.addStatusHistoryEntry(titleId, 'packed', 'Title added to shipping package', packageId);
+        
+        this.saveToStorage();
+      }
+    }
+  }
+
+  public removeTitleFromPackage(titleId: string, packageId: string): void {
+    const index = this.titleData.findIndex(title => title.id === titleId);
+    if (index !== -1) {
+      const title = this.titleData[index];
+      // Initialize packageIds if it doesn't exist (migration from old format)
+      if (!title.packageIds) {
+        title.packageIds = [];
+      }
+      title.packageIds = title.packageIds.filter(id => id !== packageId);
+      
+      // Add status history entry for package removal
+      this.addStatusHistoryEntry(titleId, 'pending', 'Title removed from shipping package', packageId);
+      
+      this.saveToStorage();
+    }
+  }
+
+  public getTitlesByPackage(packageId: string): EnhancedTitle[] {
+    return this.titleData.filter(title => {
+      // Handle both old and new data formats during transition
+      if (title.packageIds) {
+        return title.packageIds.includes(packageId);
+      }
+      // Fallback for old data format
+      return (title as any).packageId === packageId;
+    });
+  }
+
+  public getAvailableTitles(): EnhancedTitle[] {
+    // All titles are available now since they can be attached to multiple packages
+    return this.titleData;
+  }
+
+  public addDocumentToTitle(titleId: string, document: TitleDocument): void {
+    const index = this.titleData.findIndex(title => title.id === titleId);
+    if (index !== -1) {
+      this.titleData[index].documents.push(document);
+      this.saveToStorage();
+    }
+  }
+
+  public reset(): void {
+    this.titleData = generateEnhancedTitleData();
+    this.initializePackageRelationships();
+    this.saveToStorage();
+  }
+
+  /**
+   * Initialize some example package-title relationships for testing
+   */
+  private initializePackageRelationships(): void {
+    // Get some package IDs that should exist in the package database
+    const packageIds = [
+      'package-enhanced-001',
+      'package-enhanced-002', 
+      'package-enhanced-003',
+      'package-enhanced-004',
+      'package-enhanced-005'
+    ];
+    
+    // Assign some titles to packages for testing
+    if (this.titleData.length >= 10) {
+      // First few titles get package relationships
+      this.titleData[0].packageIds = [packageIds[0]]; // First title in first package
+      this.titleData[1].packageIds = [packageIds[0]]; // Second title also in first package
+      this.titleData[2].packageIds = [packageIds[1]]; // Third title in second package
+      this.titleData[3].packageIds = [packageIds[2]]; // Fourth title in third package
+      this.titleData[4].packageIds = [packageIds[1], packageIds[3]]; // Fifth title in multiple packages (to test latest)
+      this.titleData[5].packageIds = [packageIds[4]]; // Sixth title in fifth package
+      
+      console.log('🔗 Initialized title-package relationships for testing dynamic status');
+    }
+  }
+
+  // Dynamic Status Calculation Methods
+
+  /**
+   * Find the latest package containing a specific title
+   * Returns the package with the most recent updatedAt or createdAt timestamp
+   */
+  public findLatestPackageForTitle(titleId: string): EnhancedPackage | null {
+    const allPackages = mockPackageDatabase.getAll();
+    
+    // Find all packages that contain this title by checking title packageIds
+    const title = this.findById(titleId);
+    if (!title || !title.packageIds || title.packageIds.length === 0) {
+      return null;
+    }
+    
+    // Find packages that are in the title's packageIds array
+    const packagesWithTitle = allPackages.filter(pkg => 
+      title.packageIds!.includes(pkg.id)
+    );
+    
+    if (packagesWithTitle.length === 0) {
+      return null;
+    }
+    
+    // Sort by updatedAt (most recent first), fallback to createdAt
+    packagesWithTitle.sort((a, b) => {
+      const dateA = new Date(a.updatedAt || a.createdAt);
+      const dateB = new Date(b.updatedAt || b.createdAt);
+      return dateB.getTime() - dateA.getTime();
+    });
+    
+    return packagesWithTitle[0]; // Return the most recent package
+  }
+
+  /**
+   * Calculate dynamic status for a title based on its latest package
+   */
+  public calculateDynamicStatus(titleId: string): DynamicTitleStatus {
+    const latestPackage = this.findLatestPackageForTitle(titleId);
+    
+    if (!latestPackage) {
+      // No packages contain this title
+      return {
+        status: 'pending',
+        displayText: 'Pending',
+        organizationName: null,
+        packageId: null,
+        updatedAt: null
+      };
+    }
+    
+    // Map package status to title status
+    const titleStatus = PACKAGE_TO_TITLE_STATUS_MAP[latestPackage.status];
+    
+    // Determine organization name and display text based on status
+    let organizationName: string | null = null;
+    let displayText = '';
+    
+    switch (titleStatus) {
+      case 'pending':
+        displayText = 'Pending';
+        break;
+      case 'packed':
+        displayText = 'Packed';
+        break;
+      case 'sent_to':
+        organizationName = latestPackage.recipientOrg.name;
+        displayText = `Sent to ${organizationName}`;
+        break;
+      case 'received_by':
+        organizationName = latestPackage.recipientOrg.name;
+        displayText = `Received by ${organizationName}`;
+        break;
+    }
+    
+    return {
+      status: titleStatus,
+      displayText,
+      organizationName,
+      packageId: latestPackage.id,
+      updatedAt: latestPackage.updatedAt
+    };
+  }
+
+  /**
+   * Get title with dynamically calculated status
+   */
+  public getTitleWithDynamicStatus(titleId: string): (EnhancedTitle & { dynamicStatus: DynamicTitleStatus }) | undefined {
+    const title = this.findById(titleId);
+    if (!title) {
+      return undefined;
+    }
+    
+    const dynamicStatus = this.calculateDynamicStatus(titleId);
+    
+    return {
+      ...title,
+      dynamicStatus
+    };
+  }
+
+  /**
+   * Get all titles with their dynamically calculated statuses
+   */
+  public getAllWithDynamicStatus(): (EnhancedTitle & { dynamicStatus: DynamicTitleStatus })[] {
+    return this.titleData.map(title => ({
+      ...title,
+      dynamicStatus: this.calculateDynamicStatus(title.id)
+    }));
+  }
+
+  // Update title status history when package status changes
+  public updateTitleStatusFromPackage(packageId: string, newPackageStatus: string, orgName: string): void {
+    const titlesInPackage = this.getTitlesByPackage(packageId);
+    
+    titlesInPackage.forEach(title => {
+      let reason = '';
+      let newStatus = '';
+      
+      switch (newPackageStatus) {
+        case 'sent':
+          reason = `Package shipped to ${orgName}`;
+          newStatus = 'sent_to';
+          break;
+        case 'delivered':
+          reason = `Package delivered to ${orgName}`;
+          newStatus = 'received_by';
+          break;
+        case 'packed':
+          reason = 'Package prepared for shipping';
+          newStatus = 'packed';
+          break;
+        default:
+          return; // Don't create history for unknown statuses
+      }
+      
+      this.addStatusHistoryEntry(title.id, newStatus, reason, packageId);
+    });
+  }
+
+  // Add status history entry for package operations
+  private addStatusHistoryEntry(titleId: string, newStatus: string, reason: string, packageId?: string): void {
+    const index = this.titleData.findIndex(title => title.id === titleId);
+    if (index !== -1) {
+      const title = this.titleData[index];
+      const currentDynamicStatus = this.calculateDynamicStatus(titleId);
+      
+      // Initialize statusHistory if it doesn't exist
+      if (!title.statusHistory) {
+        title.statusHistory = [];
+      }
+      
+      const historyEntry: TitleStatusHistory = {
+        id: `history-${titleId}-${Date.now()}`,
+        titleId,
+        fromStatus: currentDynamicStatus.status as any,
+        toStatus: newStatus as any,
+        changedAt: new Date().toISOString(),
+        changedBy: { id: 'system', name: 'System', email: 'system@unitedcars.com' }, // Mock system user
+        reason,
+        notes: packageId ? `Package ID: ${packageId}` : null,
+        automaticChange: true
+      };
+      
+      title.statusHistory.push(historyEntry);
+    }
+  }
+}
+
 // Export singleton instance
-export const mockTitleData = generateEnhancedTitleData()
+export const mockTitleDatabase = MockTitleDatabase.getInstance();
+export const mockTitleData = mockTitleDatabase.getAll();
 export const mockTitleMetrics = generateTitleMetrics()

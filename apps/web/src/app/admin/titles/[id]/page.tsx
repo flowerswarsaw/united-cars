@@ -7,8 +7,11 @@ import { PageHeader } from '@/components/layout/page-header'
 import { StatusBadge } from '@/components/ui/status-badge'
 import { LoadingState } from '@/components/ui/loading-state'
 import { useSession } from '@/hooks/useSession'
-import { FileText, Calendar, MapPin, User, Building, Truck, AlertTriangle, CheckCircle, Clock, Edit3, Save, X } from 'lucide-react'
+import { FileText, Calendar, MapPin, User, Building, Truck, AlertTriangle, CheckCircle, Clock, Edit3, Save, X, Scan, Upload, Package } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { mockTitleDatabase } from '@/lib/title-mock-data'
+import type { EnhancedTitle, TitleDocument, DynamicTitleStatus } from '@/types/title-enhanced'
+import { DYNAMIC_STATUS_CONFIG } from '@/types/title-enhanced'
 
 interface TitleDetail {
   id: string
@@ -22,6 +25,7 @@ interface TitleDetail {
   notes: string | null
   createdAt: string
   updatedAt: string
+  dynamicStatus: DynamicTitleStatus
   vehicle: {
     id: string
     vin: string
@@ -57,30 +61,20 @@ const statusConfig = {
     icon: Clock,
     label: 'Pending'
   },
-  processing: {
+  packed: {
+    color: 'warning',
+    icon: Package,
+    label: 'Packed'
+  },
+  sent_to: {
     color: 'info',
-    icon: Edit3,
-    label: 'Processing'
+    icon: Truck,
+    label: 'Sent'
   },
-  pending_docs: {
-    color: 'warning',
-    icon: AlertTriangle,
-    label: 'Pending Documents'
-  },
-  on_hold: {
-    color: 'warning',
-    icon: AlertTriangle,
-    label: 'On Hold'
-  },
-  completed: {
+  received_by: {
     color: 'success',
     icon: CheckCircle,
-    label: 'Completed'
-  },
-  cancelled: {
-    color: 'error',
-    icon: X,
-    label: 'Cancelled'
+    label: 'Received'
   }
 }
 
@@ -100,11 +94,22 @@ export default function AdminTitleDetailPage({ params }: AdminTitleDetailPagePro
   const { user, loading: sessionLoading } = useSession()
   const [isEditing, setIsEditing] = useState(false)
   const [editForm, setEditForm] = useState({
-    status: '',
     notes: '',
     expectedCompletionDate: '',
     assignedTo: ''
   })
+  
+  // Upload/Scan functionality state - using useRef to debug state persistence
+  const [showUploadModal, setShowUploadModal] = useState(false)
+  const modalRef = React.useRef(showUploadModal)
+  
+  useEffect(() => {
+    modalRef.current = showUploadModal
+    console.log('Modal state changed:', showUploadModal)
+    if (showUploadModal) {
+      console.log('Modal should be visible now!')
+    }
+  }, [showUploadModal])
 
   useEffect(() => {
     if (user && !sessionLoading) {
@@ -115,79 +120,67 @@ export default function AdminTitleDetailPage({ params }: AdminTitleDetailPagePro
       }
       fetchTitleDetail(id)
     }
-  }, [user, sessionLoading, id])
+  }, [user, sessionLoading, id, router])
 
   const fetchTitleDetail = async (titleId: string) => {
     try {
-      // Mock detailed title data
-      const mockTitle: TitleDetail = {
-        id: titleId,
-        status: titleId === 'title-001' ? 'pending' : titleId === 'title-002' ? 'processing' : 'completed',
-        titleType: titleId === 'title-001' ? 'clean' : titleId === 'title-002' ? 'salvage' : 'clean',
-        titleNumber: titleId === 'title-001' ? 'TX-12345678' : titleId === 'title-002' ? 'CA-87654321' : 'FL-11223344',
-        issuingState: titleId === 'title-001' ? 'TX' : titleId === 'title-002' ? 'CA' : 'FL',
-        receivedDate: titleId === 'title-001' ? null : '2024-03-12T10:00:00Z',
-        processedDate: titleId === 'title-003' ? '2024-03-01T09:30:00Z' : null,
-        expectedCompletionDate: titleId === 'title-001' ? '2024-04-15T00:00:00Z' : titleId === 'title-002' ? '2024-04-20T00:00:00Z' : null,
-        notes: titleId === 'title-001' 
-          ? 'Waiting for original title from auction. Client requesting expedited processing.' 
-          : titleId === 'title-002' 
-          ? 'DMV inspection required for salvage title. Scheduled for next week.'
-          : 'Title successfully transferred and mailed to dealer',
-        createdAt: '2024-03-10T09:00:00Z',
-        updatedAt: '2024-03-15T14:30:00Z',
+      // Get title from enhanced database
+      const enhancedTitle = mockTitleDatabase.getTitleWithDynamicStatus(titleId)
+      
+      if (!enhancedTitle) {
+        toast.error('Title not found')
+        router.push('/admin/titles')
+        return
+      }
+
+      // Convert enhanced title to TitleDetail format
+      const titleDetail: TitleDetail = {
+        id: enhancedTitle.id,
+        status: enhancedTitle.status as TitleDetail['status'],
+        titleType: enhancedTitle.titleType as TitleDetail['titleType'],
+        titleNumber: enhancedTitle.titleNumber,
+        issuingState: enhancedTitle.issuingState,
+        receivedDate: enhancedTitle.receivedDate,
+        processedDate: enhancedTitle.processedDate,
+        expectedCompletionDate: enhancedTitle.expectedCompletionDate,
+        notes: enhancedTitle.notes,
+        createdAt: enhancedTitle.createdAt,
+        updatedAt: enhancedTitle.updatedAt,
+        dynamicStatus: enhancedTitle.dynamicStatus,
         vehicle: {
-          id: 'vehicle-1',
-          vin: '1HGBH41JXMN109186',
-          make: 'Honda',
-          model: 'Civic',
-          year: 2021,
+          id: enhancedTitle.vehicle.id,
+          vin: enhancedTitle.vehicle.vin,
+          make: enhancedTitle.vehicle.make,
+          model: enhancedTitle.vehicle.model,
+          year: enhancedTitle.vehicle.year,
           org: {
-            name: 'Premium Auto Dealers'
+            name: enhancedTitle.vehicle.org.name
           }
         },
-        assignedTo: {
-          name: 'Sarah Wilson',
-          email: 'sarah@titleprocessing.com'
-        },
-        documents: [
-          {
-            id: 'doc-1',
-            type: 'original_title',
-            filename: 'original-title-scan.pdf',
-            uploadedAt: '2024-03-12T10:00:00Z',
-            uploadedBy: 'Sarah Wilson'
-          },
-          {
-            id: 'doc-2',
-            type: 'bill_of_sale',
-            filename: 'bill-of-sale.pdf',
-            uploadedAt: '2024-03-12T10:05:00Z',
-            uploadedBy: 'Sarah Wilson'
-          }
-        ],
-        statusHistory: [
-          {
-            status: 'pending',
-            changedAt: '2024-03-10T09:00:00Z',
-            changedBy: 'System',
-            notes: 'Title processing request created'
-          },
-          {
-            status: 'processing',
-            changedAt: '2024-03-12T10:00:00Z',
-            changedBy: 'Sarah Wilson',
-            notes: 'Original title received from auction, beginning processing'
-          }
-        ]
+        assignedTo: enhancedTitle.assignedTo ? {
+          name: enhancedTitle.assignedTo.name,
+          email: enhancedTitle.assignedTo.email
+        } : null,
+        documents: enhancedTitle.documents?.map(doc => ({
+          id: doc.id,
+          type: doc.type as TitleDetail['documents'][0]['type'],
+          filename: doc.filename,
+          uploadedAt: doc.uploadedAt,
+          uploadedBy: doc.uploadedBy?.name || 'Unknown'
+        })) || [],
+        statusHistory: enhancedTitle.statusHistory?.map(history => ({
+          status: history.toStatus,
+          changedAt: history.changedAt,
+          changedBy: history.changedBy.name,
+          notes: history.notes
+        })) || []
       }
       
-      setTitle(mockTitle)
+      setTitle(titleDetail)
       setEditForm({
-        status: mockTitle.status,
-        notes: mockTitle.notes || '',
-        expectedCompletionDate: mockTitle.expectedCompletionDate || '',
-        assignedTo: mockTitle.assignedTo?.email || ''
+        notes: titleDetail.notes || '',
+        expectedCompletionDate: titleDetail.expectedCompletionDate || '',
+        assignedTo: titleDetail.assignedTo?.email || ''
       })
     } catch (error) {
       toast.error('Error fetching title details')
@@ -205,7 +198,6 @@ export default function AdminTitleDetailPage({ params }: AdminTitleDetailPagePro
       // In production, this would call the API
       const updatedTitle = {
         ...title,
-        status: editForm.status as TitleDetail['status'],
         notes: editForm.notes,
         expectedCompletionDate: editForm.expectedCompletionDate || null,
         updatedAt: new Date().toISOString()
@@ -218,6 +210,130 @@ export default function AdminTitleDetailPage({ params }: AdminTitleDetailPagePro
       console.error('Error updating title:', error)
       toast.error('Error updating title')
     }
+  }
+
+  // Upload/Scan functionality handlers
+  const handleScanDocument = () => {
+    if (!title || !user) return
+    
+    // Mock scanning functionality
+    toast.success(`Scanning document for title...`)
+    
+    setTimeout(() => {
+      const documentId = `doc-${Date.now()}-scan`
+      const timestamp = new Date().toISOString()
+      
+      // Create enhanced title document
+      const enhancedDocument: TitleDocument = {
+        id: documentId,
+        titleId: title.id,
+        type: 'scan',
+        filename: `scan-${title.id}-${Date.now()}.pdf`,
+        originalName: `Title Scan - ${title.id}.pdf`,
+        mimeType: 'application/pdf',
+        fileSize: Math.floor(Math.random() * 500000) + 100000,
+        fileUrl: `/api/titles/${title.id}/documents/${documentId}`,
+        thumbnailUrl: `/api/titles/${title.id}/documents/${documentId}/thumbnail`,
+        description: 'Scanned title document',
+        isRequired: false,
+        isVerified: false,
+        verifiedAt: null,
+        verifiedBy: null,
+        uploadedAt: timestamp,
+        uploadedBy: {
+          id: user.id,
+          name: user.name,
+          email: user.email
+        }
+      }
+      
+      // Add to enhanced database
+      mockTitleDatabase.addDocumentToTitle(title.id, enhancedDocument)
+      
+      // Update local state
+      const newLocalDocument = {
+        id: documentId,
+        type: 'other' as const,
+        filename: enhancedDocument.filename,
+        uploadedAt: timestamp,
+        uploadedBy: user.name
+      }
+      
+      const updatedTitle = {
+        ...title,
+        documents: [...title.documents, newLocalDocument]
+      }
+      
+      setTitle(updatedTitle)
+      toast.success(`Document scan completed`)
+      setShowUploadModal(false)
+    }, 2000)
+  }
+
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!title || !user) return
+    
+    const files = event.target.files
+    if (!files || files.length === 0) return
+    
+    const file = files[0]
+    if (file.type !== 'application/pdf' && !file.type.startsWith('image/')) {
+      toast.error('Please upload a PDF or image file')
+      return
+    }
+    
+    // Mock file upload
+    toast.success(`Uploading ${file.name}...`)
+    
+    setTimeout(() => {
+      const documentId = `doc-${Date.now()}-upload`
+      const timestamp = new Date().toISOString()
+      
+      // Create enhanced title document
+      const enhancedDocument: TitleDocument = {
+        id: documentId,
+        titleId: title.id,
+        type: 'scan',
+        filename: file.name,
+        originalName: file.name,
+        mimeType: file.type,
+        fileSize: file.size,
+        fileUrl: `/api/titles/${title.id}/documents/${documentId}`,
+        thumbnailUrl: file.type.startsWith('image/') ? `/api/titles/${title.id}/documents/${documentId}/thumbnail` : null,
+        description: `Uploaded file: ${file.name}`,
+        isRequired: false,
+        isVerified: false,
+        verifiedAt: null,
+        verifiedBy: null,
+        uploadedAt: timestamp,
+        uploadedBy: {
+          id: user.id,
+          name: user.name,
+          email: user.email
+        }
+      }
+      
+      // Add to enhanced database
+      mockTitleDatabase.addDocumentToTitle(title.id, enhancedDocument)
+      
+      // Update local state
+      const newLocalDocument = {
+        id: documentId,
+        type: 'other' as const,
+        filename: file.name,
+        uploadedAt: timestamp,
+        uploadedBy: user.name
+      }
+      
+      const updatedTitle = {
+        ...title,
+        documents: [...title.documents, newLocalDocument]
+      }
+      
+      setTitle(updatedTitle)
+      toast.success(`File uploaded successfully`)
+      setShowUploadModal(false)
+    }, 1000)
   }
 
   const formatDate = (dateString: string | null) => {
@@ -301,7 +417,7 @@ export default function AdminTitleDetailPage({ params }: AdminTitleDetailPagePro
     )
   }
 
-  const StatusIcon = statusConfig[title.status].icon
+  const StatusIcon = statusConfig[title.dynamicStatus.status].icon
 
   return (
     <AppLayout user={user}>
@@ -330,7 +446,10 @@ export default function AdminTitleDetailPage({ params }: AdminTitleDetailPagePro
                   </div>
                 </div>
                 <div className="flex items-center space-x-3">
-                  <StatusBadge status={statusConfig[title.status].color} />
+                  <StatusBadge 
+                    status={title.dynamicStatus.status} 
+                    label={title.dynamicStatus.displayText}
+                  />
                   {!isEditing ? (
                     <button
                       onClick={() => setIsEditing(true)}
@@ -371,28 +490,22 @@ export default function AdminTitleDetailPage({ params }: AdminTitleDetailPagePro
 
               {isEditing ? (
                 <div className="space-y-4">
+                  <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div className="flex items-center">
+                      <AlertTriangle className="h-5 w-5 text-blue-600 mr-2" />
+                      <p className="text-sm text-blue-800">
+                        <strong>Note:</strong> Title status is automatically managed through package operations. 
+                        Use the package system to update title status when shipping or receiving titles.
+                      </p>
+                    </div>
+                  </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
-                      <select
-                        value={editForm.status}
-                        onChange={(e) => setEditForm(prev => ({ ...prev, status: e.target.value }))}
-                        className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500"
-                      >
-                        <option value="pending">Pending</option>
-                        <option value="processing">Processing</option>
-                        <option value="pending_docs">Pending Documents</option>
-                        <option value="on_hold">On Hold</option>
-                        <option value="completed">Completed</option>
-                        <option value="cancelled">Cancelled</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Expected Completion</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Expected Completion Date</label>
                       <input
-                        type="datetime-local"
-                        value={editForm.expectedCompletionDate ? new Date(editForm.expectedCompletionDate).toISOString().slice(0, 16) : ''}
-                        onChange={(e) => setEditForm(prev => ({ ...prev, expectedCompletionDate: e.target.value ? new Date(e.target.value).toISOString() : '' }))}
+                        type="date"
+                        value={editForm.expectedCompletionDate}
+                        onChange={(e) => setEditForm(prev => ({ ...prev, expectedCompletionDate: e.target.value }))}
                         className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500"
                       />
                     </div>
@@ -447,27 +560,6 @@ export default function AdminTitleDetailPage({ params }: AdminTitleDetailPagePro
                     <p className="text-sm text-gray-900">{title.issuingState}</p>
                   </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-500 mb-1">Expected Completion</label>
-                  <div className="flex items-center">
-                    {isOverdue(title.expectedCompletionDate) ? (
-                      <AlertTriangle className="h-4 w-4 text-red-500 mr-1" />
-                    ) : (
-                      <Calendar className="h-4 w-4 text-gray-400 mr-1" />
-                    )}
-                    <p className={`text-sm ${isOverdue(title.expectedCompletionDate) ? 'text-red-600 font-medium' : 'text-gray-900'}`}>
-                      {formatDate(title.expectedCompletionDate)}
-                    </p>
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-500 mb-1">Date Received</label>
-                  <p className="text-sm text-gray-900">{formatDate(title.receivedDate)}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-500 mb-1">Date Processed</label>
-                  <p className="text-sm text-gray-900">{formatDate(title.processedDate)}</p>
-                </div>
               </div>
             </div>
 
@@ -491,10 +583,25 @@ export default function AdminTitleDetailPage({ params }: AdminTitleDetailPagePro
 
             {/* Documents */}
             <div className="bg-white shadow-sm rounded-lg border border-gray-200 p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                <FileText className="h-5 w-5 mr-2 text-blue-600" />
-                Required Documents
-              </h2>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-gray-900 flex items-center">
+                  <FileText className="h-5 w-5 mr-2 text-blue-600" />
+                  Required Documents ({title.documents.length})
+                </h2>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    console.log('Upload/Scan button clicked')
+                    setShowUploadModal(true)
+                  }}
+                  className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                >
+                  <Scan className="h-4 w-4 mr-2" />
+                  Upload/Scan
+                </button>
+              </div>
               {title.documents.length === 0 ? (
                 <div className="text-center py-8">
                   <FileText className="h-12 w-12 text-gray-400 mx-auto mb-3" />
@@ -503,14 +610,35 @@ export default function AdminTitleDetailPage({ params }: AdminTitleDetailPagePro
               ) : (
                 <div className="space-y-3">
                   {title.documents.map((document) => (
-                    <div key={document.id} className="flex items-center p-3 border border-gray-200 rounded-lg">
+                    <div key={document.id} className="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
                       <FileText className="h-5 w-5 text-gray-400 mr-3" />
                       <div className="flex-1">
-                        <p className="text-sm font-medium text-gray-900">{document.filename}</p>
+                        <button
+                          onClick={() => {
+                            // Mock document viewing - in production would open actual document
+                            toast.success(`Opening document: ${document.filename}`)
+                            // In a real app, this would be:
+                            // window.open(`/api/titles/${title.id}/documents/${document.id}`, '_blank')
+                            console.log('Document clicked:', document)
+                          }}
+                          className="text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline text-left"
+                        >
+                          {document.filename}
+                        </button>
                         <p className="text-xs text-gray-500">
                           {getDocumentTypeLabel(document.type)} • {formatDate(document.uploadedAt)} • {document.uploadedBy}
                         </p>
                       </div>
+                      <button
+                        onClick={() => {
+                          toast.success(`Downloading: ${document.filename}`)
+                          console.log('Download document:', document)
+                        }}
+                        className="p-1 text-gray-400 hover:text-blue-600"
+                        title="Download document"
+                      >
+                        <FileText className="h-4 w-4" />
+                      </button>
                     </div>
                   ))}
                 </div>
@@ -572,6 +700,58 @@ export default function AdminTitleDetailPage({ params }: AdminTitleDetailPagePro
           </div>
         </div>
       </div>
+
+      {/* Upload/Scan Modal */}
+      {showUploadModal && (
+        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50" style={{zIndex: 9999}}>
+          <div className="bg-white rounded-lg shadow-xl p-6 m-4 max-w-md w-full">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-medium text-gray-900">
+                Upload/Scan Document - Title
+              </h3>
+              <button
+                onClick={() => setShowUploadModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="text-sm text-gray-600 mb-4">
+                Upload or scan a document for title {title?.id}
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <button
+                  onClick={handleScanDocument}
+                  className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-colors"
+                >
+                  <Scan className="h-8 w-8 text-gray-400 mb-2" />
+                  <span className="text-sm font-medium text-gray-700">Scan Document</span>
+                  <span className="text-xs text-gray-500 mt-1">Use camera/scanner</span>
+                </button>
+                
+                <label className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-400 hover:bg-blue-50 cursor-pointer transition-colors">
+                  <Upload className="h-8 w-8 text-gray-400 mb-2" />
+                  <span className="text-sm font-medium text-gray-700">Upload File</span>
+                  <span className="text-xs text-gray-500 mt-1">PDF or Image</span>
+                  <input
+                    type="file"
+                    className="hidden"
+                    accept="application/pdf,image/*"
+                    onChange={handleFileUpload}
+                  />
+                </label>
+              </div>
+              
+              <div className="text-xs text-gray-500 text-center mt-4">
+                Supported formats: PDF, JPG, PNG, GIF
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </AppLayout>
   )
 }

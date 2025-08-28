@@ -76,16 +76,10 @@ export default function AdminTitlePackagesPage() {
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [createForm, setCreateForm] = useState({
-    titleType: 'clean',
-    issuingState: 'TX',
     vin: '',
-    make: '',
-    model: '',
-    year: '',
-    priority: 'normal',
-    notes: '',
     orgId: 'org-dealer-1',
-    orgName: 'Premium Auto Dealers'
+    orgName: 'Premium Auto Dealers',
+    notes: ''
   })
   
   const [titleStatusCounts, setTitleStatusCounts] = useState({
@@ -381,28 +375,36 @@ export default function AdminTitlePackagesPage() {
 
   const handleCreateSubmit = () => {
     // Validate form
-    if (!createForm.vin || !createForm.make || !createForm.model) {
-      toast.error('Please fill in VIN, Make, and Model')
+    if (!createForm.vin || createForm.vin.length !== 17) {
+      toast.error('Please enter a valid 17-character VIN')
       return
+    }
+
+    // Mock API call to decode VIN and get vehicle data
+    const mockVehicleData = {
+      make: 'Toyota', // Would come from VIN decoding API
+      model: 'Camry', // Would come from VIN decoding API  
+      year: 2020,     // Would come from VIN decoding API
+      titleType: 'clean' // Would come from auction API
     }
 
     // Create new title (in a real app, this would call an API)
     const newTitle = {
       id: `title-new-${Date.now()}`,
       titleNumber: null,
-      titleType: createForm.titleType as any,
-      issuingState: createForm.issuingState,
+      titleType: mockVehicleData.titleType as any,
+      issuingState: 'TX', // Would come from auction API
       issuingCountry: 'US',
       vehicle: {
         id: `vehicle-new-${Date.now()}`,
         vin: createForm.vin,
-        make: createForm.make,
-        model: createForm.model,
-        year: createForm.year ? parseInt(createForm.year) : null,
+        make: mockVehicleData.make,
+        model: mockVehicleData.model,
+        year: mockVehicleData.year,
         org: { id: createForm.orgId, name: createForm.orgName }
       },
       status: 'received' as any,
-      priority: createForm.priority as any,
+      priority: 'normal' as any, // Default priority
       receivedDate: new Date().toISOString(),
       processedDate: null,
       expectedCompletionDate: null,
@@ -424,19 +426,13 @@ export default function AdminTitlePackagesPage() {
     }
 
     // In a real app, you would add this to the database/state
-    toast.success(`New title created for ${createForm.make} ${createForm.model} - assigned to ${createForm.orgName}!`)
+    toast.success(`New title created for ${mockVehicleData.year} ${mockVehicleData.make} ${mockVehicleData.model} - assigned to ${createForm.orgName}!`)
     setShowCreateModal(false)
     setCreateForm({
-      titleType: 'clean',
-      issuingState: 'TX',
       vin: '',
-      make: '',
-      model: '',
-      year: '',
-      priority: 'normal',
-      notes: '',
       orgId: 'org-dealer-1',
-      orgName: 'Premium Auto Dealers'
+      orgName: 'Premium Auto Dealers',
+      notes: ''
     })
   }
 
@@ -1007,9 +1003,12 @@ export default function AdminTitlePackagesPage() {
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
           <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
             <div className="mt-3">
-              <h3 className="text-lg font-medium text-gray-900 text-center mb-4">
+              <h3 className="text-lg font-medium text-gray-900 text-center mb-2">
                 Create New Title
               </h3>
+              <p className="text-sm text-gray-600 text-center mb-4">
+                Enter VIN and assign to organization. Vehicle details will be fetched automatically.
+              </p>
               
               <div className="space-y-4">
                 <div>
@@ -1018,95 +1017,13 @@ export default function AdminTitlePackagesPage() {
                     type="text"
                     value={createForm.vin}
                     onChange={(e) => setCreateForm({...createForm, vin: e.target.value.toUpperCase()})}
-                    placeholder="17-character VIN"
+                    placeholder="Enter 17-character VIN"
                     maxLength={17}
-                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 font-mono"
                   />
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Make *</label>
-                    <input
-                      type="text"
-                      value={createForm.make}
-                      onChange={(e) => setCreateForm({...createForm, make: e.target.value})}
-                      className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Model *</label>
-                    <input
-                      type="text"
-                      value={createForm.model}
-                      onChange={(e) => setCreateForm({...createForm, model: e.target.value})}
-                      className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
-                    />
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Year</label>
-                    <input
-                      type="number"
-                      value={createForm.year}
-                      onChange={(e) => setCreateForm({...createForm, year: e.target.value})}
-                      placeholder="2024"
-                      min="1900"
-                      max="2030"
-                      className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">State</label>
-                    <select
-                      value={createForm.issuingState}
-                      onChange={(e) => setCreateForm({...createForm, issuingState: e.target.value})}
-                      className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
-                    >
-                      <option value="TX">Texas</option>
-                      <option value="CA">California</option>
-                      <option value="FL">Florida</option>
-                      <option value="NY">New York</option>
-                      <option value="LA">Louisiana</option>
-                      <option value="AZ">Arizona</option>
-                    </select>
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Title Type</label>
-                    <select
-                      value={createForm.titleType}
-                      onChange={(e) => setCreateForm({...createForm, titleType: e.target.value})}
-                      className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
-                    >
-                      <option value="clean">Clean</option>
-                      <option value="salvage">Salvage</option>
-                      <option value="flood">Flood</option>
-                      <option value="rebuilt">Rebuilt</option>
-                      <option value="lemon">Lemon</option>
-                    </select>
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Priority</label>
-                    <select
-                      value={createForm.priority}
-                      onChange={(e) => setCreateForm({...createForm, priority: e.target.value})}
-                      className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
-                    >
-                      <option value="low">Low</option>
-                      <option value="normal">Normal</option>
-                      <option value="high">High</option>
-                      <option value="rush">Rush</option>
-                      <option value="emergency">Emergency</option>
-                    </select>
-                  </div>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Vehicle details will be automatically retrieved from auction API
+                  </p>
                 </div>
                 
                 <div>

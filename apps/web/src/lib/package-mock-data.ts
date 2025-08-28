@@ -2,6 +2,7 @@
 // Integrated with Enhanced Title Manager
 
 import { EnhancedPackage, PackageStatus, PackagePriority, PackageDocument } from '@/types/title-enhanced'
+// Remove circular dependency - titles will be populated by MockTitleDatabase when needed
 
 // Generate comprehensive package mock data
 export const generatePackageData = (): EnhancedPackage[] => {
@@ -9,7 +10,7 @@ export const generatePackageData = (): EnhancedPackage[] => {
   
   const packageScenarios = [
     {
-      status: 'in_transit' as PackageStatus,
+      status: 'sent' as PackageStatus,
       priority: 'express' as PackagePriority,
       provider: 'FedEx',
       tracking: '7749123456789',
@@ -29,7 +30,7 @@ export const generatePackageData = (): EnhancedPackage[] => {
       notes: 'Successfully delivered processed title to dealer'
     },
     {
-      status: 'prepared' as PackageStatus,
+      status: 'packed' as PackageStatus,
       priority: 'overnight' as PackagePriority,
       provider: 'DHL',
       tracking: null,
@@ -39,7 +40,7 @@ export const generatePackageData = (): EnhancedPackage[] => {
       notes: 'Emergency overnight package for flood title processing'
     },
     {
-      status: 'prepared' as PackageStatus,
+      status: 'packed' as PackageStatus,
       priority: 'express' as PackagePriority,
       provider: 'FedEx',
       tracking: '7749987654321',
@@ -49,7 +50,7 @@ export const generatePackageData = (): EnhancedPackage[] => {
       notes: 'Bulk shipment with 3 processed titles - salvage and rebuild'
     },
     {
-      status: 'shipped' as PackageStatus,
+      status: 'sent' as PackageStatus,
       priority: 'same_day' as PackagePriority,
       provider: 'UPS',
       tracking: '1Z88888888888888888',
@@ -69,24 +70,24 @@ export const generatePackageData = (): EnhancedPackage[] => {
       notes: 'Standard delivery package with duplicate and lost title requests'
     },
     {
-      status: 'exception' as PackageStatus,
+      status: 'sent' as PackageStatus,
       priority: 'express' as PackagePriority,
       provider: 'FedEx',
       tracking: '7749555666777',
       titleIds: ['title-enhanced-011'],
       senderOrg: { name: 'United Cars Processing', type: 'processor' as const },
       recipientOrg: { name: 'Pacific Coast Imports', type: 'dealer' as const },
-      notes: 'Delivery exception - address correction needed. Customer contacted.'
+      notes: 'Express package with rebuilt title for Pacific Coast dealer'
     },
     {
-      status: 'out_for_delivery' as PackageStatus,
+      status: 'sent' as PackageStatus,
       priority: 'express' as PackagePriority,
       provider: 'UPS',
       tracking: '1Z77777777777777777',
       titleIds: ['title-enhanced-012'],
       senderOrg: { name: 'Copart Phoenix', type: 'auction' as const },
       recipientOrg: { name: 'United Cars Processing', type: 'processor' as const },
-      notes: 'Out for delivery - bonded title package expected today'
+      notes: 'Express package with bonded title from Phoenix auction'
     }
   ]
   
@@ -101,7 +102,7 @@ export const generatePackageData = (): EnhancedPackage[] => {
       id: packageId,
       trackingNumber: scenario.tracking,
       provider: scenario.provider,
-      estimatedDelivery: scenario.status === 'shipped' || scenario.status === 'in_transit' || scenario.status === 'out_for_delivery'
+      estimatedDelivery: scenario.status === 'sent'
         ? new Date(baseDate.getTime() + Math.floor(Math.random() * 3 + 1) * 24 * 60 * 60 * 1000).toISOString()
         : null,
       actualDelivery: scenario.status === 'delivered'
@@ -143,8 +144,8 @@ export const generatePackageData = (): EnhancedPackage[] => {
       
       createdAt: createdAt.toISOString(),
       updatedAt: new Date(createdAt.getTime() + Math.floor(Math.random() * 48) * 60 * 60 * 1000).toISOString(),
-      titles: scenario.titleIds,
-      documents: generatePackageDocuments(packageId, scenario.type, scenario.status)
+      titles: [], // Will be populated by MockTitleDatabase when accessed
+      documents: generatePackageDocuments(packageId, scenario.status)
     }
     
     packages.push(pkg)
@@ -154,11 +155,11 @@ export const generatePackageData = (): EnhancedPackage[] => {
 }
 
 // Generate package documents
-const generatePackageDocuments = (packageId: string, type: 'RECEIVING' | 'SENDING', status: PackageStatus): PackageDocument[] => {
+const generatePackageDocuments = (packageId: string, status: PackageStatus): PackageDocument[] => {
   const documents: PackageDocument[] = []
   
-  // Shipping label (always present for shipped packages)
-  if (status !== 'pending') {
+  // Shipping label (always present for sent/delivered packages)
+  if (status !== 'packed') {
     documents.push({
       id: `doc-${packageId}-label`,
       packageId,
@@ -170,7 +171,7 @@ const generatePackageDocuments = (packageId: string, type: 'RECEIVING' | 'SENDIN
   }
   
   // Packing list
-  if (status !== 'pending') {
+  if (status !== 'packed') {
     documents.push({
       id: `doc-${packageId}-packing`,
       packageId,
@@ -220,45 +221,20 @@ const generatePackageDocuments = (packageId: string, type: 'RECEIVING' | 'SENDIN
 
 // Package status configuration for UI
 export const packageStatusConfig = {
-  pending: {
-    label: 'Pending',
+  packed: {
+    label: 'Packed',
     color: 'warning',
-    description: 'Package preparation pending'
+    description: 'Package packed and ready to ship'
   },
-  prepared: {
-    label: 'Prepared',
+  sent: {
+    label: 'Sent',
     color: 'primary',
-    description: 'Package prepared for shipment'
-  },
-  shipped: {
-    label: 'Shipped',
-    color: 'primary',
-    description: 'Package shipped and in carrier network'
-  },
-  in_transit: {
-    label: 'In Transit',
-    color: 'primary',
-    description: 'Package in transit to destination'
-  },
-  out_for_delivery: {
-    label: 'Out for Delivery',
-    color: 'success',
-    description: 'Package out for delivery today'
+    description: 'Package sent/shipped'
   },
   delivered: {
     label: 'Delivered',
     color: 'success',
     description: 'Package successfully delivered'
-  },
-  exception: {
-    label: 'Exception',
-    color: 'error',
-    description: 'Delivery exception requiring attention'
-  },
-  returned: {
-    label: 'Returned',
-    color: 'error',
-    description: 'Package returned to sender'
   }
 } as const
 
@@ -337,21 +313,131 @@ export const calculateEstimatedDelivery = (
 // Integration with titles
 export const getPackageProgressPercentage = (status: PackageStatus): number => {
   const progressMap: Record<PackageStatus, number> = {
-    pending: 10,
-    prepared: 25,
-    shipped: 40,
-    in_transit: 60,
-    out_for_delivery: 85,
-    delivered: 100,
-    exception: 75, // Stuck at 75% due to issue
-    returned: 0    // Back to 0%
+    packed: 25,     // Package packed and ready
+    sent: 60,       // Package sent and in transit
+    delivered: 100  // Package delivered
   }
   
   return progressMap[status] || 0
 }
 
+// Create a persistent mock database using localStorage
+class MockPackageDatabase {
+  private static instance: MockPackageDatabase;
+  private packageData: EnhancedPackage[] = [];
+  private storageKey = 'mockPackageData';
+
+  private constructor() {
+    this.loadFromStorage();
+  }
+
+  public static getInstance(): MockPackageDatabase {
+    if (!MockPackageDatabase.instance) {
+      MockPackageDatabase.instance = new MockPackageDatabase();
+    }
+    return MockPackageDatabase.instance;
+  }
+
+  private loadFromStorage() {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem(this.storageKey);
+      if (stored) {
+        try {
+          let parsedData = JSON.parse(stored);
+          // Migrate old statuses to new ones
+          parsedData = this.migrateStatuses(parsedData);
+          this.packageData = parsedData;
+          this.saveToStorage(); // Save migrated data
+          return;
+        } catch (e) {
+          console.warn('Failed to parse stored package data, generating fresh data');
+        }
+      }
+    }
+    // Generate fresh data if nothing in storage or on server
+    this.packageData = generatePackageData();
+    this.saveToStorage();
+  }
+
+  private migrateStatuses(packages: EnhancedPackage[]): EnhancedPackage[] {
+    return packages.map(pkg => {
+      // Map old statuses to new ones
+      const statusMigration: Record<string, PackageStatus> = {
+        'pending': 'packed',
+        'prepared': 'packed',
+        'shipped': 'sent',
+        'in_transit': 'sent',
+        'out_for_delivery': 'sent',
+        'exception': 'sent', // Treat exceptions as still in transit
+        'returned': 'packed', // Returned packages go back to packed
+        'delivered': 'delivered'
+      };
+      
+      const newStatus = statusMigration[pkg.status] || pkg.status;
+      if (newStatus !== pkg.status) {
+        console.log(`🔄 Migrating package ${pkg.id} status from '${pkg.status}' to '${newStatus}'`);
+      }
+      
+      return {
+        ...pkg,
+        status: newStatus as PackageStatus
+      };
+    });
+  }
+
+  private saveToStorage() {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(this.storageKey, JSON.stringify(this.packageData));
+    }
+  }
+
+  public getAll(): EnhancedPackage[] {
+    // Return packages with populated titles - but avoid circular dependency
+    // The title-package relationship will be handled by the title database
+    return this.packageData;
+  }
+
+  public findById(id: string): EnhancedPackage | undefined {
+    return this.packageData.find(pkg => pkg.id === id);
+  }
+
+  public addPackage(newPackage: EnhancedPackage): void {
+    this.packageData.push(newPackage);
+    this.saveToStorage();
+  }
+
+  public updatePackage(id: string, updatedPackage: EnhancedPackage): void {
+    const index = this.packageData.findIndex(pkg => pkg.id === id);
+    if (index !== -1) {
+      this.packageData[index] = updatedPackage;
+      this.saveToStorage();
+    }
+  }
+
+  public addDocumentToPackage(packageId: string, document: PackageDocument): void {
+    const index = this.packageData.findIndex(pkg => pkg.id === packageId);
+    if (index !== -1) {
+      this.packageData[index].documents.push(document);
+      this.saveToStorage();
+    }
+  }
+
+  // Force refresh data - useful for clearing old statuses
+  public refreshData(): void {
+    this.packageData = generatePackageData();
+    this.saveToStorage();
+    console.log('📦 Package data refreshed with new statuses');
+  }
+
+  public reset(): void {
+    this.packageData = generatePackageData();
+    this.saveToStorage();
+  }
+}
+
 // Export singleton instances
-export const mockPackageData = generatePackageData()
+export const mockPackageDatabase = MockPackageDatabase.getInstance();
+export const mockPackageData = mockPackageDatabase.getAll();
 
 // Package analytics
 export const getPackageMetrics = () => {
@@ -361,9 +447,9 @@ export const getPackageMetrics = () => {
     totalPackages: packages.length,
     inboundPackages: packages.filter(p => p.recipientOrg.type === 'processor').length, // Coming to processing center
     outboundPackages: packages.filter(p => p.senderOrg.type === 'processor').length, // Going from processing center  
-    inTransitPackages: packages.filter(p => ['shipped', 'in_transit', 'out_for_delivery'].includes(p.status)).length,
+    inTransitPackages: packages.filter(p => p.status === 'sent').length,
     deliveredPackages: packages.filter(p => p.status === 'delivered').length,
-    exceptionPackages: packages.filter(p => p.status === 'exception').length,
+    packedPackages: packages.filter(p => p.status === 'packed').length,
     averageDeliveryTime: 2.3, // days
     onTimeDeliveryRate: 94.5 // percentage
   }

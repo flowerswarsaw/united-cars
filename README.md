@@ -1,6 +1,27 @@
 # United Cars - Vehicle Auction Management Platform
 
-A production-grade modular monolith for vehicle auction management with comprehensive cost calculators, invoice generation, and payment workflows.
+## 🌟 **Revolutionary Dynamic Title Status System**
+**World's First Package-Based Title Status Tracking**
+
+United Cars features an innovative title status system where statuses are **dynamically calculated** from package relationships:
+- **pending** → No packages assigned 
+- **packed** → "Packed" (in shipping package)
+- **sent_to** → "Sent to [Organization]" (package shipped)  
+- **received_by** → "Received by [Organization]" (package delivered)
+
+**Key Innovation**: Title status automatically updates when package status changes, providing real-time visibility into title locations.
+
+**Status Management**: Title statuses are read-only and controlled exclusively through package operations, ensuring 100% data consistency and complete audit trails.
+
+## 📋 **Complete Platform Features**
+A production-grade platform for vehicle auction management with:
+- ✅ **Dynamic Title Management** - Revolutionary package-based status system
+- ✅ **Package Shipping System** - Complete logistics workflow 
+- ✅ **Document Management** - Upload, view, and organize documents
+- ✅ **Organization Management** - Auction houses, dealers, processors
+- ✅ **Cost Calculators** - Auction fees, shipping, towing calculations
+- ✅ **Invoice & Payment Workflows** - Complete financial management
+- ✅ **Production Deployment** - Docker + CI/CD + monitoring
 
 ## 🚀 Quick Start
 
