@@ -44,6 +44,20 @@ import type { EnhancedTitle, EnhancedPackage, TitleStatus } from '@/types/title-
 
 type ViewMode = 'titles' | 'packages'
 
+// Available organizations for title assignment
+const availableOrganizations = [
+  { id: 'org-dealer-1', name: 'Premium Auto Dealers', type: 'dealer' },
+  { id: 'org-dealer-2', name: 'Gulf Coast Motors', type: 'dealer' },
+  { id: 'org-dealer-3', name: 'Mountain View Auto', type: 'dealer' },
+  { id: 'org-dealer-4', name: 'Pacific Coast Imports', type: 'dealer' },
+  { id: 'org-dealer-5', name: 'Texas Auto Group', type: 'dealer' },
+  { id: 'org-dealer-6', name: 'Florida Motor Exchange', type: 'dealer' },
+  { id: 'org-dealer-7', name: 'California Auto Sales', type: 'dealer' },
+  { id: 'org-auction-1', name: 'Copart Dallas', type: 'auction' },
+  { id: 'org-auction-2', name: 'IAA Seattle', type: 'auction' },
+  { id: 'org-auction-3', name: 'Manheim Auto Auction', type: 'auction' }
+]
+
 export default function AdminTitlePackagesPage() {
   const router = useRouter()
   const [viewMode, setViewMode] = useState<ViewMode>('titles')
@@ -69,7 +83,9 @@ export default function AdminTitlePackagesPage() {
     model: '',
     year: '',
     priority: 'normal',
-    notes: ''
+    notes: '',
+    orgId: 'org-dealer-1',
+    orgName: 'Premium Auto Dealers'
   })
   
   const [titleStatusCounts, setTitleStatusCounts] = useState({
@@ -383,7 +399,7 @@ export default function AdminTitlePackagesPage() {
         make: createForm.make,
         model: createForm.model,
         year: createForm.year ? parseInt(createForm.year) : null,
-        org: { id: 'org-dealer-1', name: 'New Customer' }
+        org: { id: createForm.orgId, name: createForm.orgName }
       },
       status: 'received' as any,
       priority: createForm.priority as any,
@@ -408,7 +424,7 @@ export default function AdminTitlePackagesPage() {
     }
 
     // In a real app, you would add this to the database/state
-    toast.success(`New title created for ${createForm.make} ${createForm.model}!`)
+    toast.success(`New title created for ${createForm.make} ${createForm.model} - assigned to ${createForm.orgName}!`)
     setShowCreateModal(false)
     setCreateForm({
       titleType: 'clean',
@@ -418,7 +434,9 @@ export default function AdminTitlePackagesPage() {
       model: '',
       year: '',
       priority: 'normal',
-      notes: ''
+      notes: '',
+      orgId: 'org-dealer-1',
+      orgName: 'Premium Auto Dealers'
     })
   }
 
@@ -1089,6 +1107,36 @@ export default function AdminTitlePackagesPage() {
                       <option value="emergency">Emergency</option>
                     </select>
                   </div>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Assign to Organization *</label>
+                  <select
+                    value={createForm.orgId}
+                    onChange={(e) => {
+                      const selectedOrg = availableOrganizations.find(org => org.id === e.target.value)
+                      setCreateForm({
+                        ...createForm, 
+                        orgId: e.target.value,
+                        orgName: selectedOrg?.name || ''
+                      })
+                    }}
+                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                  >
+                    <optgroup label="Dealers">
+                      {availableOrganizations.filter(org => org.type === 'dealer').map(org => (
+                        <option key={org.id} value={org.id}>{org.name}</option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="Auction Houses">
+                      {availableOrganizations.filter(org => org.type === 'auction').map(org => (
+                        <option key={org.id} value={org.id}>{org.name}</option>
+                      ))}
+                    </optgroup>
+                  </select>
+                  <p className="mt-1 text-xs text-gray-500">
+                    This title will be processed for the selected organization
+                  </p>
                 </div>
                 
                 <div>
