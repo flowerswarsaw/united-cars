@@ -121,6 +121,18 @@ pnpm db:reset                    # Reset database
 - Professional UI without emoji icons or unprofessional elements
 - Package detail routes with full CRUD operations
 
+**Professional Pricing Matrix System** (Current):
+- **Towing Matrix**: Auction location → shipping port route-based pricing with vehicle type rates
+- **Shipping Matrix**: US shipping port → international destination port pricing with dual structure
+- Route-specific business logic: each matrix entry represents actual operational routes
+- Dual pricing structure: individual vehicle types + container consolidation options
+- Simple inline editing: click any price to edit with Enter/Escape/blur functionality
+- Dynamic form system: add/remove multiple destinations with individual pricing
+- Container-only shipping (no RORO) with 1/4, 1/3, 1/2, full container options
+- Clean, consistent UI across both towing and shipping matrices
+- Professional styling without excessive visual elements
+- Comprehensive mock data with realistic pricing scenarios
+
 **Deployment Infrastructure** (Current):
 - Docker Compose staging/production configs
 - Caddy reverse proxy with automatic HTTPS
@@ -165,6 +177,17 @@ pnpm db:reset                    # Reset database
 - VIN validation system with comprehensive error handling
 - Document management ready for PDF upload/preview
 - Activity logging for complete audit trails
+
+**Pricing Matrix Architecture**:
+- **Towing System**: TowingMatrix interface with portPricing structure for route-specific pricing
+- **Shipping System**: ShippingMatrix interface with destinationPricing + dual pricing (vehicle/consolidation)
+- Route-based data structure: `{ [portName: string]: VehicleTypePricing | ConsolidationPricing }`
+- TypeScript interfaces: VehicleTypePricing, ConsolidationPricing, TowingMatrix, ShippingMatrix
+- Mock data system with realistic pricing scenarios across multiple routes
+- Inline editing state management with React hooks (useState for editing context)
+- Form validation ensuring at least one destination/port per matrix
+- Clean separation between auction house data, port data, and pricing data
+- Consistent UI patterns across both towing and shipping pricing matrices
 
 ## 📝 Next Development Areas
 
