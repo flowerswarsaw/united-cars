@@ -18,7 +18,10 @@
     "db:reset": "cd packages/db && pnpm db:reset",
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down",
-    "docker:logs": "docker compose logs -f"
+    "docker:logs": "docker compose logs -f",
+    "crm:dev": "pnpm --filter web dev",
+    "crm:test": "pnpm --filter crm-mocks test",
+    "crm:e2e": "pnpm exec playwright test apps/web/__tests__/crm-*.spec.ts"
   },
   "workspaces": [
     "apps/*",
