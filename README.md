@@ -15,6 +15,9 @@ United Cars features an innovative title status system where statuses are **dyna
 
 ## 📋 **Complete Platform Features**
 A production-grade platform for vehicle auction management with:
+- ✅ **Enterprise CRM System** - Organizations, contacts, deals, pipelines, leads, tasks with Kanban interface
+- ✅ **Advanced Contact Management** - Multiple contact methods, social media integration, business relationships
+- ✅ **Sales Pipeline Management** - Dual pipeline system with drag-and-drop Kanban boards
 - ✅ **Dynamic Title Management** - Revolutionary package-based status system
 - ✅ **Package Shipping System** - Complete logistics workflow 
 - ✅ **Document Management** - Upload, view, and organize documents
@@ -44,6 +47,15 @@ Then open http://localhost:3000
 - **Admin**: `admin@demo.com` / `admin123` (admin, accountant, ops roles)
 - **Dealer**: `dealer@demo.com` / `dealer123` (dealer role)
 
+## 🎯 CRM System Access
+
+Access the full CRM system at http://localhost:3000/crm with features:
+- **Organizations** - Manage companies with multiple contacts and social media
+- **Contacts** - Individual contact management with relationship tracking
+- **Deals** - Sales pipeline with Kanban boards and deal progression
+- **Leads** - Lead generation and conversion workflows
+- **Tasks** - Action items and follow-up management
+
 ## 📋 Features
 
 ### ✅ Core Functionality (MVP)
@@ -54,6 +66,18 @@ Then open http://localhost:3000
 - [x] **Payment Workflows** - Submit, confirm, and track payment intents
 - [x] **Admin Pricing** - Manage fee matrices and pricing rules
 - [x] **Audit Logging** - Track all system changes
+
+### 🎯 CRM System (NEW)
+- [x] **Organization Management** - Companies with multiple contact methods, social media integration
+- [x] **Contact Management** - Individual contacts with organization relationships
+- [x] **Business Relationships** - Smart organization connections (dealers ↔ shippers)
+- [x] **Sales Pipeline** - Dual pipeline system (Dealer + Integration) with Kanban boards
+- [x] **Lead Management** - Marketing prospects with target-based conversion to deals
+- [x] **Deal Workflow** - Stage progression, loss tracking, drag-and-drop interface
+- [x] **Task Management** - Action items with assignments and entity relationships
+- [x] **Activity Logging** - Comprehensive audit trail for CRM events
+- [x] **Custom Fields** - Dynamic fields with full type support (text, number, date, boolean, select)
+- [x] **Advanced Search** - Multi-criteria filtering across organizations and contacts
 
 ### 🏗️ Architecture
 - **Modular Monolith** - Clean domain separation, ready for future microservices split
@@ -66,8 +90,10 @@ Then open http://localhost:3000
 
 ```
 apps/
-  web/           # Next.js application (UI + API routes)
+  web/           # Next.js application (UI + API routes + CRM interface)
 packages/
+  crm-core/      # CRM types, schemas, and business logic
+  crm-mocks/     # CRM mock data repositories and seeds
   db/            # Prisma schema, migrations, seed scripts
   core/          # Shared types, schemas, utils, constants
   ui/            # Shared UI components (shadcn/ui)
