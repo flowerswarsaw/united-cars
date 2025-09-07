@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@united-cars/db'
-import { getServerSession } from 'next-auth/next'
-import { authOptions } from '../../../../auth/[...nextauth]/route'
-import { getUploadPath, fileExists, getMimeType } from '@/lib/uploads'
+import { getServerSessionFromRequest } from '@/lib/auth'
 import { promises as fs } from 'fs'
+import path from 'path'
 
 // GET /api/files/intakes/:intakeId/:filename - Serve file with auth
 export async function GET(
@@ -12,7 +11,7 @@ export async function GET(
 ) {
   try {
     const { intakeId, filename } = await params
-    const session = await getServerSession(authOptions)
+    const session = await getServerSessionFromRequest(request)
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -47,18 +46,23 @@ export async function GET(
       return NextResponse.json({ error: 'Access denied' }, { status: 403 })
     }
 
-    // Check if file exists on disk
-    const relativePath = `intakes/${intakeId}/${attachment.filename}`
-    const exists = await fileExists(relativePath)
+    // Construct file path
+    const uploadsDir = path.join(process.cwd(), 'uploads')
+    const fullPath = path.join(uploadsDir, 'intakes', intakeId, attachment.filename)
     
-    if (!exists) {
+    // Check if file exists on disk
+    try {
+      await fs.access(fullPath)
+    } catch {
       return NextResponse.json({ error: 'File not found on disk' }, { status: 404 })
     }
 
     // Read and serve file
-    const fullPath = getUploadPath(relativePath)
     const fileBuffer = await fs.readFile(fullPath)
-    const mimeType = getMimeType(attachment.filename)
+    const mimeType = attachment.filename.endsWith('.pdf') ? 'application/pdf' : 
+                     attachment.filename.endsWith('.jpg') || attachment.filename.endsWith('.jpeg') ? 'image/jpeg' :
+                     attachment.filename.endsWith('.png') ? 'image/png' : 
+                     'application/octet-stream'
 
     const response = new NextResponse(fileBuffer)
     response.headers.set('Content-Type', mimeType)

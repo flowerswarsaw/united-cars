@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSessionFromRequest } from '@/lib/auth'
-import { activityService, ActivityFilter } from '@united-cars/crm-mocks/services/activity-service'
+import { activityService, ActivityFilter } from '@united-cars/crm-mocks'
 
 export async function GET(request: NextRequest) {
   try {

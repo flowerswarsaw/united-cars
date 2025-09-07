@@ -4,14 +4,14 @@
  */
 
 import { 
-  ContactRepository, 
-  OrganisationRepository, 
-  DealRepository,
-  LeadRepository,
-  TaskRepository,
-  PipelineRepository,
-  ActivityRepository,
-  OrganisationConnectionRepository
+  contactRepository, 
+  organisationRepository, 
+  dealRepository,
+  leadRepository,
+  taskRepository,
+  pipelineRepository,
+  activityRepository,
+  organisationConnectionRepository
 } from './index'
 import { 
   Contact, 
@@ -21,7 +21,13 @@ import {
   Task,
   Pipeline,
   Activity,
-  OrganisationConnection
+  OrganisationConnection,
+  Repository,
+  DealRepository,
+  LeadRepository,
+  TaskRepository,
+  PipelineRepository,
+  ActivityRepository
 } from '@united-cars/crm-core'
 
 export interface OrganizationContext {
@@ -87,18 +93,18 @@ abstract class OrganizationScopedRepository<T> {
 export class OrganizationScopedContactRepository extends OrganizationScopedRepository<Contact> {
   constructor(
     context: OrganizationContext,
-    private contactRepo: ContactRepository
+    private contactRepo: any
   ) {
     super(context)
   }
 
   async findAll(): Promise<Contact[]> {
-    const contacts = await this.contactRepo.findAll()
+    const contacts = await this.contactRepo.list()
     return this.filterByOrganization(contacts)
   }
 
   async findById(id: string): Promise<Contact | null> {
-    const contact = await this.contactRepo.findById(id)
+    const contact = await this.contactRepo.get(id)
     if (!contact) return null
     
     try {
@@ -115,7 +121,7 @@ export class OrganizationScopedContactRepository extends OrganizationScopedRepos
       throw new Error('Access denied: Cannot access contacts from different organization')
     }
     
-    return await this.contactRepo.findByOrganisation(organisationId)
+    return await this.contactRepo.getByOrganisation(organisationId)
   }
 
   async create(contactData: Omit<Contact, 'id' | 'tenantId' | 'createdAt' | 'updatedAt'>): Promise<Contact> {
@@ -144,7 +150,7 @@ export class OrganizationScopedContactRepository extends OrganizationScopedRepos
     const existing = await this.findById(id)
     if (!existing) return false
 
-    return await this.contactRepo.delete(id)
+    return await this.contactRepo.remove(id)
   }
 }
 
@@ -154,13 +160,13 @@ export class OrganizationScopedContactRepository extends OrganizationScopedRepos
 export class OrganizationScopedOrganisationRepository extends OrganizationScopedRepository<Organisation> {
   constructor(
     context: OrganizationContext,
-    private orgRepo: OrganisationRepository
+    private orgRepo: any
   ) {
     super(context)
   }
 
   async findAll(): Promise<Organisation[]> {
-    const orgs = await this.orgRepo.findAll()
+    const orgs = await this.orgRepo.list()
     
     if (this.canAccessAllOrganizations()) {
       return orgs
@@ -174,7 +180,7 @@ export class OrganizationScopedOrganisationRepository extends OrganizationScoped
   }
 
   async findById(id: string): Promise<Organisation | null> {
-    const org = await this.orgRepo.findById(id)
+    const org = await this.orgRepo.get(id)
     if (!org) return null
 
     if (this.canAccessAllOrganizations()) {
@@ -227,7 +233,7 @@ export class OrganizationScopedOrganisationRepository extends OrganizationScoped
       throw new Error('Access denied: Only super administrators can delete organizations')
     }
 
-    return await this.orgRepo.delete(id)
+    return await this.orgRepo.remove(id)
   }
 }
 
@@ -243,12 +249,12 @@ export class OrganizationScopedDealRepository extends OrganizationScopedReposito
   }
 
   async findAll(): Promise<Deal[]> {
-    const deals = await this.dealRepo.findAll()
+    const deals = await this.dealRepo.list()
     return this.filterByOrganization(deals)
   }
 
   async findById(id: string): Promise<Deal | null> {
-    const deal = await this.dealRepo.findById(id)
+    const deal = await this.dealRepo.get(id)
     if (!deal) return null
     
     try {
@@ -278,24 +284,26 @@ export class OrganizationScopedDealRepository extends OrganizationScopedReposito
       updatedBy: this.context.userId
     }
 
-    return await this.dealRepo.update(id, updatesWithMetadata)
+    const result = await this.dealRepo.update(id, updatesWithMetadata)
+    return result || null
   }
 
   async delete(id: string): Promise<boolean> {
     const existing = await this.findById(id)
     if (!existing) return false
 
-    return await this.dealRepo.delete(id)
+    return await this.dealRepo.remove(id)
   }
 
   async moveStage(dealId: string, moveData: any): Promise<Deal | null> {
     const existing = await this.findById(dealId)
     if (!existing) return null
 
-    return await this.dealRepo.moveStage(dealId, {
+    const result = await this.dealRepo.moveStage(dealId, {
       ...moveData,
       movedBy: this.context.userId
     })
+    return result || null
   }
 }
 
@@ -304,14 +312,14 @@ export class OrganizationScopedDealRepository extends OrganizationScopedReposito
  */
 export class OrganizationScopedRepositoryFactory {
   constructor(
-    private contactRepo: ContactRepository,
-    private orgRepo: OrganisationRepository,
-    private dealRepo: DealRepository,
-    private leadRepo: LeadRepository,
-    private taskRepo: TaskRepository,
-    private pipelineRepo: PipelineRepository,
-    private activityRepo: ActivityRepository,
-    private connectionRepo: OrganisationConnectionRepository
+    private contactRepo: any,
+    private orgRepo: any,
+    private dealRepo: any,
+    private leadRepo: any,
+    private taskRepo: any,
+    private pipelineRepo: any,
+    private activityRepo: any,
+    private connectionRepo: any
   ) {}
 
   createContactRepository(context: OrganizationContext): OrganizationScopedContactRepository {

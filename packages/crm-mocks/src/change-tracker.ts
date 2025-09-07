@@ -60,7 +60,7 @@ export class ChangeTracker {
     const defaultIgnored = ['id', 'tenantId', 'createdAt', 'updatedAt', 'createdBy', 'updatedBy'];
     const fieldsToIgnore = [...defaultIgnored, ...ignoredFields];
 
-    for (const key of allKeys) {
+    for (const key of Array.from(allKeys)) {
       if (fieldsToIgnore.includes(key)) continue;
       
       const oldValue = oldData?.[key];

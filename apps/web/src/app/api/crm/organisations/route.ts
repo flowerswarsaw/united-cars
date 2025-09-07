@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { organisationRepository, jsonPersistence } from '@united-cars/crm-mocks';
 import { createOrganisationSchema } from '@united-cars/crm-core';
-import { OrganizationScopedRepositoryFactory, createOrganizationContext } from '@united-cars/crm-mocks/organization-scoped-repositories';
+import { OrganizationScopedRepositoryFactory, createOrganizationContext } from '@united-cars/crm-mocks';
 import { getServerSessionFromRequest } from '@/lib/auth';
 
 export async function GET(request: NextRequest) {

@@ -33,6 +33,7 @@ export function makeOrganisation(partial?: Partial<Organisation>): Organisation 
     name: 'New Organisation',
     companyId: `COMP-${nanoid(6)}`,
     type: OrganizationType.DEALER,
+    contactMethods: [],
     createdAt: now,
     updatedAt: now,
     ...partial
@@ -46,6 +47,7 @@ export function makeContact(partial?: Partial<Contact>): Contact {
     tenantId: DEFAULT_TENANT_ID,
     firstName: 'John',
     lastName: 'Doe',
+    contactMethods: [],
     createdAt: now,
     updatedAt: now,
     ...partial
@@ -159,6 +161,7 @@ export function makeActivity(
   entityId: string,
   type: ActivityType,
   description: string,
+  meta?: Record<string, any>,
   partial?: Partial<Activity>
 ): Activity {
   const now = new Date();
@@ -169,6 +172,7 @@ export function makeActivity(
     entityId,
     type,
     description,
+    meta,
     createdAt: now,
     updatedAt: now,
     ...partial

@@ -189,7 +189,7 @@ export class PersistenceServiceManager {
     const result = {
       saved: false,
       syncStatus: undefined as any,
-      validationIssues: undefined as any[] | undefined,
+      validationIssues: [] as any[],
       backupPath: undefined as string | undefined
     };
 
@@ -246,7 +246,7 @@ export class PersistenceServiceManager {
   }> {
     const result = {
       data: [] as T[],
-      validationIssues: undefined as any[] | undefined,
+      validationIssues: [] as any[],
       usedFallback: false,
       fallbackSource: undefined as string | undefined
     };

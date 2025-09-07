@@ -79,7 +79,8 @@ class DealRepositoryImpl extends BaseRepository<Deal> implements IDealRepository
       pipelineId: string; 
       toStageId: string; 
       note?: string; 
-      lossReason?: LossReason 
+      lossReason?: LossReason;
+      movedBy?: string;
     }
   ): Promise<Deal | undefined> {
     const deal = await this.get(dealId);

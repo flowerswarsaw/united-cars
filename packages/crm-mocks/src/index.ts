@@ -10,6 +10,8 @@ export * from './repositories/custom-field-repository';
 export * from './repositories/activity-repository';
 export * from './repositories/change-log-repository';
 export * from './change-tracker';
+export * from './organization-scoped-repositories';
+export * from './services/activity-service';
 export * from './seeds';
 export * from './persistence';
 

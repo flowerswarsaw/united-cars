@@ -22,7 +22,7 @@ import {
   MoreVertical,
   Filter,
   Import,
-  Export,
+  Download,
   RefreshCw,
   CheckCircle,
   AlertTriangle,
@@ -423,7 +423,7 @@ export default function OrganizationManagementPage() {
             Import
           </Button>
           <Button variant="outline" size="sm">
-            <Export className="w-4 h-4 mr-2" />
+            <Download className="w-4 h-4 mr-2" />
             Export
           </Button>
           <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>

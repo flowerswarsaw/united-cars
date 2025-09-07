@@ -413,7 +413,7 @@ describe('CRM API Integration Tests', () => {
         json: async () => conversionData
       } as any
 
-      const context = { params: { id: 'lead-1' } }
+      const context = { params: Promise.resolve({ id: 'lead-1' }) }
       const response = await POST(request, context)
       
       expect(response.status).toBe(201)
@@ -435,7 +435,7 @@ describe('CRM API Integration Tests', () => {
         json: async () => invalidConversionData
       } as any
 
-      const context = { params: { id: 'lead-1' } }
+      const context = { params: Promise.resolve({ id: 'lead-1' }) }
       const response = await POST(request, context)
       
       expect(response.status).toBe(400)
@@ -464,7 +464,7 @@ describe('CRM API Integration Tests', () => {
       const { GET } = await import('@/app/api/crm/pipelines/[id]/route')
       
       const request = createMockRequest('/pipelines/pipeline-1')
-      const context = { params: { id: 'pipeline-1' } }
+      const context = { params: Promise.resolve({ id: 'pipeline-1' }) }
       const response = await GET(request, context)
       
       expect(response.status).toBe(200)
@@ -654,7 +654,7 @@ describe('CRM API Integration Tests', () => {
       organisationRepository.get.mockResolvedValue(null)
 
       const request = createMockRequest('/organisations/invalid-id')
-      const context = { params: { id: 'invalid-id' } }
+      const context = { params: Promise.resolve({ id: 'invalid-id' }) }
       const response = await GET(request, context)
       
       expect(response.status).toBe(404)

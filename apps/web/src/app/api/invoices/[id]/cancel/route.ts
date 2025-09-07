@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/app/api/auth/[...nextauth]/route'
+import { getServerSessionFromRequest } from '@/lib/auth'
 import { db } from '@/lib/db-service'
 
 export async function POST(
@@ -9,7 +8,7 @@ export async function POST(
 ) {
   try {
     const { id: invoiceId } = await params;
-    const session = await getServerSession(authOptions)
+    const session = await getServerSessionFromRequest(request)
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }

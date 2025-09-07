@@ -1,120 +1,148 @@
-// Enhanced pricing types based on real calculator data
-export interface VehicleType {
-  id: string
-  label: string
-  category: 'regular' | 'oversize'
-  multiplier: number
+/**
+ * Pricing Types for United Cars Calculation Engine
+ */
+
+// Vehicle type enumeration
+export enum VehicleType {
+  SEDAN = 'sedan',
+  SUV = 'suv',
+  TRUCK = 'truck',
+  MOTORCYCLE = 'motorcycle',
+  VAN = 'van',
+  COUPE = 'coupe',
+  CONVERTIBLE = 'convertible',
+  WAGON = 'wagon'
 }
 
+// Auction location interface
 export interface AuctionLocation {
-  id: string
-  auctionHouse: 'copart' | 'iaa' | 'manheim'
-  state: string
-  city: string
-  locationName: string
-  active: boolean
+  id: string;
+  name: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  active: boolean;
 }
 
+// Port interface for shipping
 export interface Port {
-  id: string
-  label: string
-  state?: string
-  code: string
-  active: boolean
+  id: string;
+  name: string;
+  city: string;
+  state?: string;
+  country: string;
+  code: string;
+  type: 'origin' | 'destination';
+  active: boolean;
 }
 
-export interface DestinationPort {
-  id: string
-  label: string
-  country: string
-  shippingCode: string
-  active: boolean
+// Destination port specific interface
+export interface DestinationPort extends Port {
+  type: 'destination';
+  containerTypes: string[];
+  estimatedTransitDays: number;
 }
 
-// Towing pricing structures
-export interface TowingRule {
-  id: string
-  shipperId: string
-  locationId: string
-  ruleType: 'flat' | 'category' | 'multiplier' | 'port-matrix'
-  destinationPorts?: { [portId: string]: number }
-  preferredPort?: string
-  price?: number | { [category: string]: number }
-  basePrice?: number
-  active: boolean
-}
-
+// Towing calculation result
 export interface TowingResult {
-  price: number
-  errorCode?: string
-  preferredPort?: string
+  total: number;
+  breakdown: {
+    baseFee: number;
+    mileageFee: number;
+    vehicleTypeSurcharge: number;
+    fuelSurcharge: number;
+  };
+  distance: number;
+  estimatedTime: string;
 }
 
-// Shipping pricing structures
-export interface ShippingRule {
-  id: string
-  shipperId: string
-  fromPortId: string
-  toPortId: string
-  vehicleTypePrices: { [vehicleTypeId: string]: number }
-  active: boolean
-}
-
+// Shipping calculation result
 export interface ShippingResult {
-  price: number
-  errorCode?: string
+  total: number;
+  breakdown: {
+    baseRate: number;
+    volumeDiscount: number;
+    fuelSurcharge: number;
+    insuranceFee: number;
+    handlingFee: number;
+  };
+  containerType: string;
+  estimatedTransitDays: number;
 }
 
-// Shipper fee structures
+// Shipper fee structure
 export interface ShipperFee {
-  id: string
-  shipperId: string
+  shipperId: string;
+  shipperName: string;
   fees: {
-    serviceFee: number
-    hybridElectro: number
-    titleChange: number
-  }
-  active: boolean
+    documentationFee: number;
+    inspectionFee: number;
+    storageFeePerDay: number;
+    expediteFee?: number;
+  };
 }
 
+// Generic fee calculation result
 export interface FeeResult {
-  price: number
-  breakdown: {
-    serviceFee: number
-    hybridElectro: number
-    titleChange: number
-  }
-  errorCode?: string
+  type: string;
+  description: string;
+  amount: number;
+  required: boolean;
 }
 
-// Comprehensive calculation result
+// Overall calculation result
 export interface CalculationResult {
-  total: number
+  total: number;
+  currency: 'USD';
+  towing: TowingResult;
+  shipping: ShippingResult;
+  fees: FeeResult[];
+  shipper: ShipperFee;
+  estimatedDelivery: string;
   breakdown: {
-    towing: number
-    shipping: number
-    fees: number
-    feesBreakdown?: {
-      serviceFee: number
-      hybridElectro: number
-      titleChange: number
-    }
-  }
-  errors: string[]
-  metadata?: {
-    preferredPort?: string
-    vehicleCategory?: string
-    shippingRoute?: string
-  }
+    subtotal: number;
+    taxes: number;
+    total: number;
+  };
 }
 
-// Calculation input parameters
+// Input interface for calculations
 export interface CalculationInput {
-  vehicleTypeId: string
-  auctionLocationId: string
-  shippingPortId: string
-  destinationPortId: string
-  shipperId: string
-  isHybridElectric?: boolean
-  needsTitleChange?: boolean
+  vehicleTypeId: string;
+  auctionLocationId: string;
+  shippingPortId: string;
+  destinationPortId: string;
+  shipperId: string;
+  vehicleValue?: number;
+  expedited?: boolean;
+  insurance?: boolean;
+}
+
+// Vehicle type pricing matrix
+export interface VehicleTypePricing {
+  [VehicleType.SEDAN]: number;
+  [VehicleType.SUV]: number;
+  [VehicleType.TRUCK]: number;
+  [VehicleType.MOTORCYCLE]: number;
+  [VehicleType.VAN]: number;
+  [VehicleType.COUPE]: number;
+  [VehicleType.CONVERTIBLE]: number;
+  [VehicleType.WAGON]: number;
+}
+
+// Consolidated pricing structure
+export interface ConsolidationPricing {
+  quarter: number;  // 1/4 container
+  third: number;    // 1/3 container
+  half: number;     // 1/2 container
+  full: number;     // Full container
+}
+
+// Route pricing matrix
+export interface RoutePricing {
+  portId: string;
+  portName: string;
+  vehicleTypes: VehicleTypePricing;
+  consolidation: ConsolidationPricing;
+  active: boolean;
 }

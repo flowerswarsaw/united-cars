@@ -26,7 +26,7 @@ import {
   X,
   Eye,
   Copy,
-  Toggle,
+  ToggleLeft,
   Hash,
   Calendar,
   Type,
@@ -42,7 +42,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 
 // Custom field types supported by the CRM system
-export enum CustomFieldType {
+enum CustomFieldType {
   TEXT = 'TEXT',
   NUMBER = 'NUMBER', 
   DATE = 'DATE',
@@ -56,7 +56,7 @@ export enum CustomFieldType {
 }
 
 // Entity types that support custom fields
-export enum ConfigurableEntity {
+enum ConfigurableEntity {
   ORGANIZATION = 'ORGANIZATION',
   CONTACT = 'CONTACT', 
   DEAL = 'DEAL',
@@ -65,7 +65,7 @@ export enum ConfigurableEntity {
 }
 
 // Business rule types
-export enum BusinessRuleType {
+enum BusinessRuleType {
   FIELD_VALIDATION = 'FIELD_VALIDATION',
   AUTO_ASSIGNMENT = 'AUTO_ASSIGNMENT',
   WORKFLOW_TRIGGER = 'WORKFLOW_TRIGGER',
@@ -488,7 +488,7 @@ export default function CrmConfigurationPage() {
       [CustomFieldType.TEXT]: Type,
       [CustomFieldType.NUMBER]: Hash,
       [CustomFieldType.DATE]: Calendar,
-      [CustomFieldType.BOOLEAN]: Toggle,
+      [CustomFieldType.BOOLEAN]: ToggleLeft,
       [CustomFieldType.SELECT]: List,
       [CustomFieldType.MULTI_SELECT]: CheckSquare,
       [CustomFieldType.JSON]: Code,
@@ -852,7 +852,7 @@ export default function CrmConfigurationPage() {
                               size="sm"
                               onClick={() => toggleBusinessRule(rule.id)}
                             >
-                              <Toggle className="w-4 h-4" />
+                              <ToggleLeft className="w-4 h-4" />
                             </Button>
                           </div>
                         </TableCell>

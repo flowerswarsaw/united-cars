@@ -1,5 +1,67 @@
 import '@testing-library/jest-dom'
 
+// Mock Next.js 15 server globals
+global.Request = class MockRequest {
+  constructor(input: string | Request, init?: RequestInit) {
+    this.url = typeof input === 'string' ? input : input.url
+    this.method = init?.method || 'GET'
+    this.headers = new Headers(init?.headers)
+    this.body = init?.body || null
+  }
+  
+  async json() {
+    if (this.body) {
+      return JSON.parse(this.body as string)
+    }
+    return {}
+  }
+  
+  async text() {
+    return this.body ? this.body.toString() : ''
+  }
+  
+  cookies = {
+    get: jest.fn(() => null)
+  }
+} as any
+
+global.Response = class MockResponse {
+  constructor(body?: any, init?: ResponseInit) {
+    this.body = body
+    this.status = init?.status || 200
+    this.headers = new Headers(init?.headers)
+  }
+  
+  async json() {
+    return this.body
+  }
+  
+  async text() {
+    return JSON.stringify(this.body)
+  }
+} as any
+
+global.Headers = class MockHeaders extends Map {
+  get(name: string) {
+    return super.get(name?.toLowerCase())
+  }
+  
+  set(name: string, value: string) {
+    return super.set(name?.toLowerCase(), value)
+  }
+  
+  has(name: string) {
+    return super.has(name?.toLowerCase())
+  }
+  
+  delete(name: string) {
+    return super.delete(name?.toLowerCase())
+  }
+} as any
+
+global.URL = URL
+global.URLSearchParams = URLSearchParams
+
 // Mock Next.js modules that don't work well in test environment
 jest.mock('next/navigation', () => ({
   useRouter: () => ({
@@ -23,6 +85,31 @@ jest.mock('next/headers', () => ({
     get: jest.fn(),
     set: jest.fn(),
   }),
+}))
+
+// Mock nanoid for ESM compatibility
+jest.mock('nanoid', () => ({
+  nanoid: jest.fn(() => 'mock-id-123'),
+}))
+
+// Mock Next.js server components
+jest.mock('next/server', () => ({
+  NextRequest: jest.fn().mockImplementation((input, init) => ({
+    url: typeof input === 'string' ? input : input.url,
+    method: init?.method || 'GET',
+    headers: new Map(),
+    cookies: {
+      get: jest.fn(() => null)
+    },
+    json: jest.fn(() => Promise.resolve({}))
+  })),
+  NextResponse: {
+    json: jest.fn((data, init) => ({
+      json: () => Promise.resolve(data),
+      status: init?.status || 200,
+      headers: new Map()
+    }))
+  }
 }))
 
 // Mock environment variables for tests

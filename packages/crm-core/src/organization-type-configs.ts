@@ -471,7 +471,7 @@ export function getTypeSpecificFields(type: OrganizationType): TypeSpecificField
 
 export function isPipelineApplicableToType(pipelineId: string, organizationType: OrganizationType): boolean {
   // Client-safe fallback using static pipeline configurations
-  const pipeline = TYPE_SPECIFIC_PIPELINES[pipelineId];
+  const pipeline = TYPE_SPECIFIC_PIPELINES[pipelineId as keyof typeof TYPE_SPECIFIC_PIPELINES];
   return pipeline ? pipeline.applicableTypes.includes(organizationType) : false;
 }
 

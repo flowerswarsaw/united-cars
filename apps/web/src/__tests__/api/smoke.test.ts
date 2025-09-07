@@ -395,7 +395,7 @@ describe('API Smoke Tests', () => {
       prisma.title.findFirst.mockResolvedValue(mockTitle)
 
       const request = createMockRequest()
-      const context = { params: { id: 'title-123' } }
+      const context = { params: Promise.resolve({ id: 'title-123' }) }
       
       const response = await GET(request, context)
       expect(response.status).toBe(200)
@@ -412,7 +412,7 @@ describe('API Smoke Tests', () => {
       prisma.title.findFirst.mockResolvedValue(null)
 
       const request = createMockRequest('non-existent-title')
-      const context = { params: { id: 'non-existent-title' } }
+      const context = { params: Promise.resolve({ id: 'non-existent-title' }) }
       
       const response = await GET(request, context)
       expect(response.status).toBe(404)
@@ -422,7 +422,7 @@ describe('API Smoke Tests', () => {
       const { GET } = await import('@/app/api/titles/[id]/route')
       
       const request = createMockRequest('')
-      const context = { params: { id: '' } }
+      const context = { params: Promise.resolve({ id: '' }) }
       
       const response = await GET(request, context)
       expect(response.status).toBe(400)
@@ -534,7 +534,7 @@ describe('API Smoke Tests', () => {
         headers: { get: () => 'test-agent' }
       } as any
 
-      const context = { params: { id: 'title-from-other-org' } }
+      const context = { params: Promise.resolve({ id: 'title-from-other-org' }) }
       const response = await GET(request, context)
       
       expect(response.status).toBe(404) // Should not find title from different org

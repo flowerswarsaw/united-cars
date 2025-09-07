@@ -49,7 +49,7 @@ export class OrganisationConnectionRepository extends BaseRepository<Organisatio
       metadata?: Record<string, any>;
     } = {}
   ): Promise<OrganisationConnection> {
-    const connection: Partial<OrganisationConnection> = {
+    const connection = {
       fromOrganisationId: fromOrgId,
       toOrganisationId: toOrgId,
       type,
@@ -60,7 +60,7 @@ export class OrganisationConnectionRepository extends BaseRepository<Organisatio
       metadata: options.metadata
     };
 
-    return await this.create(connection);
+    return await this.create(connection as Omit<OrganisationConnection, 'id' | 'tenantId' | 'createdAt' | 'updatedAt'>);
   }
 
   async deactivateConnection(connectionId: string): Promise<OrganisationConnection | null> {
