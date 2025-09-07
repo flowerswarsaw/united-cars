@@ -32,3 +32,7 @@ export {
   type TowingRoute,
   type TowingMatrix
 } from './data/pricing-matrices';
+
+// Enhanced persistence system
+export * from './persistence/enhanced-persistence';
+export * from './persistence/persistence-service-factory';

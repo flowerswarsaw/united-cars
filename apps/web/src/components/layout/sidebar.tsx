@@ -25,7 +25,10 @@ import {
   Building2,
   TrendingUp,
   GitBranch,
-  CheckSquare
+  CheckSquare,
+  Database,
+  AlertTriangle,
+  Activity
 } from 'lucide-react'
 import { ThemeToggleCompact } from '@/components/ui/theme-toggle'
 import { useState, useEffect, useRef } from 'react'
@@ -109,6 +112,17 @@ const getNavigation = (userRoles: string[] = []): NavSection[] => {
         { label: 'Titles', href: '/admin/titles', icon: FileText },
         { label: 'Pricing', href: '/admin/pricing', icon: Settings },
         { label: 'Users', href: '/admin/users', icon: Users },
+      ]
+    },
+    {
+      title: 'Data Management',
+      roles: ['ADMIN'],
+      items: [
+        { label: 'Organizations', href: '/admin/data/organizations', icon: Building2 },
+        { label: 'Contacts', href: '/admin/data/contacts', icon: UserCheck },
+        { label: 'System Health', href: '/admin/data/health', icon: Activity },
+        { label: 'Data Integrity', href: '/admin/data/integrity', icon: AlertTriangle },
+        { label: 'CRM Configuration', href: '/admin/data/crm-config', icon: Database },
       ]
     }
   ]
