@@ -434,14 +434,6 @@ export interface DealerUserCreation {
   notificationSettings?: Record<string, boolean>;
 }
 
-export interface ConvertLeadInput {
-  title: string;
-  amount?: number;
-  currency?: string;
-  pipelineId?: string;
-  notes?: string;
-  assigneeId?: string;
-}
 
 // Pagination interfaces for scalable data loading
 export interface PaginationQuery {

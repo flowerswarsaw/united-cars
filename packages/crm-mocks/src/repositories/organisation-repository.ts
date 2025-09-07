@@ -65,7 +65,7 @@ export class OrganisationRepository extends BaseRepository<Organisation> {
     // Return dealers that might be candidates for user conversion
     return dealers.filter(dealer => 
       dealer.typeSpecificData?.dealerLicense && 
-      dealer.email
+      dealer.contactMethods.some(cm => cm.type.includes('EMAIL'))
     );
   }
 
@@ -77,7 +77,9 @@ export class OrganisationRepository extends BaseRepository<Organisation> {
       
       return Object.entries(criteria).every(([key, value]) => {
         if (key === 'name') return org.name.toLowerCase().includes(value.toLowerCase());
-        if (key === 'email') return org.email?.toLowerCase().includes(value.toLowerCase());
+        if (key === 'email') return org.contactMethods.some(cm => 
+          cm.type.includes('EMAIL') && cm.value.toLowerCase().includes(value.toLowerCase())
+        );
         if (key === 'city') return org.city?.toLowerCase().includes(value.toLowerCase());
         
         // Check type-specific data

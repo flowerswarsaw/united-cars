@@ -5,7 +5,7 @@ import {
 } from '@united-cars/crm-core';
 import { BaseRepository } from '../base-repository';
 
-class ActivityRepositoryImpl extends BaseRepository<Activity> implements IActivityRepository<Activity> {
+class ActivityRepositoryImpl extends BaseRepository<Activity> implements IActivityRepository {
   constructor() {
     super();
     this.setEntityType(EntityType.ACTIVITY);

@@ -300,6 +300,7 @@ const organisationConnections = [
   // Dealer-Shipper partnerships (common business relationships)
   {
     id: 'conn_1',
+    tenantId: 'default-tenant',
     fromOrganisationId: 'org_1', // AutoMax Dealership
     toOrganisationId: 'org_4',   // FastShip Logistics (Shipper)
     type: OrganisationRelationType.SHIPPER_DEALER,
@@ -318,6 +319,7 @@ const organisationConnections = [
   // Dealer-Auction partnerships
   {
     id: 'conn_2',
+    tenantId: 'default-tenant',
     fromOrganisationId: 'org_2', // Premier Motors
     toOrganisationId: 'org_6',   // National Auto Auction
     type: OrganisationRelationType.AUCTION_DEALER,
@@ -337,6 +339,7 @@ const organisationConnections = [
   // Business partnership between similar organizations
   {
     id: 'conn_3',
+    tenantId: 'default-tenant',
     fromOrganisationId: 'org_1', // AutoMax Dealership
     toOrganisationId: 'org_2',   // Premier Motors
     type: OrganisationRelationType.PARTNER,
@@ -355,6 +358,7 @@ const organisationConnections = [
   // Vendor relationship
   {
     id: 'conn_4',
+    tenantId: 'default-tenant',
     fromOrganisationId: 'org_3', // City Cars Direct
     toOrganisationId: 'org_5',   // Elite Expediting
     type: OrganisationRelationType.VENDOR,
@@ -373,6 +377,7 @@ const organisationConnections = [
   // Client relationship
   {
     id: 'conn_5',
+    tenantId: 'default-tenant',
     fromOrganisationId: 'org_9', // TitleMax Processing
     toOrganisationId: 'org_1',   // AutoMax Dealership
     type: OrganisationRelationType.CLIENT,

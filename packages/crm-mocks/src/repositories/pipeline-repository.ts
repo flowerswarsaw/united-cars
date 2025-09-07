@@ -176,10 +176,10 @@ class PipelineRepositoryImpl extends BaseRepository<Pipeline> implements IPipeli
   }
 
   async updatePipelineApplicableTypes(pipelineId: string, applicableTypes: OrganizationType[]): Promise<Pipeline | null> {
-    return await this.update(pipelineId, { 
+    return (await this.update(pipelineId, { 
       applicableTypes,
       isTypeSpecific: applicableTypes.length > 0 && applicableTypes.length < Object.keys(OrganizationType).length
-    });
+    })) || null;
   }
 
   async searchPipelines(query: {
@@ -244,7 +244,7 @@ class PipelineRepositoryImpl extends BaseRepository<Pipeline> implements IPipeli
       }
     }
 
-    return await this.getWithStages(newPipeline.id);
+    return (await this.getWithStages(newPipeline.id)) || null;
   }
 
   private async getNextOrder(): Promise<number> {

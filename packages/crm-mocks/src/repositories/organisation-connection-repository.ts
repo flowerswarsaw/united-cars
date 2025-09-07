@@ -64,11 +64,11 @@ export class OrganisationConnectionRepository extends BaseRepository<Organisatio
   }
 
   async deactivateConnection(connectionId: string): Promise<OrganisationConnection | null> {
-    return await this.update(connectionId, { isActive: false });
+    return (await this.update(connectionId, { isActive: false })) || null;
   }
 
   async reactivateConnection(connectionId: string): Promise<OrganisationConnection | null> {
-    return await this.update(connectionId, { isActive: true });
+    return (await this.update(connectionId, { isActive: true })) || null;
   }
 
   async getPartnerOrganisations(orgId: string): Promise<OrganisationConnection[]> {
