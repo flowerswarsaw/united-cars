@@ -3,6 +3,8 @@
 import { Sidebar } from './sidebar'
 import { Toaster } from 'react-hot-toast'
 import { ReactNode, useState, useEffect } from 'react'
+import { RealTimeNotifications, RealTimeStatus } from '@/components/ui/real-time-notifications'
+import { useAuth } from '@/contexts/auth-context'
 
 interface User {
   id: string
@@ -22,6 +24,10 @@ interface AppLayoutProps {
 export function AppLayout({ children, user }: AppLayoutProps) {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   const [isClient, setIsClient] = useState(false)
+  const { user: authUser } = useAuth()
+  
+  // Use auth context user as fallback
+  const currentUser = user || authUser
 
   // Initialize from localStorage on mount
   useEffect(() => {
@@ -48,6 +54,14 @@ export function AppLayout({ children, user }: AppLayoutProps) {
           className="flex-1 flex flex-col min-w-0 max-w-full min-h-0 overflow-hidden"
           style={{ marginLeft: '256px' }}
         >
+          {/* Header placeholder */}
+          <header className="border-b border-border bg-card/50 backdrop-blur-sm">
+            <div className="flex items-center justify-between px-6 py-3">
+              <div className="h-6 w-32 bg-muted rounded animate-pulse" />
+              <div className="h-6 w-24 bg-muted rounded animate-pulse" />
+            </div>
+          </header>
+          
           <main className="flex-1 min-w-0 max-w-full overflow-auto flex flex-col">
             {children}
           </main>
@@ -83,7 +97,7 @@ export function AppLayout({ children, user }: AppLayoutProps) {
     <div className="h-screen bg-background flex max-w-full overflow-hidden relative">
       <div className="fixed left-0 top-0 h-full z-40">
         <Sidebar 
-          user={user} 
+          user={currentUser} 
           isCollapsed={isSidebarCollapsed}
           onToggleCollapse={toggleSidebar}
         />
@@ -92,6 +106,24 @@ export function AppLayout({ children, user }: AppLayoutProps) {
         className="flex-1 flex flex-col min-w-0 max-w-full min-h-0 overflow-hidden transition-all duration-200"
         style={{ marginLeft: isSidebarCollapsed ? '80px' : '256px' }}
       >
+        {/* Header Bar */}
+        {currentUser && (
+          <header className="border-b border-border bg-card/50 backdrop-blur-sm">
+            <div className="flex items-center justify-between px-6 py-3">
+              <div className="flex items-center space-x-4">
+                <h2 className="text-lg font-semibold text-foreground">
+                  {currentUser.orgName}
+                </h2>
+                <RealTimeStatus />
+              </div>
+              
+              <div className="flex items-center space-x-3">
+                <RealTimeNotifications />
+              </div>
+            </div>
+          </header>
+        )}
+        
         <main className="flex-1 min-w-0 max-w-full overflow-auto flex flex-col">
           {children}
         </main>
