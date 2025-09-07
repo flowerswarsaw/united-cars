@@ -1,9 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { organisationRepository, jsonPersistence } from '@united-cars/crm-mocks';
 import { createOrganisationSchema } from '@united-cars/crm-core';
+import { OrganizationScopedRepositoryFactory, createOrganizationContext } from '@united-cars/crm-mocks/organization-scoped-repositories';
+import { getServerSessionFromRequest } from '@/lib/auth';
 
 export async function GET(request: NextRequest) {
   try {
+    // Get user session for organization-scoped access
+    const session = await getServerSessionFromRequest(request)
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Create organization context and scoped repository
+    const context = createOrganizationContext(session.user)
+    const factory = new OrganizationScopedRepositoryFactory(
+      {} as any, organisationRepository, {} as any, {} as any, 
+      {} as any, {} as any, {} as any, {} as any
+    )
+    const scopedOrgRepo = factory.createOrganisationRepository(context)
+
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search');
     const type = searchParams.get('type');
@@ -14,8 +30,8 @@ export async function GET(request: NextRequest) {
     const hasPhone = searchParams.get('hasPhone') === 'true';
     const hasWebsite = searchParams.get('hasWebsite') === 'true';
     
-    // Start with all organisations
-    let organisations = await organisationRepository.list();
+    // Start with organization-scoped organisations
+    let organisations = await scopedOrgRepo.findAll();
     
     // Apply search filter
     if (search) {

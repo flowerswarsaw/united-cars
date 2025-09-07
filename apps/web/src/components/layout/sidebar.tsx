@@ -32,6 +32,7 @@ import {
 } from 'lucide-react'
 import { ThemeToggleCompact } from '@/components/ui/theme-toggle'
 import { useState, useEffect, useRef } from 'react'
+import { useAuth } from '@/contexts/auth-context'
 
 interface NavItem {
   label: string
@@ -141,13 +142,16 @@ interface SidebarProps {
   onToggleCollapse?: () => void
 }
 
-export function Sidebar({ user, isCollapsed = false, onToggleCollapse }: SidebarProps) {
+export function Sidebar({ user: userProp, isCollapsed = false, onToggleCollapse }: SidebarProps) {
   const pathname = usePathname()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [isClient, setIsClient] = useState(false)
   const navRef = useRef<HTMLDivElement>(null)
   const mobileNavRef = useRef<HTMLDivElement>(null)
+  const { user: authUser, isAuthenticated } = useAuth()
   
+  // Use auth context user if no prop user provided
+  const user = userProp || authUser
   const userRoles = user?.roles || []
   const navigation = getNavigation(userRoles)
   
@@ -364,11 +368,48 @@ export function Sidebar({ user, isCollapsed = false, onToggleCollapse }: Sidebar
       )}>
         {collapsed ? (
           <div className="flex flex-col items-center space-y-3">
+            {isAuthenticated && user && (
+              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary font-medium text-sm">
+                {user.name ? user.name.charAt(0).toUpperCase() : user.email?.charAt(0).toUpperCase()}
+              </div>
+            )}
             <ThemeToggleCompact className="hover:bg-muted" />
             <span className="text-xs text-muted-foreground font-mono">UC</span>
           </div>
         ) : (
           <div className="space-y-3">
+            {isAuthenticated && user && (
+              <div className="border-b border-border pb-3 mb-3">
+                <div className="flex items-center space-x-3">
+                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary font-medium text-sm">
+                    {user.name ? user.name.charAt(0).toUpperCase() : user.email?.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-foreground truncate">
+                      {user.name || 'User'}
+                    </p>
+                    <p className="text-xs text-text-secondary truncate">
+                      {user.orgName || user.email}
+                    </p>
+                  </div>
+                </div>
+                {user.roles && user.roles.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {user.roles.slice(0, 2).map(role => (
+                      <span 
+                        key={role}
+                        className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-secondary text-secondary-foreground"
+                      >
+                        {role}
+                      </span>
+                    ))}
+                    {user.roles.length > 2 && (
+                      <span className="text-xs text-text-secondary">+{user.roles.length - 2} more</span>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
             <div className="flex items-center justify-between">
               <span className="text-xs text-muted-foreground">Theme</span>
               <ThemeToggleCompact className="hover:bg-muted" />
