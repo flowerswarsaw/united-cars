@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { organisationConnectionRepository, jsonPersistence } from '@united-cars/crm-mocks';
 import { organisationConnectionSchema, OrganisationRelationType } from '@united-cars/crm-core';
+import { parseDate } from '@/lib/utils';
 
 export async function GET(request: NextRequest) {
   try {
@@ -76,8 +77,8 @@ export async function POST(request: NextRequest) {
       body.type,
       {
         description: body.description,
-        startDate: body.startDate ? new Date(body.startDate) : undefined,
-        endDate: body.endDate ? new Date(body.endDate) : undefined,
+        startDate: parseDate(body.startDate) || undefined,
+        endDate: parseDate(body.endDate) || undefined,
         metadata: body.metadata
       }
     );

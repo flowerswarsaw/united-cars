@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { organisationConnectionRepository, jsonPersistence } from '@united-cars/crm-mocks';
+import { parseDate } from '@/lib/utils';
 
 export async function GET(
   request: NextRequest,
@@ -35,8 +36,8 @@ export async function PATCH(
     
     const connection = await organisationConnectionRepository.update(id, {
       ...body,
-      startDate: body.startDate ? new Date(body.startDate) : undefined,
-      endDate: body.endDate ? new Date(body.endDate) : undefined
+      startDate: parseDate(body.startDate) || undefined,
+      endDate: parseDate(body.endDate) || undefined
     });
     
     if (!connection) {

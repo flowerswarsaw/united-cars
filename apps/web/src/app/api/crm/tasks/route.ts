@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { taskRepository, jsonPersistence } from '@united-cars/crm-mocks';
 import { createTaskSchema, EntityType } from '@united-cars/crm-core';
+import { sanitizeDateFields } from '@/lib/utils';
 
 export async function GET(request: NextRequest) {
   try {
@@ -38,12 +39,10 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     
-    // Convert date strings to Date objects
-    if (body.dueDate && typeof body.dueDate === 'string') {
-      body.dueDate = new Date(body.dueDate);
-    }
+    // Sanitize date fields using standardized utility
+    const sanitizedBody = sanitizeDateFields(body, ['dueDate', 'completedAt']);
     
-    const validated = createTaskSchema.parse(body);
+    const validated = createTaskSchema.parse(sanitizedBody);
     
     const task = await taskRepository.create(validated);
     await jsonPersistence.save();
