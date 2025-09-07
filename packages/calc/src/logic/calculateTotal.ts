@@ -1,130 +1,86 @@
-import { 
-  CalculationInput, 
-  CalculationResult, 
-  VehicleType, 
-  TowingRule, 
-  ShippingRule, 
-  ShipperFee 
-} from '../types/pricing'
-import { calculateTowingPrice } from './calculateTowing'
-import { calculateShippingPrice } from './calculateShipping'
-import { calculateAdditionalFees } from './calculateFees'
+/**
+ * Total Calculation Logic - Stubbed Version
+ * 
+ * Provides comprehensive calculation using stubbed components
+ */
 
-interface TotalCalculationParams extends CalculationInput {
-  vehicleTypes: VehicleType[]
-  towingRules: TowingRule[]
-  shippingRules: ShippingRule[]
-  shipperFees: ShipperFee[]
+import { VehicleType, CalculationResult, TowingResult, ShippingResult, FeeResult } from '../types/pricing';
+import { calculateTowing } from './calculateTowing-stub';
+import { calculateShipping } from './calculateShipping-stub';
+import { calculateFees } from './calculateFees-stub';
+
+export interface TotalCalculationParams {
+  vehicleType: VehicleType;
+  auctionLocationId: string;
+  shippingPortId: string;
+  destinationPortId: string;
+  shipperId: string;
+  vehicleValue?: number;
+  expedited?: boolean;
+  storageDays?: number;
+  isHybridElectric?: boolean;
+  needsTitleChange?: boolean;
 }
 
-/**
- * Calculates the total shipping cost with comprehensive breakdown
- */
-export function calculateTotal({
-  vehicleTypeId,
-  auctionLocationId,
-  shippingPortId,
-  destinationPortId,
-  shipperId,
-  isHybridElectric = false,
-  needsTitleChange = false,
-  vehicleTypes,
-  towingRules,
-  shippingRules,
-  shipperFees
-}: TotalCalculationParams): CalculationResult {
-  const errors: string[] = []
+export function calculateTotal(params: TotalCalculationParams): CalculationResult {
+  // Calculate individual components
+  const towing = calculateTowing({
+    vehicleType: params.vehicleType,
+    auctionLocationId: params.auctionLocationId,
+    destinationPortId: params.shippingPortId
+  });
 
-  // Validate all required fields
-  if (!vehicleTypeId || !auctionLocationId || !shippingPortId || !destinationPortId || !shipperId) {
-    errors.push("MISSING_REQUIRED_FIELDS")
-    return {
-      total: 0,
-      breakdown: {
-        towing: 0,
-        shipping: 0,
-        fees: 0
-      },
-      errors
-    }
-  }
+  const shipping = calculateShipping({
+    vehicleType: params.vehicleType,
+    originPortId: params.shippingPortId,
+    destinationPortId: params.destinationPortId,
+    vehicleValue: params.vehicleValue,
+    expedited: params.expedited
+  });
 
-  // Validate required data arrays
-  if (!vehicleTypes.length || !towingRules.length || !shippingRules.length || !shipperFees.length) {
-    errors.push("MISSING_DATA_ARRAYS")
-    return {
-      total: 0,
-      breakdown: {
-        towing: 0,
-        shipping: 0,
-        fees: 0
-      },
-      errors
-    }
-  }
+  const fees = calculateFees({
+    shipperId: params.shipperId,
+    vehicleValue: params.vehicleValue,
+    expedited: params.expedited,
+    storageDays: params.storageDays,
+    isHybridElectric: params.isHybridElectric,
+    needsTitleChange: params.needsTitleChange
+  });
 
-  // Get vehicle type for metadata
-  const vehicleType = vehicleTypes.find(v => v.id === vehicleTypeId)
+  // Calculate totals
+  const towingTotal = towing.total;
+  const shippingTotal = shipping.total;
+  const feesTotal = fees.reduce((sum, fee) => sum + fee.amount, 0);
+  
+  const subtotal = towingTotal + shippingTotal + feesTotal;
+  const taxes = subtotal * 0.08; // 8% tax
+  const total = subtotal + taxes;
 
-  // Calculate towing price (auction location to port)
-  const towingResult = calculateTowingPrice({
-    shipperId,
-    locationId: auctionLocationId,
-    vehicleTypeId,
-    towingRules,
-    vehicleTypes,
-    destinationPortId: shippingPortId // Towing goes to shipping port
-  })
-
-  if (towingResult.errorCode) {
-    errors.push(towingResult.errorCode)
-  }
-
-  // Calculate shipping price (port to destination)
-  const shippingResult = calculateShippingPrice({
-    shipperId,
-    shippingPortId,
-    destinationPortId,
-    vehicleTypeId,
-    shippingRules
-  })
-
-  if (shippingResult.errorCode) {
-    errors.push(shippingResult.errorCode)
-  }
-
-  // Calculate additional fees
-  const feesResult = calculateAdditionalFees({
-    shipperId,
-    vehicleTypeId,
-    isHybridElectric,
-    needsTitleChange,
-    shipperFees
-  })
-
-  if (feesResult.errorCode) {
-    errors.push(feesResult.errorCode)
-  }
-
-  // Calculate total
-  const total = towingResult.price + shippingResult.price + feesResult.price
-
-  // Build shipping route string for metadata
-  const shippingRoute = `${shippingPortId} → ${destinationPortId}`
+  // Estimate delivery date (14 days + transit time)
+  const estimatedDelivery = new Date();
+  estimatedDelivery.setDate(estimatedDelivery.getDate() + 14 + shipping.estimatedTransitDays);
 
   return {
     total,
-    breakdown: {
-      towing: towingResult.price,
-      shipping: shippingResult.price,
-      fees: feesResult.price,
-      feesBreakdown: feesResult.breakdown
+    currency: 'USD' as const,
+    towing,
+    shipping,
+    fees,
+    shipper: {
+      shipperId: params.shipperId,
+      shipperName: 'Default Shipper',
+      fees: {
+        documentationFee: 150,
+        inspectionFee: 75,
+        storageFeePerDay: 25,
+        expediteFee: params.expedited ? 200 : undefined
+      }
     },
-    errors,
-    metadata: {
-      preferredPort: towingResult.preferredPort,
-      vehicleCategory: vehicleType?.category,
-      shippingRoute
+    estimatedDelivery: estimatedDelivery.toISOString().split('T')[0],
+    breakdown: {
+      subtotal,
+      taxes,
+      total
     }
-  }
+  };
 }

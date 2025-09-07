@@ -1,66 +1,50 @@
-import { ShippingRule, ShippingResult } from '../types/pricing'
+/**
+ * Shipping Calculation Logic - Stubbed Version
+ * 
+ * Provides basic shipping calculations compatible with current type definitions
+ */
 
-interface ShippingParams {
-  shipperId: string
-  shippingPortId: string
-  destinationPortId: string
-  vehicleTypeId: string
-  shippingRules: ShippingRule[]
+import { VehicleType, ShippingResult } from '../types/pricing';
+
+export interface ShippingCalculationParams {
+  vehicleType: VehicleType;
+  originPortId: string;
+  destinationPortId: string;
+  vehicleValue?: number;
+  expedited?: boolean;
 }
 
-/**
- * Calculates shipping price based on shipper, ports and vehicle type
- */
-export function calculateShippingPrice({
-  shipperId,
-  shippingPortId,
-  destinationPortId,
-  vehicleTypeId,
-  shippingRules
-}: ShippingParams): ShippingResult {
-  try {
-    // Validate inputs
-    if (!shipperId || !shippingPortId || !destinationPortId || !vehicleTypeId) {
-      return { 
-        price: 0, 
-        errorCode: "SHIPPING_MISSING_REQUIRED_FIELDS" 
-      }
-    }
+export function calculateShipping(params: ShippingCalculationParams): ShippingResult {
+  // Base rates by vehicle type
+  const baseRates: Record<VehicleType, number> = {
+    [VehicleType.SEDAN]: 1200,
+    [VehicleType.SUV]: 1400,
+    [VehicleType.TRUCK]: 1600,
+    [VehicleType.MOTORCYCLE]: 800,
+    [VehicleType.VAN]: 1500,
+    [VehicleType.COUPE]: 1250,
+    [VehicleType.CONVERTIBLE]: 1300,
+    [VehicleType.WAGON]: 1350
+  };
 
-    // Find the shipping rule for this specific route and shipper
-    const shippingRule = shippingRules.find(rule => 
-      rule.shipperId === shipperId &&
-      rule.fromPortId === shippingPortId &&
-      rule.toPortId === destinationPortId &&
-      rule.active
-    )
+  const baseRate = baseRates[params.vehicleType] || 1200;
+  const fuelSurcharge = baseRate * 0.15; // 15% fuel surcharge
+  const insuranceFee = Math.max(50, (params.vehicleValue || 10000) * 0.005); // 0.5% of value, min $50
+  const handlingFee = 100;
+  const volumeDiscount = params.expedited ? 0 : -baseRate * 0.05; // 5% discount if not expedited
 
-    if (!shippingRule) {
-      return { 
-        price: 0, 
-        errorCode: "SHIPPING_ROUTE_NOT_FOUND" 
-      }
-    }
+  const total = baseRate + fuelSurcharge + insuranceFee + handlingFee + volumeDiscount;
 
-    // Check if vehicle type has a price for this route
-    const vehiclePrice = shippingRule.vehicleTypePrices[vehicleTypeId]
-    
-    if (!vehiclePrice) {
-      return { 
-        price: 0, 
-        errorCode: "VEHICLE_TYPE_PRICE_NOT_FOUND" 
-      }
-    }
-
-    return { 
-      price: vehiclePrice 
-    }
-
-  } catch (error) {
-    console.error("Error calculating shipping price:", error)
-    return { 
-      price: 0, 
-      errorCode: "SHIPPING_CALCULATION_ERROR" 
-    }
-  }
+  return {
+    total,
+    breakdown: {
+      baseRate,
+      volumeDiscount,
+      fuelSurcharge,
+      insuranceFee,
+      handlingFee
+    },
+    containerType: 'RORO', // Roll-on/Roll-off
+    estimatedTransitDays: 14
+  };
 }

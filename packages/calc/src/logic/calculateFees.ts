@@ -1,67 +1,78 @@
-import { ShipperFee, FeeResult } from '../types/pricing'
+/**
+ * Fee Calculation Logic - Stubbed Version
+ * 
+ * Provides basic fee calculations compatible with current type definitions
+ */
 
-interface FeeParams {
-  shipperId: string
-  vehicleTypeId: string
-  isHybridElectric?: boolean
-  needsTitleChange?: boolean
-  shipperFees: ShipperFee[]
+import { ShipperFee, FeeResult } from '../types/pricing';
+
+export interface FeeCalculationParams {
+  shipperId: string;
+  vehicleValue?: number;
+  expedited?: boolean;
+  storageDays?: number;
+  isHybridElectric?: boolean;
+  needsTitleChange?: boolean;
 }
 
-/**
- * Calculates additional fees (service, hybrid/electric, title change)
- */
-export function calculateAdditionalFees({
-  shipperId,
-  vehicleTypeId,
-  isHybridElectric = false,
-  needsTitleChange = false,
-  shipperFees
-}: FeeParams): FeeResult {
-  try {
-    // Find shipper fee structure
-    const shipperFee = shipperFees.find(fee => 
-      fee.shipperId === shipperId && fee.active
-    )
+export function calculateFees(params: FeeCalculationParams): FeeResult[] {
+  const fees: FeeResult[] = [];
 
-    if (!shipperFee) {
-      return {
-        price: 0,
-        breakdown: {
-          serviceFee: 0,
-          hybridElectro: 0,
-          titleChange: 0
-        },
-        errorCode: "SHIPPER_FEES_NOT_FOUND"
-      }
-    }
+  // Documentation fee
+  fees.push({
+    type: 'documentation',
+    description: 'Documentation Fee',
+    amount: 150,
+    required: true
+  });
 
-    // Calculate individual fees
-    const serviceFee = shipperFee.fees.serviceFee || 0
-    const hybridElectroFee = isHybridElectric ? (shipperFee.fees.hybridElectro || 0) : 0
-    const titleChangeFee = needsTitleChange ? (shipperFee.fees.titleChange || 0) : 0
+  // Inspection fee  
+  fees.push({
+    type: 'inspection',
+    description: 'Vehicle Inspection Fee',
+    amount: 75,
+    required: true
+  });
 
-    const totalFees = serviceFee + hybridElectroFee + titleChangeFee
-
-    return {
-      price: totalFees,
-      breakdown: {
-        serviceFee,
-        hybridElectro: hybridElectroFee,
-        titleChange: titleChangeFee
-      }
-    }
-
-  } catch (error) {
-    console.error("Error calculating additional fees:", error)
-    return {
-      price: 0,
-      breakdown: {
-        serviceFee: 0,
-        hybridElectro: 0,
-        titleChange: 0
-      },
-      errorCode: "FEE_CALCULATION_ERROR"
-    }
+  // Storage fee (if applicable)
+  if (params.storageDays && params.storageDays > 0) {
+    fees.push({
+      type: 'storage',
+      description: `Storage Fee (${params.storageDays} days)`,
+      amount: params.storageDays * 25,
+      required: true
+    });
   }
+
+  // Expedite fee (if requested)
+  if (params.expedited) {
+    fees.push({
+      type: 'expedite',
+      description: 'Expedited Processing Fee',
+      amount: 200,
+      required: false
+    });
+  }
+
+  // Hybrid/Electric fee (if applicable)
+  if (params.isHybridElectric) {
+    fees.push({
+      type: 'hybrid',
+      description: 'Hybrid/Electric Vehicle Fee',
+      amount: 100,
+      required: true
+    });
+  }
+
+  // Title change fee (if applicable)
+  if (params.needsTitleChange) {
+    fees.push({
+      type: 'title',
+      description: 'Title Change Fee',
+      amount: 50,
+      required: true
+    });
+  }
+
+  return fees;
 }
