@@ -50,6 +50,15 @@ const adminPanels = [
     color: 'text-indigo-600',
     bgColor: 'bg-indigo-50',
     features: ['Custom Fields', 'Business Rules', 'Pipeline Configuration']
+  },
+  {
+    title: 'Activity Log',
+    description: 'Comprehensive audit trail with visual timeline and analytics',
+    icon: Activity,
+    href: '/admin/data/activity-log',
+    color: 'text-cyan-600',
+    bgColor: 'bg-cyan-50',
+    features: ['Visual Timeline', 'Activity Analytics', 'Audit Trail']
   }
 ]
 
