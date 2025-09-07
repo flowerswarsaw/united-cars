@@ -208,7 +208,7 @@ describe('CRM API Integration Tests', () => {
       const { GET } = await import('@/app/api/crm/organisations/[id]/route')
       
       const request = createMockRequest('/organisations/org-1')
-      const context = { params: { id: 'org-1' } }
+      const context = { params: Promise.resolve({ id: 'org-1' }) }
       const response = await GET(request, context)
       
       expect(response.status).toBe(200)
@@ -260,7 +260,7 @@ describe('CRM API Integration Tests', () => {
         json: async () => updateData
       } as any
 
-      const context = { params: { id: 'org-1' } }
+      const context = { params: Promise.resolve({ id: 'org-1' }) }
       const response = await PUT(request, context)
       
       expect(response.status).toBe(200)
@@ -527,7 +527,7 @@ describe('CRM API Integration Tests', () => {
     })
 
     it('should move deal to different stage', async () => {
-      const { POST } = await import('@/app/api/crm/deals/[id]/move-stage/route')
+      const { POST } = await import('@/app/api/crm/deals/[id]/move/route')
       
       const moveData = {
         pipelineId: 'pipeline-1',
@@ -540,7 +540,7 @@ describe('CRM API Integration Tests', () => {
         json: async () => moveData
       } as any
 
-      const context = { params: { id: 'deal-1' } }
+      const context = { params: Promise.resolve({ id: 'deal-1' }) }
       const response = await POST(request, context)
       
       expect(response.status).toBe(200)
@@ -624,7 +624,7 @@ describe('CRM API Integration Tests', () => {
     })
 
     it('should maintain activity audit trail', async () => {
-      const { POST } = await import('@/app/api/crm/deals/[id]/move-stage/route')
+      const { POST } = await import('@/app/api/crm/deals/[id]/move/route')
       
       const moveData = {
         pipelineId: 'pipeline-1',
@@ -637,7 +637,7 @@ describe('CRM API Integration Tests', () => {
         json: async () => moveData
       } as any
 
-      const context = { params: { id: 'deal-1' } }
+      const context = { params: Promise.resolve({ id: 'deal-1' }) }
       await POST(request, context)
       
       // Verify activity logging
@@ -711,7 +711,7 @@ describe('CRM API Integration Tests', () => {
         json: async () => invalidUpdate
       } as any
 
-      const context = { params: { id: 'deal-1' } }
+      const context = { params: Promise.resolve({ id: 'deal-1' }) }
       const response = await PUT(request, context)
       
       // Should prevent changing won deal status
