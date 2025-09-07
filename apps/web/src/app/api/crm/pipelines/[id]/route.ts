@@ -4,10 +4,11 @@ import { updatePipelineSchema } from '@united-cars/crm-core';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const pipeline = await pipelineRepository.getWithStages(params.id);
+    const { id } = await params;
+    const pipeline = await pipelineRepository.getWithStages(id);
     
     if (!pipeline) {
       return NextResponse.json(
@@ -27,13 +28,14 @@ export async function GET(
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const body = await request.json();
     const validated = updatePipelineSchema.parse(body);
     
-    const pipeline = await pipelineRepository.update(params.id, validated);
+    const pipeline = await pipelineRepository.update(id, validated);
     
     if (!pipeline) {
       return NextResponse.json(
@@ -61,10 +63,11 @@ export async function PATCH(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const deleted = await pipelineRepository.remove(params.id);
+    const { id } = await params;
+    const deleted = await pipelineRepository.remove(id);
     
     if (!deleted) {
       return NextResponse.json(

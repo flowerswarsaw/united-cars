@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
     filter.where.vehicleId = { in: allowedVehicleIds }
 
     // Add status filter
-    if (status && ['pending', 'received', 'packed', 'sent', 'delivered'].includes(status)) {
+    if (status && status !== 'all') {
       filter.where.status = status
     }
 
@@ -77,6 +77,25 @@ export async function GET(request: NextRequest) {
     const titles = await db.titles.findMany(filter)
     const total = titles.length
 
+    // Get status counts for filter buttons
+    const statusCountFilter: any = {
+      where: {}
+    }
+    
+    // Apply same vehicle filtering for counts
+    if (allowedVehicleIds.length > 0) {
+      statusCountFilter.where.vehicleId = { in: allowedVehicleIds }
+    }
+
+    const allUserTitles = await db.titles.findMany(statusCountFilter)
+    const statusCounts = {
+      all: allUserTitles.length,
+      pending: allUserTitles.filter(t => t.status === 'pending').length,
+      received: allUserTitles.filter(t => t.status === 'received').length,
+      packed: allUserTitles.filter(t => t.status === 'packed').length,
+      sent: allUserTitles.filter(t => t.status === 'sent').length,
+    }
+
     return NextResponse.json({
       titles,
       pagination: {
@@ -84,7 +103,8 @@ export async function GET(request: NextRequest) {
         perPage,
         total,
         totalPages: Math.ceil(total / perPage)
-      }
+      },
+      statusCounts
     })
   } catch (error) {
     console.error('List titles error:', error)

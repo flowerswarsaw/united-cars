@@ -1,44 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db-service'
-import { 
-  getSession, 
-  buildOrgWhereClause
-} from '@/lib/auth-utils'
-import { 
-  validatePagination,
-  createOptimizedResponse
-} from '@/lib/query-optimizer'
-import {
-  withErrorHandler,
-  createErrorResponse,
-  ErrorCode
-} from '@/lib/error-handler'
+import { getSession } from '@/lib/auth-utils'
 
-// GET /api/vehicles - List vehicles for current org with pagination and search
-export const GET = withErrorHandler(
-  async (request: NextRequest) => {
-    const startTime = Date.now()
-    
+export async function GET(request: NextRequest) {
+  try {
     const session = await getSession(request)
     if (!session?.user) {
-      return createErrorResponse(ErrorCode.UNAUTHORIZED)
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const { searchParams } = new URL(request.url)
-    const pagination = validatePagination({
-      page: parseInt(searchParams.get('page') || '1'),
-      perPage: parseInt(searchParams.get('perPage') || '25')
-    })
-
+    const page = parseInt(searchParams.get('page') || '1')
+    const perPage = parseInt(searchParams.get('perPage') || '25')
     const status = searchParams.get('status')
     const search = searchParams.get('search')
-    const includeRelations = searchParams.get('include') === 'relations'
 
-    // Build filter for mock database
+    // Build filter for mock database (without pagination first)
     const filter: any = {
-      where: {},
-      skip: (pagination.page - 1) * pagination.perPage,
-      take: pagination.perPage
+      where: {}
     }
 
     // Add org scoping - admin can see all orgs, dealers only see their own
@@ -62,29 +41,55 @@ export const GET = withErrorHandler(
       ]
     }
 
-    // Use mock database service
-    const result = await db.vehicles.findMany(filter)
+    // Get all matching vehicles first to get the total count
+    const allVehicles = await db.vehicles.findMany(filter)
+    const total = allVehicles.data.length
 
-    const responseTime = Date.now() - startTime
+    // Apply pagination
+    const startIndex = (page - 1) * perPage
+    const paginatedVehicles = allVehicles.data.slice(startIndex, startIndex + perPage)
 
+    // Get status counts for filter buttons (always get counts for all statuses)
+    const statusCountFilter: any = {
+      where: {}
+    }
+    
+    // Apply same org scoping for counts
+    if (session.user.roles?.includes('ADMIN')) {
+      // Admin can see all vehicles
+    } else {
+      statusCountFilter.where.orgId = session.user.orgId
+    }
+
+    const allUserVehicles = await db.vehicles.findMany(statusCountFilter)
+    const statusCounts = {
+      all: allUserVehicles.data.length,
+      SOURCING: allUserVehicles.data.filter(v => v.status === 'SOURCING').length,
+      PICKUP: allUserVehicles.data.filter(v => v.status === 'PICKUP').length,
+      GROUND_TRANSPORT: allUserVehicles.data.filter(v => v.status === 'GROUND_TRANSPORT').length,
+      PORT_PROCESSING: allUserVehicles.data.filter(v => v.status === 'PORT_PROCESSING').length,
+      OCEAN_SHIPPING: allUserVehicles.data.filter(v => v.status === 'OCEAN_SHIPPING').length,
+      DESTINATION_PORT: allUserVehicles.data.filter(v => v.status === 'DESTINATION_PORT').length,
+      DELIVERED: allUserVehicles.data.filter(v => v.status === 'DELIVERED').length,
+    }
+
+    return NextResponse.json({
+      success: true,
+      vehicles: paginatedVehicles,
+      pagination: {
+        page,
+        perPage,
+        total,
+        totalPages: Math.ceil(total / perPage)
+      },
+      statusCounts
+    })
+
+  } catch (error) {
+    console.error('Error fetching vehicles:', error)
     return NextResponse.json(
-      createOptimizedResponse(
-        {
-          vehicles: result.data,
-          pagination: {
-            page: result.page,
-            perPage: result.perPage,
-            total: result.total,
-            totalPages: result.totalPages
-          }
-        },
-        {
-          includeMetadata: true,
-          responseTime,
-          cacheHint: includeRelations ? 'max-age=30' : 'max-age=120'
-        }
-      )
+      { error: 'Failed to fetch vehicles' },
+      { status: 500 }
     )
-  },
-  { path: '/api/vehicles', method: 'GET' }
-)
+  }
+}

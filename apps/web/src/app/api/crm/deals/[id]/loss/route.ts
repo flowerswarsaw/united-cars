@@ -9,13 +9,14 @@ const lossReasonSchema = z.object({
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const body = await request.json();
     const validated = lossReasonSchema.parse(body);
     
-    const deal = await dealRepository.markLost(params.id, validated.reason);
+    const deal = await dealRepository.markLost(id, validated.reason);
     
     if (!deal) {
       return NextResponse.json(

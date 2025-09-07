@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { calculateAuctionFees, AuctionFeeInputSchema } from '@united-cars/calc'
+import { calculateAuctionFees, AuctionFeeInputSchema, copartFeeEntries } from '@united-cars/calc'
 import { PrismaClient } from '@prisma/client'
 
 const prisma = new PrismaClient()
@@ -11,34 +11,8 @@ export async function POST(request: NextRequest) {
     // Validate input
     const input = AuctionFeeInputSchema.parse(body)
 
-    // Fetch fee matrices from database
-    const matrices = await prisma.auctionFeeMatrix.findMany({
-      where: {
-        auction: input.auction,
-        accountType: input.accountType as any,
-        title: input.titleType.toUpperCase() as any,
-        payment: input.payment.toUpperCase() as any
-      }
-    })
-
-    if (matrices.length === 0) {
-      return NextResponse.json(
-        { error: 'No fee matrix found for the specified parameters' },
-        { status: 404 }
-      )
-    }
-
-    // Convert database format to calculator format
-    const calculatorMatrices = matrices.map(matrix => ({
-      auction: matrix.auction,
-      accountType: matrix.accountType,
-      title: matrix.title.toLowerCase(),
-      payment: matrix.payment.toLowerCase(),
-      brackets: matrix.bracketsJson as any[]
-    }))
-
-    // Calculate fees
-    const result = calculateAuctionFees(input, calculatorMatrices)
+    // Calculate fees using static matrices
+    const result = calculateAuctionFees(input, copartFeeEntries)
 
     // Save calculation to vehicle stage history if vehicleId provided
     if (body.vehicleId) {

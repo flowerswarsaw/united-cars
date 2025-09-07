@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { calculateShipping, ShippingInputSchema } from '@united-cars/calc'
 import { PrismaClient } from '@prisma/client'
+import { shippingRulesMatrix, generalShippingFees } from '@united-cars/calc'
 
 const prisma = new PrismaClient()
 
@@ -12,7 +13,7 @@ export async function POST(request: NextRequest) {
     const input = ShippingInputSchema.parse(body)
 
     // Calculate shipping cost
-    const result = calculateShipping(input, [])
+    const result = calculateShipping(input, shippingRulesMatrix, generalShippingFees)
 
     // Save calculation to vehicle stage history if vehicleId provided
     if (body.vehicleId) {

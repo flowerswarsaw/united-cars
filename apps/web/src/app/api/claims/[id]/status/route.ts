@@ -15,8 +15,9 @@ const StatusUpdateSchema = z.object({
 })
 
 // PATCH /api/claims/[id]/status - Update insurance claim status (Admin/OPS only)
-export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id: claimId } = await params;
     const session = await getSession(request)
     if (!session?.user) {
       return createStandardErrorResponse('UNAUTHORIZED', 'Authentication required', 401)
@@ -29,7 +30,6 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
 
     const body = await request.json()
     const input = StatusUpdateSchema.parse(body)
-    const claimId = params.id
 
     // Update status using mock database service
     const updatedClaim = await db.insuranceClaims.updateStatus(claimId, input.status)

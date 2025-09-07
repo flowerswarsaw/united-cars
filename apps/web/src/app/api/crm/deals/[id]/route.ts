@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { dealRepository, jsonPersistence } from '@united-cars/crm-mocks';
 import { updateDealSchema } from '@united-cars/crm-core';
+import { getServerSessionFromRequest } from '@/lib/auth';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const deal = await dealRepository.get(params.id);
+    const { id } = await params;
+    const deal = await dealRepository.get(id);
     
     if (!deal) {
       return NextResponse.json(
@@ -27,13 +29,17 @@ export async function GET(
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
+    const session = await getServerSessionFromRequest(request);
+    const userId = session?.user?.id;
+    
     const body = await request.json();
     const validated = updateDealSchema.parse(body);
     
-    const deal = await dealRepository.update(params.id, validated);
+    const deal = await dealRepository.update(id, validated, userId);
     
     if (!deal) {
       return NextResponse.json(
@@ -61,10 +67,11 @@ export async function PATCH(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const deleted = await dealRepository.remove(params.id);
+    const { id } = await params;
+    const deleted = await dealRepository.remove(id);
     
     if (!deleted) {
       return NextResponse.json(

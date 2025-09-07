@@ -4,13 +4,14 @@ import { reorderStagesSchema } from '@united-cars/crm-core';
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const body = await request.json();
     const validated = reorderStagesSchema.parse(body);
     
-    const success = await pipelineRepository.reorderStages(params.id, validated.stageIds);
+    const success = await pipelineRepository.reorderStages(id, validated.stageIds);
     
     if (!success) {
       return NextResponse.json(

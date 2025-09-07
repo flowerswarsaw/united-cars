@@ -3,10 +3,11 @@ import { contactRepository } from '@united-cars/crm-mocks';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const contacts = await contactRepository.getByOrganisation(params.id);
+    const { id } = await params;
+    const contacts = await contactRepository.getByOrganisation(id);
     return NextResponse.json(contacts);
   } catch (error) {
     return NextResponse.json(

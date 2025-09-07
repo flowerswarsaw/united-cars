@@ -1,41 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db-service'
-import { CreateInsuranceClaimSchema } from '@united-cars/core'
-import { 
-  getSession, 
-  buildOrgWhereClause
-} from '@/lib/auth-utils'
-import {
-  withErrorHandler,
-  createErrorResponse,
-  ErrorCode,
-  NotFoundError
-} from '@/lib/error-handler'
-import { 
-  validatePagination
-} from '@/lib/query-optimizer'
+import { getSession } from '@/lib/auth-utils'
 
-// GET /api/claims - List insurance claims for current org with pagination and search
-export const GET = withErrorHandler(
-  async (request: NextRequest) => {
+export async function GET(request: NextRequest) {
+  try {
     const session = await getSession(request)
     if (!session?.user) {
-      return createErrorResponse(ErrorCode.UNAUTHORIZED)
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const { searchParams } = new URL(request.url)
-    const pagination = validatePagination({
-      page: parseInt(searchParams.get('page') || '1'),
-      perPage: parseInt(searchParams.get('perPage') || '25')
-    })
+    const page = parseInt(searchParams.get('page') || '1')
+    const perPage = parseInt(searchParams.get('perPage') || '25')
     const status = searchParams.get('status')
     const search = searchParams.get('search')
 
-    // Build filter for mock database
+    // Build filter for mock database (without pagination first)
     const filter: any = {
-      where: {},
-      skip: (pagination.page - 1) * pagination.perPage,
-      take: pagination.perPage
+      where: {}
     }
 
     // Add org scoping - admin can see all orgs, dealers only see their own
@@ -46,19 +28,20 @@ export const GET = withErrorHandler(
     }
     
     // Apply status filter if provided
-    if (status && ['new', 'investigating', 'approved', 'rejected', 'paid'].includes(status)) {
+    if (status && status !== 'all') {
       filter.where.status = status
     }
 
-    // Add search filter - for mock data, we'll search by vehicleId
+    // Add search filter - search by vehicle VIN, make, model, year
     if (search) {
-      // In mock data, we can search by vehicleId directly
+      const searchNum = parseInt(search)
       const vehicles = await db.vehicles.findMany({
         where: {
           OR: [
             { vin: { contains: search } },
             { make: { contains: search } },
-            { model: { contains: search } }
+            { model: { contains: search } },
+            ...(searchNum > 1800 && searchNum < 2100 ? [{ year: searchNum }] : [])
           ]
         }
       })
@@ -70,73 +53,104 @@ export const GET = withErrorHandler(
       }
     }
 
-    // Use mock database service
-    const claims = await db.insuranceClaims.findMany(filter)
+    // Get all matching claims first to get the total count
+    const allClaims = await db.insuranceClaims.findMany(filter)
+    const total = allClaims.length
+
+    // Apply pagination
+    const startIndex = (page - 1) * perPage
+    const paginatedClaims = allClaims.slice(startIndex, startIndex + perPage)
+
+    // Get status counts for filter buttons (always get counts for all statuses)
+    const statusCountFilter: any = {
+      where: {}
+    }
+    
+    // Apply same org scoping for counts
+    if (session.user.roles?.includes('ADMIN')) {
+      // Admin can see all claims
+    } else {
+      statusCountFilter.where.orgId = session.user.orgId
+    }
+
+    const allUserClaims = await db.insuranceClaims.findMany(statusCountFilter)
+    const statusCounts = {
+      all: allUserClaims.length,
+      new: allUserClaims.filter(c => c.status === 'new').length,
+      investigating: allUserClaims.filter(c => c.status === 'investigating').length,
+      under_review: allUserClaims.filter(c => c.status === 'under_review').length,
+      approved: allUserClaims.filter(c => c.status === 'approved').length,
+      rejected: allUserClaims.filter(c => c.status === 'rejected').length,
+      settled: allUserClaims.filter(c => c.status === 'settled').length,
+      paid: allUserClaims.filter(c => c.status === 'paid').length,
+      closed: allUserClaims.filter(c => c.status === 'closed').length,
+    }
 
     return NextResponse.json({
       success: true,
-      claims: claims,
+      claims: paginatedClaims,
       pagination: {
-        page: pagination.page,
-        perPage: pagination.perPage,
-        total: claims.length,
-        totalPages: Math.ceil(claims.length / pagination.perPage)
-      }
+        page,
+        perPage,
+        total,
+        totalPages: Math.ceil(total / perPage)
+      },
+      statusCounts
     })
-  },
-  { path: '/api/claims', method: 'GET' }
-)
 
-// POST /api/claims - Create new insurance claim (Dealers only)
-export const POST = withErrorHandler(
-  async (request: NextRequest) => {
+  } catch (error) {
+    console.error('Error fetching claims:', error)
+    return NextResponse.json(
+      { error: 'Failed to fetch claims' },
+      { status: 500 }
+    )
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
     const session = await getSession(request)
     if (!session?.user) {
-      return createErrorResponse(ErrorCode.UNAUTHORIZED)
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const roles = session.user.roles || []
     if (!roles.includes('DEALER') && !roles.includes('ADMIN')) {
-      return createErrorResponse(ErrorCode.FORBIDDEN)
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
     const body = await request.json()
     
-    // Validate input
-    const input = CreateInsuranceClaimSchema.parse(body)
-    
     // Verify vehicle belongs to dealer's org (unless admin)
     if (!roles.includes('ADMIN')) {
-      const vehicle = await db.vehicles.findById(input.vehicleId)
+      const vehicle = await db.vehicles.findById(body.vehicleId)
 
       if (!vehicle || vehicle.orgId !== session.user.orgId) {
-        throw new NotFoundError('Vehicle')
+        return NextResponse.json({ error: 'Vehicle not found' }, { status: 404 })
       }
     }
 
     // Create insurance claim using mock database
     const claimData = {
-      vehicleId: input.vehicleId,
+      vehicleId: body.vehicleId,
       orgId: session.user.orgId!,
-      description: input.description,
-      incidentAt: input.incidentAt ? new Date(input.incidentAt) : null,
-      photos: input.photos || null,
+      description: body.description,
+      incidentAt: new Date(), // Automatically set to current timestamp
+      photos: body.photos || null,
       status: 'new' as const
     }
 
-    // For mock data, we'll create a basic claim object
-    const claim = {
-      id: `claim-${Date.now()}`,
-      ...claimData,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      version: 1
-    }
+    const claim = await db.insuranceClaims.create(claimData)
 
     return NextResponse.json(
       { success: true, claim }, 
       { status: 201 }
     )
-  },
-  { path: '/api/claims', method: 'POST' }
-)
+  } catch (error) {
+    console.error('Error creating claim:', error)
+    return NextResponse.json(
+      { error: 'Failed to create claim' },
+      { status: 500 }
+    )
+  }
+}

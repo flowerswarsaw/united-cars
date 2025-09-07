@@ -4,13 +4,14 @@ import { createStageSchema } from '@united-cars/crm-core';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const body = await request.json();
     const validated = createStageSchema.parse(body);
     
-    const stage = await pipelineRepository.createStage(params.id, validated);
+    const stage = await pipelineRepository.createStage(id, validated);
     await jsonPersistence.save();
     
     return NextResponse.json(stage, { status: 201 });

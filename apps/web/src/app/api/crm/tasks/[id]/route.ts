@@ -4,10 +4,11 @@ import { updateTaskSchema, TaskStatus } from '@united-cars/crm-core';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const task = await taskRepository.get(params.id);
+    const { id } = await params;
+    const task = await taskRepository.get(id);
     
     if (!task) {
       return NextResponse.json(
@@ -27,15 +28,16 @@ export async function GET(
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const body = await request.json();
     const validated = updateTaskSchema.parse(body);
     
     // Handle status change specially
     if (validated.status) {
-      const task = await taskRepository.changeStatus(params.id, validated.status as TaskStatus);
+      const task = await taskRepository.changeStatus(id, validated.status as TaskStatus);
       if (!task) {
         return NextResponse.json(
           { error: 'Task not found' },
@@ -46,7 +48,7 @@ export async function PATCH(
       // Apply other updates if any
       const { status, ...otherUpdates } = validated;
       if (Object.keys(otherUpdates).length > 0) {
-        await taskRepository.update(params.id, otherUpdates);
+        await taskRepository.update(id, otherUpdates);
       }
       
       await jsonPersistence.save();
@@ -55,7 +57,7 @@ export async function PATCH(
     
     // Handle assignee change specially
     if ('assigneeId' in validated) {
-      const task = await taskRepository.changeAssignee(params.id, validated.assigneeId || null);
+      const task = await taskRepository.changeAssignee(id, validated.assigneeId || null);
       if (!task) {
         return NextResponse.json(
           { error: 'Task not found' },
@@ -66,7 +68,7 @@ export async function PATCH(
       // Apply other updates if any
       const { assigneeId, ...otherUpdates } = validated;
       if (Object.keys(otherUpdates).length > 0) {
-        await taskRepository.update(params.id, otherUpdates);
+        await taskRepository.update(id, otherUpdates);
       }
       
       await jsonPersistence.save();
@@ -74,7 +76,7 @@ export async function PATCH(
     }
     
     // Normal update
-    const task = await taskRepository.update(params.id, validated);
+    const task = await taskRepository.update(id, validated);
     
     if (!task) {
       return NextResponse.json(
@@ -102,10 +104,11 @@ export async function PATCH(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const deleted = await taskRepository.remove(params.id);
+    const { id } = await params;
+    const deleted = await taskRepository.remove(id);
     
     if (!deleted) {
       return NextResponse.json(

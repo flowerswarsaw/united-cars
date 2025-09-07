@@ -37,6 +37,12 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+    
+    // Convert date strings to Date objects
+    if (body.dueDate && typeof body.dueDate === 'string') {
+      body.dueDate = new Date(body.dueDate);
+    }
+    
     const validated = createTaskSchema.parse(body);
     
     const task = await taskRepository.create(validated);

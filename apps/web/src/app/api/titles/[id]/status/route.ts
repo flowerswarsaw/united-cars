@@ -10,8 +10,9 @@ const StatusUpdateSchema = z.object({
 })
 
 // PATCH /api/titles/[id]/status - Update title status
-export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id: titleId } = await params;
     const session = await getSession(request)
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -24,7 +25,6 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
 
     const body = await request.json()
     const input = StatusUpdateSchema.parse(body)
-    const titleId = params.id
 
     // Update status using mock database service
     const updatedTitle = await db.titles.updateStatus(titleId, input.status)

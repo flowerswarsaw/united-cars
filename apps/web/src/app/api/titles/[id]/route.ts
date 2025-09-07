@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@united-cars/db'
+import { db } from '@/lib/db-service'
 import { 
   getSession, 
   createApiResponse
@@ -13,14 +13,14 @@ import {
 
 // GET /api/titles/[id] - Get specific title details
 export const GET = withErrorHandler(
-  async (request: NextRequest, { params }: { params: { id: string } }) => {
+  async (request: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
     const session = await getSession(request)
     if (!session?.user) {
       return createErrorResponse(ErrorCode.UNAUTHORIZED)
     }
 
     const roles = session.user.roles || []
-    const titleId = params.id
+    const { id: titleId } = await params
 
     // Validate ID format
     if (!titleId || typeof titleId !== 'string') {
@@ -30,60 +30,22 @@ export const GET = withErrorHandler(
       })
     }
 
-    // Build where clause based on user role
-    let whereClause: any = { id: titleId }
-    
-    if (!roles.includes('ADMIN') && !roles.includes('OPS')) {
-      // Dealers can only see their own org's vehicles' titles
-      whereClause.vehicle = {
-        orgId: session.user.orgId
-      }
-    }
-
-    const title = await prisma.title.findFirst({
-      where: whereClause,
-      select: {
-        id: true,
-        vin: true,
-        make: true,
-        model: true,
-        year: true,
-        status: true,
-        notes: true,
-        createdAt: true,
-        updatedAt: true,
-        vehicle: {
-          select: { 
-            id: true, 
-            vin: true, 
-            make: true, 
-            model: true, 
-            year: true,
-            status: true,
-            org: {
-              select: { id: true, name: true, type: true }
-            }
-          }
-        },
-        package: {
-          select: { 
-            id: true, 
-            trackingNumber: true, 
-            provider: true, 
-            status: true,
-            type: true,
-            shippedAt: true,
-            deliveredAt: true
-          }
-        }
-      }
-    })
+    // Get title with role-based filtering
+    const title = await db.titles.findById(titleId)
 
     if (!title) {
       throw new NotFoundError('Title')
     }
 
-    return NextResponse.json(createApiResponse({ title }))
+    // Check access based on role
+    if (!roles.includes('ADMIN') && !roles.includes('OPS')) {
+      // Dealers can only see their own org's vehicles' titles
+      if (title.vehicle?.org?.id !== session.user.orgId) {
+        throw new NotFoundError('Title')
+      }
+    }
+
+    return createApiResponse({ title })
   },
   { path: '/api/titles/[id]', method: 'GET' }
 )

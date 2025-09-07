@@ -1,74 +1,110 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@united-cars/db'
-
-// Simple auth helper
-async function getSession(request: NextRequest) {
-  try {
-    const sessionCookie = request.cookies.get('session')
-    if (!sessionCookie?.value) return null
-    
-    const decodedSession = decodeURIComponent(sessionCookie.value)
-    const sessionData = JSON.parse(decodedSession)
-    
-    return sessionData.user ? { user: sessionData.user } : null
-  } catch {
-    return null
-  }
-}
+import { db } from '@/lib/db-service'
+import { 
+  getSession, 
+  createApiResponse
+} from '@/lib/auth-utils'
+import { 
+  withErrorHandler,
+  createErrorResponse,
+  ErrorCode,
+  NotFoundError
+} from '@/lib/error-handler'
 
 // GET /api/intakes/[id] - Get specific intake details
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
-  try {
+export const GET = withErrorHandler(
+  async (request: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
     const session = await getSession(request)
     if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return createErrorResponse(ErrorCode.UNAUTHORIZED)
     }
 
+    const { id: intakeId } = await params
     const roles = session.user.roles || []
-    const intakeId = params.id
 
-    // Build where clause based on user role
-    let whereClause: any = { id: intakeId }
-    
-    if (!roles.includes('ADMIN') && !roles.includes('OPS')) {
-      // Dealers can only see their own org's intakes
-      whereClause.orgId = session.user.orgId
-    }
-
-    const intake = await prisma.vehicleIntake.findFirst({
-      where: whereClause,
-      include: {
-        createdBy: {
-          select: { id: true, name: true, email: true }
-        },
-        reviewedBy: {
-          select: { id: true, name: true, email: true }
-        },
-        auctionLocation: {
-          select: { id: true, name: true, code: true, state: true }
-        },
-        attachments: {
-          select: {
-            id: true,
-            kind: true,
-            filename: true,
-            uploadedAt: true
-          },
-          orderBy: { uploadedAt: 'desc' }
-        },
-        org: {
-          select: { id: true, name: true, type: true }
-        }
-      }
-    })
+    // Get intake from mock database
+    const intake = await db.vehicleIntakes.findById(intakeId)
 
     if (!intake) {
-      return NextResponse.json({ error: 'Intake not found' }, { status: 404 })
+      throw new NotFoundError('Vehicle intake')
     }
 
-    return NextResponse.json({ intake })
-  } catch (error) {
-    console.error('Get intake error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
-  }
-}
+    // Check permissions - users can only see their own intakes unless admin
+    if (!roles.includes('ADMIN') && !roles.includes('OPS')) {
+      if (intake.orgId !== session.user.orgId) {
+        throw new NotFoundError('Vehicle intake')
+      }
+    }
+
+    // Populate user relationships
+    const createdByUser = intake.createdById ? await db.users.findUnique({ where: { id: intake.createdById } }) : null
+    const reviewedByUser = intake.reviewedById ? await db.users.findUnique({ where: { id: intake.reviewedById } }) : null
+    const org = intake.orgId ? await db.organizations.findById(intake.orgId) : null
+
+    // Format the intake with populated data
+    const formattedIntake = {
+      ...intake,
+      createdBy: createdByUser ? {
+        id: createdByUser.id,
+        name: createdByUser.name || 'Unknown',
+        email: createdByUser.email
+      } : null,
+      reviewedBy: reviewedByUser ? {
+        id: reviewedByUser.id,
+        name: reviewedByUser.name || 'Unknown',
+        email: reviewedByUser.email
+      } : null,
+      org: org ? {
+        id: org.id,
+        name: org.name,
+        type: org.type
+      } : null,
+      attachments: intake.attachments || []
+    }
+
+    return createApiResponse({ intake: formattedIntake })
+  },
+  { path: '/api/intakes/[id]', method: 'GET' }
+)
+
+// DELETE /api/intakes/[id] - Delete/Retract an intake (dealers only, for their own pending intakes)
+export const DELETE = withErrorHandler(
+  async (request: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
+    const session = await getSession(request)
+    if (!session?.user) {
+      return createErrorResponse(ErrorCode.UNAUTHORIZED)
+    }
+
+    const { id: intakeId } = await params
+    const roles = session.user.roles || []
+
+    // Get intake from mock database
+    const intake = await db.vehicleIntakes.findById(intakeId)
+
+    if (!intake) {
+      throw new NotFoundError('Vehicle intake')
+    }
+
+    // Only dealers can retract, and only their own pending intakes
+    if (!roles.includes('DEALER')) {
+      return createErrorResponse(ErrorCode.FORBIDDEN, 'Only dealers can retract intakes')
+    }
+
+    if (intake.orgId !== session.user.orgId) {
+      return createErrorResponse(ErrorCode.FORBIDDEN, 'You can only retract your own intakes')
+    }
+
+    if (intake.status !== 'PENDING') {
+      return createErrorResponse(ErrorCode.BAD_REQUEST, 'Only pending intakes can be retracted')
+    }
+
+    // Delete the intake
+    await db.vehicleIntakes.delete(intakeId)
+
+    return createApiResponse({ 
+      success: true,
+      message: 'Intake retracted successfully'
+    })
+  },
+  { path: '/api/intakes/[id]', method: 'DELETE' }
+)

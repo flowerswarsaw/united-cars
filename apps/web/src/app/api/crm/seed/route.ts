@@ -6,6 +6,10 @@ export async function POST(request: NextRequest) {
     resetSeeds();
     seedData();
     
+    // Save the seeded data to persistence
+    const { jsonPersistence } = await import('@united-cars/crm-mocks');
+    await jsonPersistence.save();
+    
     return NextResponse.json({ success: true, message: 'Data seeded successfully' });
   } catch (error) {
     console.error('Seeding failed:', error);

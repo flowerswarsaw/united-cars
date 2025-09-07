@@ -19,14 +19,13 @@ async function getSession(request: NextRequest) {
 }
 
 // POST /api/claims/[id]/photos - Upload photos for claim
-export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id: claimId } = await params;
     const session = await getSession(request)
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
-
-    const claimId = params.id
     const roles = session.user.roles || []
 
     // Check if claim exists and user has access

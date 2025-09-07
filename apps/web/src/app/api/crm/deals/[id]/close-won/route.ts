@@ -3,10 +3,11 @@ import { dealRepository, jsonPersistence } from '@united-cars/crm-mocks';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const deal = await dealRepository.closeWon(params.id);
+    const { id } = await params;
+    const deal = await dealRepository.closeWon(id);
     
     if (!deal) {
       return NextResponse.json(

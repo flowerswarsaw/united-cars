@@ -1,21 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@united-cars/db'
+import { db } from '@/lib/db-service'
 import { z } from 'zod'
-
-// Simple auth helper
-async function getSession(request: NextRequest) {
-  try {
-    const sessionCookie = request.cookies.get('session')
-    if (!sessionCookie?.value) return null
-    
-    const decodedSession = decodeURIComponent(sessionCookie.value)
-    const sessionData = JSON.parse(decodedSession)
-    
-    return sessionData.user ? { user: sessionData.user } : null
-  } catch {
-    return null
-  }
-}
+import { getSession } from '@/lib/auth-utils'
 
 const ReviewInputSchema = z.object({
   action: z.enum(['approve', 'reject']),
@@ -23,7 +9,7 @@ const ReviewInputSchema = z.object({
 })
 
 // PATCH /api/intakes/[id]/review - Review intake (approve/reject)
-export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await getSession(request)
     if (!session?.user) {
@@ -37,12 +23,10 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
 
     const body = await request.json()
     const input = ReviewInputSchema.parse(body)
-    const intakeId = params.id
+    const { id: intakeId } = await params
 
     // Check if intake exists and is pending
-    const existingIntake = await prisma.vehicleIntake.findUnique({
-      where: { id: intakeId }
-    })
+    const existingIntake = await db.vehicleIntakes.findById(intakeId)
 
     if (!existingIntake) {
       return NextResponse.json({ error: 'Intake not found' }, { status: 404 })
@@ -54,101 +38,60 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
       }, { status: 400 })
     }
 
-    // Update intake status
-    const updatedIntake = await prisma.$transaction(async (tx) => {
-      // Update the intake
-      const intake = await tx.vehicleIntake.update({
-        where: { id: intakeId },
-        data: {
-          status: input.action === 'approve' ? 'APPROVED' : 'REJECTED',
-          reviewedAt: new Date(),
-          reviewedById: session.user.id,
-          notes: input.notes ? 
-            (existingIntake.notes ? `${existingIntake.notes}\n\nReview Notes: ${input.notes}` : `Review Notes: ${input.notes}`) 
-            : existingIntake.notes
-        },
-        include: {
-          createdBy: {
-            select: { id: true, name: true, email: true }
+    // Update intake status using mock database
+    let updatedIntake
+    if (input.action === 'approve') {
+      updatedIntake = await db.vehicleIntakes.approve(intakeId, session.user.id)
+      
+      // If approved, create a comprehensive Vehicle record
+      if (updatedIntake) {
+        const vehicleData = {
+          orgId: updatedIntake.orgId,
+          vin: updatedIntake.vin,
+          make: updatedIntake.make,
+          model: updatedIntake.model,
+          year: updatedIntake.year,
+          purchasePriceUSD: updatedIntake.purchasePriceUSD,
+          status: 'SOURCING',
+          currentStage: 'auction_won',
+          // Add shipping and logistics info
+          metadata: {
+            intakeId: updatedIntake.id,
+            auction: updatedIntake.auction,
+            auctionLot: updatedIntake.auctionLot,
+            usPort: updatedIntake.usPort,
+            destinationPort: updatedIntake.destinationPort,
+            insurance: updatedIntake.insurance,
+            paymentMethod: updatedIntake.paymentMethod,
+            isPrivateLocation: updatedIntake.isPrivateLocation,
+            pickupAddress: updatedIntake.pickupAddress,
+            contactPerson: updatedIntake.contactPerson,
+            contactPhone: updatedIntake.contactPhone,
+            paymentConfirmations: updatedIntake.paymentConfirmations || []
           },
-          reviewedBy: {
-            select: { id: true, name: true, email: true }
-          },
-          auctionLocation: {
-            select: { id: true, name: true, code: true, state: true }
-          },
-          attachments: {
-            select: {
-              id: true,
-              kind: true,
-              filename: true,
-              uploadedAt: true
-            }
-          },
-          org: {
-            select: { id: true, name: true, type: true }
-          }
+          notes: updatedIntake.notes
         }
-      })
-
-      // If approved, create a Vehicle record
-      if (input.action === 'approve') {
-        await tx.vehicle.create({
-          data: {
-            orgId: intake.orgId,
-            vin: intake.vin,
-            make: intake.make,
-            model: intake.model,
-            year: intake.year,
-            status: 'SOURCING',
-            priceUSD: intake.purchasePriceUSD,
-            notes: intake.notes
-          }
-        })
-
-        // Add audit log entry for vehicle creation
-        await tx.auditLog.create({
-          data: {
-            actorUserId: session.user.id,
-            orgId: intake.orgId,
-            action: 'CREATE',
-            entity: 'vehicle',
-            entityId: intake.vin, // Use VIN as identifier since we don't have vehicle ID yet
-            diffJson: {
-              after: { 
-                vin: intake.vin,
-                make: intake.make,
-                model: intake.model,
-                year: intake.year,
-                status: 'SOURCING',
-                source: 'intake_approval'
-              }
-            }
-          }
-        })
+        
+        const newVehicle = await db.vehicles.create(vehicleData)
+        
+        // Log the successful vehicle creation
+        console.log(`✅ Vehicle created successfully: ${newVehicle.vin} (${newVehicle.id}) - Status: ${newVehicle.status}`)
       }
+    } else {
+      updatedIntake = await db.vehicleIntakes.reject(intakeId, session.user.id)
+    }
 
-      // Add audit log entry for intake review
-      await tx.auditLog.create({
-        data: {
-          actorUserId: session.user.id,
-          orgId: intake.orgId,
-          action: 'UPDATE',
-          entity: 'vehicle_intake',
-          entityId: intake.id,
-          diffJson: {
-            before: { status: 'PENDING' },
-            after: { 
-              status: input.action === 'approve' ? 'APPROVED' : 'REJECTED',
-              reviewedBy: session.user.id,
-              reviewedAt: new Date().toISOString()
-            }
-          }
-        }
-      })
+    // Update notes if provided
+    if (input.notes && updatedIntake) {
+      const existingNotes = updatedIntake.notes || ''
+      updatedIntake.notes = existingNotes 
+        ? `${existingNotes}\n\nReview Notes: ${input.notes}` 
+        : `Review Notes: ${input.notes}`
+    }
 
-      return intake
-    })
+    if (!updatedIntake) {
+      return NextResponse.json({ error: 'Failed to update intake' }, { status: 500 })
+    }
 
     return NextResponse.json({ success: true, intake: updatedIntake })
   } catch (error: any) {

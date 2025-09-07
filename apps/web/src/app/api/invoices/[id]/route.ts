@@ -1,85 +1,86 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
+import { db } from '@/lib/db-service'
+import { 
+  getSession, 
+  createApiResponse
+} from '@/lib/auth-utils'
+import { 
+  withErrorHandler,
+  createErrorResponse,
+  ErrorCode,
+  NotFoundError
+} from '@/lib/error-handler'
 
-const prisma = new PrismaClient()
-
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id } = await params
-
-    const invoice = await prisma.invoice.findUnique({
-      where: { id },
-      include: {
-        org: true,
-        lines: {
-          include: {
-            vehicle: true
-          }
-        },
-        paymentIntents: true
-      }
-    })
-
-    if (!invoice) {
-      return NextResponse.json(
-        { error: 'Invoice not found' },
-        { status: 404 }
-      )
+export const GET = withErrorHandler(
+  async (request: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
+    const session = await getSession(request)
+    if (!session?.user) {
+      return createErrorResponse(ErrorCode.UNAUTHORIZED)
     }
 
-    return NextResponse.json({
-      success: true,
-      invoice
-    })
+    const { id } = await params
+    const roles = session.user.roles || []
 
-  } catch (error) {
-    console.error('Error fetching invoice:', error)
-    return NextResponse.json(
-      { error: 'Failed to fetch invoice' },
-      { status: 500 }
-    )
-  }
-}
+    // Try to find by ID first, then by invoice number
+    let invoice = await db.invoices.findById(id)
+    if (!invoice) {
+      invoice = await db.invoices.findByNumber(id)
+    }
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
+    if (!invoice) {
+      throw new NotFoundError('Invoice')
+    }
+
+    // Check access based on role
+    if (!roles.includes('ADMIN') && !roles.includes('OPS')) {
+      // Dealers can only see their own org's invoices
+      if (invoice.orgId !== session.user.orgId) {
+        throw new NotFoundError('Invoice')
+      }
+    }
+
+    return createApiResponse({ invoice })
+  },
+  { path: '/api/invoices/[id]', method: 'GET' }
+)
+
+export const PATCH = withErrorHandler(
+  async (request: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
+    const session = await getSession(request)
+    if (!session?.user) {
+      return createErrorResponse(ErrorCode.UNAUTHORIZED)
+    }
+
     const { id } = await params
     const body = await request.json()
+    const roles = session.user.roles || []
 
-    const invoice = await prisma.invoice.update({
-      where: { id },
-      data: {
-        status: body.status,
-        notes: body.notes,
-        issuedAt: body.issuedAt ? new Date(body.issuedAt) : undefined
-      },
-      include: {
-        org: true,
-        lines: {
-          include: {
-            vehicle: true
-          }
-        },
-        paymentIntents: true
-      }
-    })
+    // Check if user has permission to update invoices
+    if (!roles.includes('ADMIN') && !roles.includes('OPS')) {
+      return createErrorResponse(ErrorCode.FORBIDDEN, {
+        details: 'Insufficient permissions to update invoices'
+      })
+    }
 
-    return NextResponse.json({
-      success: true,
-      invoice
-    })
+    // Try to find by ID first, then by invoice number
+    let invoice = await db.invoices.findById(id)
+    if (!invoice) {
+      invoice = await db.invoices.findByNumber(id)
+    }
+    if (!invoice) {
+      throw new NotFoundError('Invoice')
+    }
 
-  } catch (error) {
-    console.error('Error updating invoice:', error)
-    return NextResponse.json(
-      { error: 'Failed to update invoice' },
-      { status: 500 }
-    )
-  }
-}
+    // For mock database, we'll just return the same invoice with updated status
+    const updatedInvoice = {
+      ...invoice,
+      status: body.status || invoice.status,
+      notes: body.notes !== undefined ? body.notes : invoice.notes,
+      issuedAt: body.issuedAt ? new Date(body.issuedAt) : invoice.issuedAt,
+      updatedAt: new Date()
+    }
+
+    return createApiResponse({ invoice: updatedInvoice })
+  },
+  { path: '/api/invoices/[id]', method: 'PATCH' }
+)

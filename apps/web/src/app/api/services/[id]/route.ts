@@ -3,7 +3,7 @@ import { db } from '@/lib/db-service'
 import { getSession } from '@/lib/auth-utils'
 
 // GET /api/services/[id] - Get specific service request details
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await getSession(request)
     if (!session?.user) {
@@ -11,7 +11,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     }
 
     const roles = session.user.roles || []
-    const serviceId = params.id
+    const serviceId = (await params).id
 
     // Get service request from mock database
     const serviceRequest = await db.serviceRequests.findById(serviceId)

@@ -14,12 +14,11 @@ export async function GET(request: NextRequest) {
     const perPage = parseInt(searchParams.get('perPage') || '25')
     const status = searchParams.get('status')
     const search = searchParams.get('search')
+    
 
-    // Build filter for mock database
+    // Build filter for mock database (without pagination first)
     const filter: any = {
-      where: {},
-      skip: (page - 1) * perPage,
-      take: perPage
+      where: {}
     }
 
     // Add org scoping - admin can see all orgs, dealers only see their own
@@ -40,18 +39,46 @@ export async function GET(request: NextRequest) {
       ]
     }
 
-    // Get invoices using mock database
-    const invoices = await db.invoices.findMany(filter)
+    // Get all matching invoices first to get the total count
+    const allInvoices = await db.invoices.findMany(filter)
+    const total = allInvoices.length
+
+    // Apply pagination
+    const startIndex = (page - 1) * perPage
+    const paginatedInvoices = allInvoices.slice(startIndex, startIndex + perPage)
+
+    // Get status counts for filter buttons (always get counts for all statuses)
+    const statusCountFilter: any = {
+      where: {}
+    }
+    
+    // Apply same org scoping for counts
+    if (session.user.roles?.includes('ADMIN')) {
+      // Admin can see all invoices
+    } else {
+      statusCountFilter.where.orgId = session.user.orgId
+    }
+
+    const allUserInvoices = await db.invoices.findMany(statusCountFilter)
+    const statusCounts = {
+      all: allUserInvoices.length,
+      DRAFT: allUserInvoices.filter(i => i.status === 'DRAFT').length,
+      SENT: allUserInvoices.filter(i => i.status === 'SENT').length,
+      PAID: allUserInvoices.filter(i => i.status === 'PAID').length,
+      OVERDUE: allUserInvoices.filter(i => i.status === 'OVERDUE').length,
+      CANCELLED: allUserInvoices.filter(i => i.status === 'CANCELLED').length,
+    }
 
     return NextResponse.json({
       success: true,
-      invoices: invoices,
+      invoices: paginatedInvoices,
       pagination: {
         page,
         perPage,
-        total: invoices.length,
-        totalPages: Math.ceil(invoices.length / perPage)
-      }
+        total,
+        totalPages: Math.ceil(total / perPage)
+      },
+      statusCounts
     })
 
   } catch (error) {

@@ -1,14 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { dealRepository, jsonPersistence } from '@united-cars/crm-mocks';
 import { moveDealInputSchema } from '@united-cars/crm-core';
+import { getServerSessionFromRequest } from '@/lib/auth';
 
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await getServerSessionFromRequest(request);
+    const userId = session?.user?.id;
+    
     const body = await request.json();
-    const validated = moveDealInputSchema.parse(body);
+    const validated = moveDealInputSchema.parse({ ...body, movedBy: userId });
     const { id } = await params;
     
     const deal = await dealRepository.moveStage(id, validated);

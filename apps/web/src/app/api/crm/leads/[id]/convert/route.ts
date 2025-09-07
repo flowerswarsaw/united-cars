@@ -4,13 +4,14 @@ import { convertLeadInputSchema } from '@united-cars/crm-core';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const body = await request.json();
     const validated = convertLeadInputSchema.parse(body);
     
-    const deal = await leadRepository.convertToDeal(params.id, validated);
+    const deal = await leadRepository.convertToDeal(id, validated);
     await jsonPersistence.save();
     
     return NextResponse.json(deal, { status: 201 });

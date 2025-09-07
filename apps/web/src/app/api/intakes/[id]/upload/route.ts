@@ -1,138 +1,98 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@united-cars/db'
-import { IntakeUploadInput, processSecureUpload, ALL_ALLOWED_TYPES } from '@united-cars/core'
-import { getServerSession } from 'next-auth/next'
-import { authOptions } from '../../../auth/[...nextauth]/route'
-import { join } from 'path'
+import { db } from '@/lib/db-service'
+import { 
+  getSession, 
+  createApiResponse
+} from '@/lib/auth-utils'
+import { 
+  withErrorHandler,
+  createErrorResponse,
+  ErrorCode,
+  NotFoundError
+} from '@/lib/error-handler'
 
-// POST /api/intakes/:id/upload - Upload file to intake
-export async function POST(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  try {
-    const session = await getServerSession(authOptions)
+// POST /api/intakes/[id]/upload - Upload payment confirmation files
+export const POST = withErrorHandler(
+  async (request: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
+    const session = await getSession(request)
     if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return createErrorResponse(ErrorCode.UNAUTHORIZED)
     }
 
-    // Find intake and verify access
-    const intake = await prisma.vehicleIntake.findUnique({
-      where: { id: params.id },
-      include: { org: true }
-    })
+    const { id: intakeId } = await params
+    const roles = session.user.roles || []
+
+    // Get intake from mock database
+    const intake = await db.vehicleIntakes.findById(intakeId)
 
     if (!intake) {
-      return NextResponse.json({ error: 'Intake not found' }, { status: 404 })
+      throw new NotFoundError('Vehicle intake')
     }
 
-    const userRoles = session.user.roles || []
-    const isAdminOrOps = userRoles.includes('ADMIN') || userRoles.includes('OPS')
-    const isOwner = intake.orgId === session.user.orgId
-
-    if (!isAdminOrOps && !isOwner) {
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 })
+    // Check permissions - only owners can upload files
+    if (intake.orgId !== session.user.orgId) {
+      return createErrorResponse(ErrorCode.FORBIDDEN, 'You can only upload files to your own intakes')
     }
 
-    // Parse multipart form data
-    const formData = await request.formData()
-    const file = formData.get('file') as File
-    const kind = formData.get('kind') as string
-
-    if (!file) {
-      return NextResponse.json({ 
-        error: { 
-          code: 'VALIDATION', 
-          message: 'No file uploaded',
-          details: 'A file must be provided'
-        }
-      }, { status: 400 })
+    // Only pending intakes can have files uploaded
+    if (intake.status !== 'PENDING') {
+      return createErrorResponse(ErrorCode.BAD_REQUEST, 'Files can only be uploaded for pending intakes')
     }
 
-    // Validate kind parameter
-    const kindInput = IntakeUploadInput.parse({ kind })
-
-    // Set up secure upload directory
-    const uploadDir = join(process.cwd(), 'public', 'uploads', 'intakes', params.id)
-    
-    // Process file securely with rate limiting
-    const rateLimitId = `upload:${session.user.id}:${session.user.orgId}`
-    
-    let uploadResult
     try {
-      uploadResult = await processSecureUpload(
-        file,
-        uploadDir,
-        ALL_ALLOWED_TYPES,
-        rateLimitId
-      )
-    } catch (uploadError) {
-      const errorMessage = uploadError instanceof Error ? uploadError.message : 'Upload failed'
-      
-      // Determine appropriate status code
-      let statusCode = 500
-      let errorCode = 'UPLOAD'
-      
-      if (errorMessage.includes('Too many')) {
-        statusCode = 429
-        errorCode = 'RATE_LIMIT'
-      } else if (errorMessage.includes('not allowed') || errorMessage.includes('too large')) {
-        statusCode = 400
-        errorCode = 'VALIDATION'
+      const formData = await request.formData()
+      const file = formData.get('file') as File
+      const type = formData.get('type') as string || 'payment_confirmation'
+
+      if (!file) {
+        return createErrorResponse(ErrorCode.BAD_REQUEST, 'No file provided')
       }
+
+      // Validate file type
+      if (!file.type.includes('pdf') && !file.type.includes('image')) {
+        return createErrorResponse(ErrorCode.BAD_REQUEST, 'Only PDF and image files are allowed')
+      }
+
+      // Validate file size (10MB max)
+      if (file.size > 10 * 1024 * 1024) {
+        return createErrorResponse(ErrorCode.BAD_REQUEST, 'File size must be less than 10MB')
+      }
+
+      // In a real implementation, you would:
+      // 1. Save the file to cloud storage (AWS S3, Cloudflare R2, etc.)
+      // 2. Get the file URL
+      // 3. Save the file metadata to the database
       
-      return NextResponse.json({ 
-        error: { 
-          code: errorCode,
-          message: errorMessage
-        }
-      }, { status: statusCode })
+      // For now, we'll simulate this by creating a mock file record
+      const mockFileUrl = `/uploads/intakes/${intakeId}/${file.name}`
+      
+      const paymentConfirmation = {
+        id: `file-${Date.now()}`,
+        filename: file.name,
+        url: mockFileUrl,
+        uploadedAt: new Date()
+      }
+
+      // Update the intake with the new payment confirmation
+      const updatedPaymentConfirmations = [
+        ...(intake.paymentConfirmations || []),
+        paymentConfirmation
+      ]
+
+      await db.vehicleIntakes.update(intakeId, {
+        paymentConfirmations: updatedPaymentConfirmations
+      })
+
+      return createApiResponse({ 
+        success: true,
+        message: 'File uploaded successfully',
+        file: paymentConfirmation
+      })
+      
+    } catch (error: any) {
+      console.error('File upload error:', error)
+      return createErrorResponse(ErrorCode.INTERNAL_ERROR, 'Failed to process file upload')
     }
-
-    // Create attachment record
-    const attachment = await prisma.vehicleIntakeAttachment.create({
-      data: {
-        intakeId: params.id,
-        kind: kindInput.kind.toUpperCase() as 'INVOICE' | 'PHOTO' | 'OTHER',
-        url: uploadResult.url,
-        filename: uploadResult.originalName
-      }
-    })
-
-    // Add audit log entry
-    await prisma.auditLog.create({
-      data: {
-        actorUserId: session.user.id,
-        orgId: intake.orgId,
-        action: 'CREATE',
-        entity: 'vehicle_intake_attachment',
-        entityId: attachment.id,
-        diffJson: {
-          intakeId: params.id,
-          kind: kindInput.kind,
-          filename: uploadResult.originalName,
-          secureFilename: uploadResult.filename,
-          size: uploadResult.size,
-          mimeType: uploadResult.mimeType
-        }
-      }
-    })
-
-    return NextResponse.json({ 
-      success: true, 
-      attachment,
-      message: 'File uploaded successfully'
-    })
-  } catch (error: any) {
-    console.error('Upload file error:', error)
-    
-    if (error.name === 'ZodError') {
-      return NextResponse.json({ 
-        error: 'Invalid parameters',
-        details: error.issues 
-      }, { status: 400 })
-    }
-    
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
-  }
-}
+  },
+  { path: '/api/intakes/[id]/upload', method: 'POST' }
+)
