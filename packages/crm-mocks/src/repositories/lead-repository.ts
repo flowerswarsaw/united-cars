@@ -16,7 +16,11 @@ import { activityRepository } from './activity-repository';
 import { dealRepository } from './deal-repository';
 import { pipelineRepository } from './pipeline-repository';
 
-class LeadRepositoryImpl extends BaseRepository<Lead> implements ILeadRepository<Lead> {
+class LeadRepositoryImpl extends BaseRepository<Lead> implements ILeadRepository {
+  constructor() {
+    super();
+    this.setEntityType(EntityType.LEAD);
+  }
   async convertToDeal(leadId: string, input: ConvertLeadInput): Promise<Deal> {
     const lead = await this.get(leadId);
     if (!lead) throw new Error('Lead not found');

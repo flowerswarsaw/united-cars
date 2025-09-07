@@ -58,6 +58,23 @@ export const db = USE_MOCK_DATA ? mockDB : {
       if (!isValid) return null;
       
       return user;
+    },
+
+    // Balance management methods
+    getBalance: async (userId: string) => {
+      const user = await prisma.user.findUnique({ where: { id: userId } })
+      return user ? (user as any).balance || 0 : 0
+    },
+
+    updateBalance: async (userId: string, newBalance: number) => {
+      return await prisma.user.update({
+        where: { id: userId },
+        data: {
+          balance: newBalance,
+          updatedAt: new Date(),
+          version: { increment: 1 }
+        }
+      })
     }
   },
 
@@ -106,6 +123,7 @@ export const db = USE_MOCK_DATA ? mockDB : {
   insuranceClaims: {
     findMany: (filter?: any) => prisma.insuranceClaim.findMany(filter),
     findById: (id: string) => prisma.insuranceClaim.findUnique({ where: { id } }),
+    create: (data: any) => prisma.insuranceClaim.create({ data }),
     updateStatus: (id: string, status: any) => 
       prisma.insuranceClaim.update({ 
         where: { id }, 
@@ -124,13 +142,56 @@ export const db = USE_MOCK_DATA ? mockDB : {
   // Invoice operations
   invoices: {
     findMany: (filter?: any) => prisma.invoice.findMany(filter),
-    findById: (id: string) => prisma.invoice.findUnique({ where: { id } })
+    findById: (id: string) => prisma.invoice.findUnique({ where: { id } }),
+    findByNumber: (number: string) => prisma.invoice.findUnique({ where: { number } }),
+    applyPayment: async (invoiceId: string, paymentAmount: number) => {
+      // For Prisma - would implement proper payment application logic
+      const invoice = await prisma.invoice.findUnique({ where: { id: invoiceId } })
+      if (!invoice) return null
+      
+      const newPaidAmount = (invoice as any).paidAmount + paymentAmount
+      const newRemainingAmount = Math.max(0, invoice.total - newPaidAmount)
+      
+      return await prisma.invoice.update({
+        where: { id: invoiceId },
+        data: {
+          paidAmount: newPaidAmount,
+          remainingAmount: newRemainingAmount,
+          status: newRemainingAmount === 0 ? 'PAID' : invoice.status,
+          updatedAt: new Date(),
+          version: { increment: 1 }
+        }
+      })
+    },
+    getOutstanding: async (orgId?: string) => {
+      const where: any = {
+        remainingAmount: { gt: 0 },
+        status: { in: ['PENDING', 'OVERDUE'] }
+      }
+      if (orgId) {
+        where.orgId = orgId
+      }
+      return await prisma.invoice.findMany({ where })
+    },
+    cancel: async (invoiceId: string, cancelData: { cancelReason: string; canceledBy: string; canceledAt: Date }) => {
+      return await prisma.invoice.update({
+        where: { id: invoiceId },
+        data: {
+          status: 'CANCELED',
+          cancelReason: cancelData.cancelReason,
+          canceledBy: cancelData.canceledBy,
+          canceledAt: cancelData.canceledAt,
+          updatedAt: new Date()
+        }
+      })
+    }
   },
 
   // Payment operations
   paymentIntents: {
     findMany: (filter?: any) => prisma.paymentIntent.findMany(filter),
-    findById: (id: string) => prisma.paymentIntent.findUnique({ where: { id } })
+    findById: (id: string) => prisma.paymentIntent.findUnique({ where: { id } }),
+    create: (data: any) => prisma.paymentIntent.create({ data })
   },
 
   // Vehicle intakes operations

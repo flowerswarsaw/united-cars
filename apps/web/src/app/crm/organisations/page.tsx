@@ -335,12 +335,12 @@ export default function OrganisationsPage() {
       
       <div className="px-4 sm:px-6 lg:px-8 py-6">
         {/* Search and Filter Section */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
+        <div className="bg-card rounded-lg shadow-sm border border-border mb-6">
           <div className="px-6 py-4">
             <div className="flex flex-col sm:flex-row gap-4">
               {/* Search Bar */}
               <div className="relative flex-1 max-w-md">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-text-tertiary h-4 w-4" />
                 <Input
                   placeholder="Search by name, company ID, phone, or email..."
                   value={searchQuery}
@@ -397,7 +397,7 @@ export default function OrganisationsPage() {
         </div>
 
         {/* Main Content */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+        <div className="bg-card rounded-lg shadow-sm border border-border">
         <Table>
           <TableHeader>
             <TableRow>
@@ -413,8 +413,8 @@ export default function OrganisationsPage() {
               <TableRow>
                 <TableCell colSpan={5} className="text-center py-8">
                   <div className="flex flex-col items-center space-y-3">
-                    <Building2 className="h-12 w-12 text-gray-300" />
-                    <div className="text-gray-500">
+                    <Building2 className="h-12 w-12 text-text-tertiary" />
+                    <div className="text-text-secondary">
                       {hasActiveFilters ? 'No organisations match your filters' : 'No organisations found'}
                     </div>
                     {hasActiveFilters && (
@@ -431,26 +431,26 @@ export default function OrganisationsPage() {
                   <TableCell>
                     <Link 
                       href={`/crm/organisations/${org.id}`}
-                      className="font-medium text-blue-600 hover:underline flex items-center"
+                      className="font-medium text-primary hover:underline flex items-center"
                     >
                       <Building2 className="mr-2 h-4 w-4" />
                       <span dangerouslySetInnerHTML={{ 
                         __html: searchQuery 
                           ? org.name.replace(
                               new RegExp(`(${escapeRegex(searchQuery)})`, 'gi'),
-                              '<mark class="bg-yellow-200 px-1 rounded">$1</mark>'
+                              '<mark class="bg-yellow-200 dark:bg-yellow-800 px-1 rounded">$1</mark>'
                             )
                           : org.name
                       }} />
                     </Link>
                   </TableCell>
                   <TableCell>
-                    <code className="text-sm font-mono bg-gray-100 px-2 py-1 rounded">
+                    <code className="text-sm font-mono bg-surface-100 px-2 py-1 rounded">
                       {org.companyId || '-'}
                     </code>
                   </TableCell>
                   <TableCell>
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 capitalize">
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary capitalize">
                       {org.type.toLowerCase().replace('_', ' ')}
                     </span>
                   </TableCell>
@@ -460,17 +460,17 @@ export default function OrganisationsPage() {
                   <TableCell>
                     <div className="flex gap-2">
                       {org.email && (
-                        <a href={`mailto:${org.email}`} className="text-gray-500 hover:text-gray-700">
+                        <a href={`mailto:${org.email}`} className="text-text-secondary hover:text-foreground">
                           <Mail className="h-4 w-4" />
                         </a>
                       )}
                       {org.phone && (
-                        <a href={`tel:${org.phone}`} className="text-gray-500 hover:text-gray-700">
+                        <a href={`tel:${org.phone}`} className="text-text-secondary hover:text-foreground">
                           <Phone className="h-4 w-4" />
                         </a>
                       )}
                       {org.website && (
-                        <a href={org.website} target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-gray-700">
+                        <a href={org.website} target="_blank" rel="noopener noreferrer" className="text-text-secondary hover:text-foreground">
                           <Globe className="h-4 w-4" />
                         </a>
                       )}

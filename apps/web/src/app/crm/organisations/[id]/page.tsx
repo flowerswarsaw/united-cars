@@ -17,7 +17,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ArrowLeft, Edit2, Save, X, Building2, MapPin, Globe, Mail, Phone, Hash, Calendar, Users, DollarSign, FileText, ExternalLink, Link, Facebook, Instagram, Twitter, Plus, Trash2 } from 'lucide-react';
-import { Organisation, Contact, Deal, OrganizationType, ORGANIZATION_TYPE_CONFIGS, ContactMethod, ContactMethodType, PhoneType, EmailType, SocialMediaLink, SocialPlatform, OrganisationConnection } from '@united-cars/crm-core';
+import { Organisation, Contact, Deal, OrganizationType, ORGANIZATION_TYPE_CONFIGS, ContactMethod, ContactMethodType, SocialMediaLink, SocialPlatform, OrganisationConnection } from '@united-cars/crm-core';
 import toast from 'react-hot-toast';
 
 export default function OrganisationDetailPage() {

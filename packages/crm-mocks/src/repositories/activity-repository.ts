@@ -6,6 +6,10 @@ import {
 import { BaseRepository } from '../base-repository';
 
 class ActivityRepositoryImpl extends BaseRepository<Activity> implements IActivityRepository<Activity> {
+  constructor() {
+    super();
+    this.setEntityType(EntityType.ACTIVITY);
+  }
   async log(activity: Omit<Activity, 'id' | 'tenantId' | 'createdAt' | 'updatedAt'>): Promise<Activity> {
     return this.create(activity);
   }

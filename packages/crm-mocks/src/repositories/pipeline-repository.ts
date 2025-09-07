@@ -4,12 +4,18 @@ import {
   OrganizationType,
   PipelineRepository as IPipelineRepository,
   makeStage,
-  isPipelineApplicableToType
+  isPipelineApplicableToType,
+  EntityType
 } from '@united-cars/crm-core';
 import { BaseRepository } from '../base-repository';
 import { nanoid } from 'nanoid';
 
-class PipelineRepositoryImpl extends BaseRepository<Pipeline> implements IPipelineRepository<Pipeline> {
+class PipelineRepositoryImpl extends BaseRepository<Pipeline> implements IPipelineRepository {
+  constructor() {
+    super();
+    this.setEntityType(EntityType.PIPELINE);
+  }
+  
   private stages: Map<string, Stage> = new Map();
 
   async createStage(pipelineId: string, stageData: Omit<Stage, 'id' | 'tenantId' | 'createdAt' | 'updatedAt' | 'pipelineId'>): Promise<Stage> {

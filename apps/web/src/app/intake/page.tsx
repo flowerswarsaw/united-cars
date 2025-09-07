@@ -3,10 +3,14 @@
 import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { Plus, Filter, Search, FileText, Car } from 'lucide-react'
 import { AppLayout } from '@/components/layout/app-layout'
 import { PageHeader } from '@/components/layout/page-header'
+import { StatusBadge } from '@/components/ui/status-badge'
 import { LoadingState } from '@/components/ui/loading-state'
+import { EmptyState } from '@/components/ui/empty-state'
 import { useSession } from '@/hooks/useSession'
+import toast from 'react-hot-toast'
 
 interface IntakeData {
   id: string
@@ -22,12 +26,6 @@ interface IntakeData {
   attachments?: Array<{ id: string; kind: string; filename: string }>
 }
 
-const statusColors = {
-  PENDING: 'bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-sm',
-  APPROVED: 'bg-green-100 text-green-800 px-2 py-1 rounded text-sm',
-  REJECTED: 'bg-red-100 text-red-800 px-2 py-1 rounded text-sm'
-}
-
 export default function IntakeListPage() {
   const router = useRouter()
   const [intakes, setIntakes] = useState<IntakeData[]>([])
@@ -39,6 +37,12 @@ export default function IntakeListPage() {
     perPage: 25,
     total: 0,
     totalPages: 0
+  })
+  const [statusCounts, setStatusCounts] = useState({
+    all: 0,
+    PENDING: 0,
+    APPROVED: 0,
+    REJECTED: 0
   })
   const { user, loading: sessionLoading } = useSession()
 
@@ -68,10 +72,14 @@ export default function IntakeListPage() {
         if (result.pagination) {
           setPagination(result.pagination)
         }
+        if (result.statusCounts) {
+          setStatusCounts(result.statusCounts)
+        }
       } else {
-        console.error('Failed to fetch intakes:', result.error)
+        toast.error(`Failed to fetch intakes: ${result.error}`)
       }
     } catch (error) {
+      toast.error('Error fetching intakes')
       console.error('Error fetching intakes:', error)
     } finally {
       setIsLoading(false)
@@ -100,6 +108,13 @@ export default function IntakeListPage() {
     setPagination(prev => ({ ...prev, page: newPage }))
   }
 
+  const filterOptions = [
+    { value: 'all', label: 'All Declarations', count: statusCounts.all },
+    { value: 'PENDING', label: 'Pending', count: statusCounts.PENDING },
+    { value: 'APPROVED', label: 'Approved', count: statusCounts.APPROVED },
+    { value: 'REJECTED', label: 'Rejected', count: statusCounts.REJECTED }
+  ]
+
   if (isLoading || sessionLoading) {
     return (
       <AppLayout user={user}>
@@ -111,114 +126,154 @@ export default function IntakeListPage() {
   return (
     <AppLayout user={user}>
       <PageHeader 
-        title="My Vehicle Intakes"
-        description="Track your vehicle intake requests and their approval status"
-        action={
-          <Link
-            href="/intake/new"
-            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
-          >
-            + New Intake Request
-          </Link>
-        }
+        title="🎯 Auction Declarations"
+        description="Declare your auction wins and track admin approval status. Approved vehicles appear in your fleet."
+        breadcrumbs={[{ label: 'Operations' }, { label: 'Declarations' }]}
       />
       
-      <div className="px-4 sm:px-6 lg:px-8 py-8">
-
-        <div className="bg-white shadow rounded-lg">
-          <div className="px-6 py-4 border-b">
-            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-4 sm:space-y-0">
-              <h2 className="text-lg font-medium">Intake Requests {intakes.length > 0 && `(${pagination.total})`}</h2>
-              <div className="flex flex-col sm:flex-row items-center space-y-2 sm:space-y-0 sm:space-x-4">
-                <input
-                  type="text"
-                  placeholder="Search by VIN, make, or model..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full sm:w-64 border border-gray-300 rounded-md px-3 py-1 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="border border-gray-300 rounded-md px-3 py-1 text-sm"
+      <div className="px-4 sm:px-6 lg:px-8 py-6">
+        {/* Filters and Search */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
+          <div className="px-6 py-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
+              <div className="flex items-center space-x-4">
+                <Filter className="h-5 w-5 text-gray-400" />
+                <div className="flex items-center space-x-2 flex-wrap">
+                  {filterOptions.map((option) => (
+                    <button
+                      key={option.value}
+                      onClick={() => setStatusFilter(option.value)}
+                      className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
+                        statusFilter === option.value
+                          ? 'bg-blue-100 text-blue-700'
+                          : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                      }`}
+                    >
+                      {option.label}
+                      {option.count > 0 && (
+                        <span className="ml-1 text-xs">({option.count})</span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              
+              <div className="flex items-center space-x-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Search by VIN, make, or model..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                  />
+                </div>
+                <Link
+                  href="/intake/new"
+                  className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
                 >
-                  <option value="all">All Statuses</option>
-                  <option value="PENDING">Pending</option>
-                  <option value="APPROVED">Approved</option>
-                  <option value="REJECTED">Rejected</option>
-                </select>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Vehicle
+                </Link>
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Main Content */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-gray-900">
+                Auction Declarations {intakes.length > 0 && `(${pagination.total})`}
+              </h2>
+            </div>
+          </div>
           
-          <div className="px-6 py-4">
-            {isLoading ? (
-              <div className="text-center py-8 text-gray-500">Loading intakes...</div>
+          <div className="p-6">
+            {isLoading || sessionLoading ? (
+              <LoadingState text="Loading auction declarations..." />
             ) : intakes.length === 0 ? (
-              <div className="text-center py-8">
-                <div className="text-gray-500 mb-4">
-                  {statusFilter === 'all' 
-                    ? 'No intake requests found. Create your first one!' 
-                    : `No ${statusFilter.toLowerCase()} intake requests found.`
-                  }
-                </div>
-                {statusFilter === 'all' && (
-                  <Link
-                    href="/intake/new"
-                    className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
-                  >
-                    + Create First Intake
-                  </Link>
-                )}
-              </div>
+              <EmptyState
+                icon={<FileText className="h-12 w-12" />}
+                title="No auction declarations found"
+                description={
+                  searchTerm 
+                    ? `No declarations match "${searchTerm}"`
+                    : statusFilter === 'all'
+                      ? 'No auction declarations have been submitted yet.'
+                      : `No declarations with status "${statusFilter.toLowerCase()}".`
+                }
+              />
             ) : (
               <>
-                <div className="overflow-x-auto">
-                  <table className="min-w-full">
-                    <thead>
-                      <tr className="border-b">
-                        <th className="text-left py-3 px-4">Status</th>
-                        <th className="text-left py-3 px-4">Vehicle</th>
-                        <th className="text-left py-3 px-4">VIN</th>
-                        <th className="text-left py-3 px-4">Auction</th>
-                        <th className="text-left py-3 px-4">Destination</th>
-                        <th className="text-left py-3 px-4">Created</th>
-                        <th className="text-left py-3 px-4">Files</th>
-                        <th className="text-left py-3 px-4">Actions</th>
+                <div className="overflow-hidden">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Status
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Vehicle
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          VIN
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Auction
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Destination
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Created
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Files
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Actions
+                        </th>
                       </tr>
                     </thead>
-                    <tbody>
+                    <tbody className="bg-white divide-y divide-gray-200">
                       {intakes.map((intake) => (
-                        <tr key={intake.id} className="border-b hover:bg-gray-50">
-                          <td className="py-3 px-4">
-                            <span className={statusColors[intake.status]}>
-                              {intake.status}
-                            </span>
+                        <tr key={intake.id} className="hover:bg-gray-50 transition-colors">
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <StatusBadge status={intake.status} />
                           </td>
-                          <td className="py-3 px-4 font-medium">
-                            {getVehicleDisplay(intake)}
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm font-medium text-gray-900">
+                              {getVehicleDisplay(intake)}
+                            </div>
                           </td>
-                          <td className="py-3 px-4 font-mono text-sm">
-                            {intake.vin}
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm text-gray-500 font-mono">
+                              {intake.vin}
+                            </div>
                           </td>
-                          <td className="py-3 px-4">
+                          <td className="px-6 py-4 whitespace-nowrap">
                             <span className="bg-gray-100 text-gray-800 px-2 py-1 rounded text-sm">
                               {intake.auction}
                             </span>
                           </td>
-                          <td className="py-3 px-4">{intake.destinationPort}</td>
-                          <td className="py-3 px-4 text-sm text-gray-500">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {intake.destinationPort}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             {formatDate(intake.createdAt)}
                           </td>
-                          <td className="py-3 px-4 text-sm text-gray-500">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             {intake.attachments?.length || 0} files
                           </td>
-                          <td className="py-3 px-4">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                             <Link
                               href={`/intake/${intake.id}`}
-                              className="text-blue-600 hover:text-blue-800 text-sm"
+                              className="text-blue-600 hover:text-blue-900 font-medium"
                             >
-                              View
+                              View Details
                             </Link>
                           </td>
                         </tr>
@@ -229,7 +284,7 @@ export default function IntakeListPage() {
 
                 {/* Pagination */}
                 {pagination.totalPages > 1 && (
-                  <div className="flex items-center justify-between pt-6 mt-6 border-t border-gray-200">
+                  <div className="flex items-center justify-between pt-6">
                     <div className="text-sm text-gray-700">
                       Showing {((pagination.page - 1) * pagination.perPage) + 1} to{' '}
                       {Math.min(pagination.page * pagination.perPage, pagination.total)} of{' '}
@@ -270,6 +325,7 @@ export default function IntakeListPage() {
             )}
           </div>
         </div>
+
       </div>
     </AppLayout>
   )

@@ -81,6 +81,7 @@ const VEHICLE_TYPES = [
 
 export function TowingPricingTab() {
   const [matrices, setMatrices] = useState<TowingMatrix[]>([])
+  const [allMatrices, setAllMatrices] = useState<TowingMatrix[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterAuction, setFilterAuction] = useState<string>('all')
@@ -225,35 +226,72 @@ export function TowingPricingTab() {
   ]
 
   useEffect(() => {
-    fetchMatrices()
-  }, [filterLocation, filterAuction, searchTerm])
+    // Load data from localStorage if available
+    const savedMatrices = localStorage.getItem('towing-matrices')
+    if (savedMatrices) {
+      try {
+        const parsedMatrices = JSON.parse(savedMatrices)
+        setAllMatrices(parsedMatrices)
+        setMatrices(parsedMatrices)
+        setLoading(false)
+      } catch (error) {
+        console.error('Failed to load saved matrices:', error)
+        fetchMatrices()
+      }
+    } else {
+      fetchMatrices()
+    }
+  }, [])
+
+  useEffect(() => {
+    if (allMatrices.length > 0) {
+      // Save to localStorage whenever all matrices change
+      localStorage.setItem('towing-matrices', JSON.stringify(allMatrices))
+      // Dispatch custom event to notify calculator of updates
+      window.dispatchEvent(new CustomEvent('pricingMatricesUpdated'))
+    }
+  }, [allMatrices])
+
+  useEffect(() => {
+    // Apply filters when they change
+    if (allMatrices.length > 0) {
+      applyFilters()
+    }
+  }, [filterLocation, filterAuction, searchTerm, allMatrices])
 
   const fetchMatrices = async () => {
     try {
-      // In production, this would fetch from API
-      let filteredData = [...mockTowingData]
-      
-      if (filterAuction !== 'all') {
-        filteredData = filteredData.filter(m => m.auctionHouse === filterAuction)
-      }
-      
-      if (filterLocation !== 'all') {
-        filteredData = filteredData.filter(m => m.auctionLocation === filterLocation)
-      }
-      
-      if (searchTerm) {
-        filteredData = filteredData.filter(m => 
-          m.auctionLocation.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          Object.keys(m.portPricing).some(port => port.toLowerCase().includes(searchTerm.toLowerCase()))
-        )
-      }
-      
-      setMatrices(filteredData)
+      // Load initial mock data
+      setAllMatrices(mockTowingData)
+      setMatrices(mockTowingData)
+      // Save to localStorage for persistence
+      localStorage.setItem('towing-matrices', JSON.stringify(mockTowingData))
     } catch (error) {
       toast.error('Failed to fetch towing matrices')
     } finally {
       setLoading(false)
     }
+  }
+
+  const applyFilters = () => {
+    let filteredData = [...allMatrices]
+    
+    if (filterAuction !== 'all') {
+      filteredData = filteredData.filter((m: TowingMatrix) => m.auctionHouse === filterAuction)
+    }
+    
+    if (filterLocation !== 'all') {
+      filteredData = filteredData.filter((m: TowingMatrix) => m.auctionLocation === filterLocation)
+    }
+    
+    if (searchTerm) {
+      filteredData = filteredData.filter((m: TowingMatrix) => 
+        m.auctionLocation.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        Object.keys(m.portPricing).some(port => port.toLowerCase().includes(searchTerm.toLowerCase()))
+      )
+    }
+    
+    setMatrices(filteredData)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -268,10 +306,9 @@ export function TowingPricingTab() {
     try {
       if (editingMatrix) {
         // Update existing matrix
-        setMatrices(prev => prev.map(m => 
-          m.id === editingMatrix.id 
-            ? { ...m, ...formData, updatedAt: new Date().toISOString() }
-            : m
+        const updatedMatrix = { ...editingMatrix, ...formData, updatedAt: new Date().toISOString() }
+        setAllMatrices(prev => prev.map(m => 
+          m.id === editingMatrix.id ? updatedMatrix : m
         ))
         toast.success('Towing matrix updated successfully')
       } else {
@@ -283,7 +320,7 @@ export function TowingPricingTab() {
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString()
         }
-        setMatrices(prev => [newMatrix, ...prev])
+        setAllMatrices(prev => [newMatrix, ...prev])
         toast.success('Towing matrix created successfully')
       }
       
@@ -307,7 +344,7 @@ export function TowingPricingTab() {
   const handleDelete = async (id: string) => {
     if (confirm('Are you sure you want to delete this towing matrix?')) {
       try {
-        setMatrices(prev => prev.filter(m => m.id !== id))
+        setAllMatrices(prev => prev.filter(m => m.id !== id))
         toast.success('Towing matrix deleted successfully')
       } catch (error) {
         toast.error('Failed to delete towing matrix')
@@ -317,8 +354,8 @@ export function TowingPricingTab() {
 
   const handleToggleStatus = async (id: string) => {
     try {
-      setMatrices(prev => prev.map(m => 
-        m.id === id ? { ...m, active: !m.active } : m
+      setAllMatrices(prev => prev.map(m => 
+        m.id === id ? { ...m, active: !m.active, updatedAt: new Date().toISOString() } : m
       ))
       toast.success('Status updated successfully')
     } catch (error) {
@@ -406,7 +443,7 @@ export function TowingPricingTab() {
     if (!editingPrice) return
     
     try {
-      setMatrices(prev => prev.map(matrix => {
+      setAllMatrices(prev => prev.map(matrix => {
         if (matrix.id === editingPrice.matrixId) {
           return {
             ...matrix,
@@ -777,9 +814,13 @@ export function TowingPricingTab() {
                               <div className="text-xs text-gray-600 mb-1">{vehicleType.label}</div>
                               {isEditing ? (
                                 <input
-                                  type="number"
-                                  value={editingPriceValue}
-                                  onChange={(e) => setEditingPriceValue(parseFloat(e.target.value) || 0)}
+                                  type="text"
+                                  inputMode="numeric"
+                                  value={editingPriceValue === 0 ? '' : editingPriceValue}
+                                  onChange={(e) => {
+                                    const value = e.target.value.replace(/[^0-9.]/g, '')
+                                    setEditingPriceValue(value === '' ? 0 : parseFloat(value) || 0)
+                                  }}
                                   className="w-full text-sm font-medium text-center px-2 py-1 border border-blue-500 rounded bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                                   min="0"
                                   step="10"

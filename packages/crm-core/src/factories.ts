@@ -10,6 +10,8 @@ import {
   CustomFieldDef,
   CustomFieldValue,
   Activity,
+  ChangeLog,
+  FieldChange,
   DealStatus,
   TaskStatus,
   TaskPriority,
@@ -207,6 +209,31 @@ export function makeDealStageHistory(
     pipelineId,
     toStageId,
     movedAt: now,
+    createdAt: now,
+    updatedAt: now,
+    ...partial
+  };
+}
+
+export function makeChangeLog(
+  entityType: EntityType,
+  entityId: string,
+  action: ActivityType,
+  summary: string,
+  changes: FieldChange[],
+  userId: string,
+  partial?: Partial<ChangeLog>
+): ChangeLog {
+  const now = new Date();
+  return {
+    id: nanoid(),
+    tenantId: DEFAULT_TENANT_ID,
+    entityType,
+    entityId,
+    action,
+    summary,
+    changes,
+    userId,
     createdAt: now,
     updatedAt: now,
     ...partial

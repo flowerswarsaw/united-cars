@@ -14,7 +14,8 @@ import { AppLayout } from '@/components/layout/app-layout';
 import { PageHeader } from '@/components/layout/page-header';
 import { LoadingState } from '@/components/ui/loading-state';
 import { useSession } from '@/hooks/useSession';
-import { Contact, Organisation, Deal, ContactMethod, ContactMethodType, PhoneType, EmailType } from '@united-cars/crm-core';
+import { Contact, Organisation, Deal, ContactMethod, ContactMethodType, EntityType } from '@united-cars/crm-core';
+import { ChangeLogPanel } from '@/components/ui/change-log';
 import toast from 'react-hot-toast';
 
 export default function ContactDetailPage() {
@@ -174,8 +175,10 @@ export default function ContactDetailPage() {
     setEditingSections(prev => ({ ...prev, [section]: false }));
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
+  const formatDate = (dateInput?: string | Date) => {
+    if (!dateInput) return 'Unknown';
+    const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
+    return date.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
       day: 'numeric'
@@ -190,20 +193,20 @@ export default function ContactDetailPage() {
   };
 
   const getContactMethodIcon = (type: ContactMethodType) => {
-    switch (type) {
-      case ContactMethodType.EMAIL:
-        return <Mail className="h-4 w-4" />;
-      case ContactMethodType.PHONE:
-        return <Phone className="h-4 w-4" />;
-      default:
-        return <Hash className="h-4 w-4" />;
+    if (type.includes('EMAIL')) {
+      return <Mail className="h-4 w-4" />;
+    } else if (type.includes('PHONE')) {
+      return <Phone className="h-4 w-4" />;
     }
+    return <Hash className="h-4 w-4" />;
   };
 
   const formatContactMethod = (method: ContactMethod) => {
-    let typeLabel = method.type.toLowerCase();
-    if (method.subtype) {
-      typeLabel += ` (${method.subtype.toLowerCase()})`;
+    // Convert EMAIL_WORK to "email (work)", PHONE_MOBILE to "phone (mobile)"
+    const [mainType, subType] = method.type.split('_');
+    let typeLabel = mainType.toLowerCase();
+    if (subType) {
+      typeLabel += ` (${subType.toLowerCase()})`;
     }
     if (method.label) {
       typeLabel += ` - ${method.label}`;
@@ -284,6 +287,10 @@ export default function ContactDetailPage() {
             <TabsTrigger value="deals" className="flex items-center gap-2">
               <DollarSign className="h-4 w-4" />
               Deals ({deals.length})
+            </TabsTrigger>
+            <TabsTrigger value="activity" className="flex items-center gap-2">
+              <FileText className="h-4 w-4" />
+              Activity Log
             </TabsTrigger>
           </TabsList>
 
@@ -380,49 +387,26 @@ export default function ContactDetailPage() {
                               </Button>
                             </div>
                             
-                            <div className="grid grid-cols-2 gap-2">
-                              <div>
-                                <Label className="text-xs">Type</Label>
-                                <Select 
-                                  value={method.type} 
-                                  onValueChange={(value) => updateContactMethod(method.id, { type: value as ContactMethodType })}
-                                >
-                                  <SelectTrigger className="h-8">
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value={ContactMethodType.EMAIL}>Email</SelectItem>
-                                    <SelectItem value={ContactMethodType.PHONE}>Phone</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                              
-                              <div>
-                                <Label className="text-xs">Subtype</Label>
-                                <Select 
-                                  value={method.subtype || ''} 
-                                  onValueChange={(value) => updateContactMethod(method.id, { subtype: value as PhoneType | EmailType })}
-                                >
-                                  <SelectTrigger className="h-8">
-                                    <SelectValue placeholder="Optional" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {method.type === ContactMethodType.EMAIL ? (
-                                      <>
-                                        <SelectItem value={EmailType.WORK}>Work</SelectItem>
-                                        <SelectItem value={EmailType.PERSONAL}>Personal</SelectItem>
-                                      </>
-                                    ) : (
-                                      <>
-                                        <SelectItem value={PhoneType.WORK}>Work</SelectItem>
-                                        <SelectItem value={PhoneType.MOBILE}>Mobile</SelectItem>
-                                        <SelectItem value={PhoneType.HOME}>Home</SelectItem>
-                                        <SelectItem value={PhoneType.FAX}>Fax</SelectItem>
-                                      </>
-                                    )}
-                                  </SelectContent>
-                                </Select>
-                              </div>
+                            <div>
+                              <Label className="text-xs">Type</Label>
+                              <Select 
+                                value={method.type} 
+                                onValueChange={(value) => updateContactMethod(method.id, { type: value as ContactMethodType })}
+                              >
+                                <SelectTrigger className="h-8">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value={ContactMethodType.EMAIL_WORK}>Email (Work)</SelectItem>
+                                  <SelectItem value={ContactMethodType.EMAIL_PERSONAL}>Email (Personal)</SelectItem>
+                                  <SelectItem value={ContactMethodType.EMAIL_OTHER}>Email (Other)</SelectItem>
+                                  <SelectItem value={ContactMethodType.PHONE_MOBILE}>Phone (Mobile)</SelectItem>
+                                  <SelectItem value={ContactMethodType.PHONE_WORK}>Phone (Work)</SelectItem>
+                                  <SelectItem value={ContactMethodType.PHONE_HOME}>Phone (Home)</SelectItem>
+                                  <SelectItem value={ContactMethodType.PHONE_FAX}>Phone (Fax)</SelectItem>
+                                  <SelectItem value={ContactMethodType.PHONE_OTHER}>Phone (Other)</SelectItem>
+                                </SelectContent>
+                              </Select>
                             </div>
                             
                             <div>
@@ -430,7 +414,7 @@ export default function ContactDetailPage() {
                               <Input 
                                 value={method.value} 
                                 onChange={(e) => updateContactMethod(method.id, { value: e.target.value })}
-                                placeholder={method.type === ContactMethodType.EMAIL ? 'email@example.com' : '+1 (555) 000-0000'}
+                                placeholder={method.type.includes('EMAIL') ? 'email@example.com' : '+1 (555) 000-0000'}
                                 className="h-8"
                               />
                             </div>
@@ -469,14 +453,14 @@ export default function ContactDetailPage() {
                             <div>
                               <Label className="text-xs font-medium text-gray-700 mb-1 block">Email Addresses</Label>
                               <div className="space-y-1">
-                                {contact.contactMethods.filter(m => m.type === ContactMethodType.EMAIL).map((method) => (
+                                {contact.contactMethods.filter(m => m.type.includes('EMAIL')).map((method) => (
                                   <div key={method.id} className="flex items-center space-x-2 text-sm">
                                     <Mail className="h-3 w-3 text-gray-500" />
                                     <span>{method.value}</span>
                                     {method.label && <span className="text-xs text-gray-500">({method.label})</span>}
                                   </div>
                                 ))}
-                                {contact.contactMethods.filter(m => m.type === ContactMethodType.EMAIL).length === 0 && (
+                                {contact.contactMethods.filter(m => m.type.includes('EMAIL')).length === 0 && (
                                   <p className="text-xs text-gray-500">No email addresses</p>
                                 )}
                               </div>
@@ -485,14 +469,14 @@ export default function ContactDetailPage() {
                             <div>
                               <Label className="text-xs font-medium text-gray-700 mb-1 block">Phone Numbers</Label>
                               <div className="space-y-1">
-                                {contact.contactMethods.filter(m => m.type === ContactMethodType.PHONE).map((method) => (
+                                {contact.contactMethods.filter(m => m.type.includes('PHONE')).map((method) => (
                                   <div key={method.id} className="flex items-center space-x-2 text-sm">
                                     <Phone className="h-3 w-3 text-gray-500" />
                                     <span>{method.value}</span>
                                     {method.label && <span className="text-xs text-gray-500">({method.label})</span>}
                                   </div>
                                 ))}
-                                {contact.contactMethods.filter(m => m.type === ContactMethodType.PHONE).length === 0 && (
+                                {contact.contactMethods.filter(m => m.type.includes('PHONE')).length === 0 && (
                                   <p className="text-xs text-gray-500">No phone numbers</p>
                                 )}
                               </div>
@@ -501,23 +485,6 @@ export default function ContactDetailPage() {
                         ) : (
                           <div className="space-y-3 text-sm">
                             <p className="text-gray-500">No contact methods available</p>
-                            {(contact.email || contact.phone) && (
-                              <div className="space-y-2">
-                                <p className="text-gray-600 font-medium">Legacy contact information:</p>
-                                {contact.email && (
-                                  <div className="flex items-center space-x-2 text-gray-700">
-                                    <Mail className="h-4 w-4" />
-                                    <span>{contact.email}</span>
-                                  </div>
-                                )}
-                                {contact.phone && (
-                                  <div className="flex items-center space-x-2 text-gray-700">
-                                    <Phone className="h-4 w-4" />
-                                    <span>{contact.phone}</span>
-                                  </div>
-                                )}
-                              </div>
-                            )}
                           </div>
                         )}
                       </div>
@@ -708,7 +675,7 @@ export default function ContactDetailPage() {
                         </div>
                         <div className="text-right">
                           <p className="text-sm text-gray-600">
-                            Created {formatDate(deal.createdAt.toISOString())}
+                            Created {formatDate(deal.createdAt)}
                           </p>
                           {deal.probability && (
                             <p className="text-sm text-gray-500">{deal.probability}% probability</p>
@@ -724,6 +691,14 @@ export default function ContactDetailPage() {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="activity" className="space-y-4">
+            <ChangeLogPanel 
+              entityType={EntityType.CONTACT} 
+              entityId={contactId} 
+              limit={50}
+            />
           </TabsContent>
         </Tabs>
       </div>

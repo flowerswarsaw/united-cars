@@ -520,7 +520,7 @@ export default function PipelinesPage() {
       <div className="px-4 sm:px-6 lg:px-8 py-6">
         <div className="grid gap-6">
           {pipelines.map((pipeline) => (
-            <div key={pipeline.id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div key={pipeline.id} className="bg-card rounded-lg shadow-sm border border-border p-6">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center">
                   <div 
@@ -528,9 +528,9 @@ export default function PipelinesPage() {
                     style={{ backgroundColor: pipeline.color || '#6B7280' }}
                   />
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900">{pipeline.name}</h3>
+                    <h3 className="text-lg font-semibold text-foreground">{pipeline.name}</h3>
                     {pipeline.description && (
-                      <p className="text-sm text-gray-600">{pipeline.description}</p>
+                      <p className="text-sm text-text-secondary">{pipeline.description}</p>
                     )}
                   </div>
                   {pipeline.isDefault && (
@@ -545,7 +545,7 @@ export default function PipelinesPage() {
                     variant="ghost" 
                     size="sm" 
                     onClick={() => handleDeletePipeline(pipeline)}
-                    className="text-red-600 hover:text-red-800 hover:bg-red-50"
+                    className="text-destructive hover:text-destructive/90 hover:bg-destructive/5"
                     title="Delete Pipeline"
                   >
                     <Trash2 className="h-4 w-4" />
@@ -557,19 +557,19 @@ export default function PipelinesPage() {
                 {pipeline.stages?.map((stage, index) => (
                   <div key={stage.id} className="flex items-center">
                     <div 
-                      className="px-3 py-1 rounded-full text-sm font-medium text-white"
+                      className="px-3 py-1 rounded-full text-sm font-medium text-primary-foreground"
                       style={{ backgroundColor: stage.color || '#6B7280' }}
                     >
                       {stage.name}
                     </div>
                     {index < (pipeline.stages?.length || 0) - 1 && (
-                      <div className="w-4 h-px bg-gray-300 mx-1" />
+                      <div className="w-4 h-px bg-surface-300 mx-1" />
                     )}
                   </div>
                 ))}
               </div>
 
-              <div className="mt-4 flex items-center text-sm text-gray-500">
+              <div className="mt-4 flex items-center text-sm text-text-secondary">
                 <GitBranch className="h-4 w-4 mr-2" />
                 {pipeline.stages?.length || 0} stages
               </div>
@@ -578,9 +578,9 @@ export default function PipelinesPage() {
         </div>
 
         {pipelines.length === 0 && !loading && (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 text-center py-12">
-            <GitBranch className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <div className="text-gray-500 mb-4">No pipelines found</div>
+          <div className="bg-card rounded-lg shadow-sm border border-border text-center py-12">
+            <GitBranch className="h-12 w-12 text-text-tertiary mx-auto mb-4" />
+            <div className="text-text-secondary mb-4">No pipelines found</div>
             <div className="space-x-2">
               <Button variant="outline" onClick={() => setIsCreateOpen(true)}>
                 Create Your First Pipeline

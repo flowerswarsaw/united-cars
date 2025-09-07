@@ -29,18 +29,30 @@ const statusMap: Record<string, StatusConfig> = {
   DELIVERED: { variant: 'success', label: 'Delivered' },
   SOLD: { variant: 'success', label: 'Sold' },
   
-  // Title statuses
-  received: { variant: 'info', label: 'Received' },
-  packed: { variant: 'info', label: 'Packed' },
-  sent: { variant: 'info', label: 'Sent' },
+  // Dynamic Title statuses
+  packed: { variant: 'warning', label: 'Packed' },
+  sent_to: { variant: 'info', label: 'Sent' },
+  received_by: { variant: 'success', label: 'Received' },
+  
+  // Package statuses
+  prepared: { variant: 'warning', label: 'Prepared' },
+  in_transit: { variant: 'info', label: 'In Transit' },
+  out_for_delivery: { variant: 'info', label: 'Out for Delivery' },
+  delivered: { variant: 'success', label: 'Delivered' },
+  exception: { variant: 'error', label: 'Exception' },
   
   // Service statuses
   in_progress: { variant: 'warning', label: 'In Progress' },
   
   // Claim statuses
-  new: { variant: 'info', label: 'New' },
-  review: { variant: 'warning', label: 'Under Review' },
+  new: { variant: 'warning', label: 'New' },
+  investigating: { variant: 'info', label: 'Investigating' },
+  under_review: { variant: 'warning', label: 'Under Review' },
+  approved: { variant: 'success', label: 'Approved' },
+  rejected: { variant: 'error', label: 'Rejected' },
+  settled: { variant: 'success', label: 'Settled' },
   paid: { variant: 'success', label: 'Paid' },
+  closed: { variant: 'neutral', label: 'Closed' },
   
   // Invoice statuses
   DRAFT: { variant: 'neutral', label: 'Draft' },
@@ -49,13 +61,14 @@ const statusMap: Record<string, StatusConfig> = {
   VOID: { variant: 'neutral', label: 'Void' },
   
   // Payment statuses
-  SUBMITTED: { variant: 'warning', label: 'Submitted' },
-  CONFIRMED: { variant: 'success', label: 'Confirmed' },
-  REJECTED: { variant: 'error', label: 'Rejected' },
-  
-  // Intake statuses
-  PENDING: { variant: 'warning', label: 'Pending' },
+  PENDING: { variant: 'warning', label: 'Pending Review' },
   APPROVED: { variant: 'success', label: 'Approved' },
+  DECLINED: { variant: 'error', label: 'Declined' },
+  CANCELED: { variant: 'neutral', label: 'Canceled' },
+  
+  // Intake statuses (using INTAKE_ prefix to avoid conflicts)
+  INTAKE_PENDING: { variant: 'warning', label: 'Pending' },
+  INTAKE_APPROVED: { variant: 'success', label: 'Approved' },
   
   // User statuses
   ACTIVE: { variant: 'success', label: 'Active' },
@@ -75,13 +88,25 @@ interface StatusBadgeProps {
   status: string
   className?: string
   size?: 'sm' | 'md' | 'lg'
+  label?: string  // Optional custom label override
 }
 
-export function StatusBadge({ status, className, size = 'md' }: StatusBadgeProps) {
+export function StatusBadge({ status, className, size = 'md', label }: StatusBadgeProps) {
+  if (!status) {
+    return (
+      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+        Unknown
+      </span>
+    )
+  }
+
   const config = statusMap[status] || { 
     variant: 'neutral' as StatusVariant, 
     label: status.replace(/_/g, ' ').toLowerCase() 
   }
+  
+  // Use custom label if provided, otherwise use config label
+  const displayLabel = label || config.label
   
   const sizeClasses = {
     sm: 'text-xs px-2 py-0.5',
@@ -98,7 +123,7 @@ export function StatusBadge({ status, className, size = 'md' }: StatusBadgeProps
         className
       )}
     >
-      {config.label}
+      {displayLabel}
     </span>
   )
 }

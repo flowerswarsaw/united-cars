@@ -26,8 +26,27 @@ import {
 } from '@/components/ui/select';
 import { Plus, Search, Filter, X } from 'lucide-react';
 import KanbanBoard from './kanban-board';
-import { Deal, Pipeline, LossReason, Organisation, Contact } from '@united-cars/crm-core';
+import { Deal, Pipeline, LossReason, Organisation, Contact, ContactMethodType, Task, EntityType } from '@united-cars/crm-core';
 import toast from 'react-hot-toast';
+
+// Helper functions to get contact methods
+const getEmail = (contactMethods?: Array<{type: ContactMethodType, value: string, isPrimary?: boolean}>) => {
+  return contactMethods?.find(cm => 
+    cm.type === ContactMethodType.EMAIL_WORK || 
+    cm.type === ContactMethodType.EMAIL_PERSONAL ||
+    cm.type === ContactMethodType.EMAIL_OTHER
+  )?.value;
+};
+
+const getPhone = (contactMethods?: Array<{type: ContactMethodType, value: string, isPrimary?: boolean}>) => {
+  return contactMethods?.find(cm => 
+    cm.type === ContactMethodType.PHONE_WORK || 
+    cm.type === ContactMethodType.PHONE_HOME ||
+    cm.type === ContactMethodType.PHONE_MOBILE ||
+    cm.type === ContactMethodType.PHONE_OTHER ||
+    cm.type === ContactMethodType.PHONE_FAX
+  )?.value;
+};
 
 export default function DealsPage() {
   const { user, loading: sessionLoading } = useSession();
@@ -35,6 +54,7 @@ export default function DealsPage() {
   const [deals, setDeals] = useState<Deal[]>([]);
   const [organisations, setOrganisations] = useState<Organisation[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [activePipelineId, setActivePipelineId] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -58,24 +78,39 @@ export default function DealsPage() {
     color: '#3B82F6'
   });
   const [searchQuery, setSearchQuery] = useState('');
-  const [filters, setFilters] = useState({
-    amountMin: '',
-    amountMax: '',
-    probability: '',
-    organisation: 'all',
-    contact: 'all',
-    currency: 'all'
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'open' | 'won' | 'lost'>(() => {
+    // Initialize state with value from localStorage if available
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('deals-status-filter');
+        if (saved && ['all', 'open', 'won', 'lost'].includes(saved)) {
+          return saved as 'all' | 'open' | 'won' | 'lost';
+        }
+      } catch (error) {
+        console.error('Error reading from localStorage:', error);
+      }
+    }
+    return 'all';
   });
-  const [showFilters, setShowFilters] = useState(false);
-  const [savedFilters, setSavedFilters] = useState<{name: string, filters: any, search: string}[]>([]);
-  const [showSaveFilter, setShowSaveFilter] = useState(false);
-  const [saveFilterName, setSaveFilterName] = useState('');
+  const [quickAddStageId, setQuickAddStageId] = useState<string | null>(null);
+
+  // Save status filter to localStorage whenever it changes
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('deals-status-filter', statusFilter);
+      } catch (error) {
+        console.error('Error saving status filter to localStorage:', error);
+      }
+    }
+  }, [statusFilter]);
 
   useEffect(() => {
     loadData();
   }, []);
 
-  // Keyboard shortcuts useEffect - moved back to maintain hooks order
+  // Simple keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       // Focus search on Ctrl/Cmd + K
@@ -87,33 +122,11 @@ export default function DealsPage() {
           searchInput.select();
         }
       }
-      
-      // Toggle filters on Ctrl/Cmd + F
-      if ((event.ctrlKey || event.metaKey) && event.key === 'f') {
-        event.preventDefault();
-        setShowFilters(!showFilters);
-      }
-      
-      // Clear all filters on Escape (when search input is not focused)
-      if (event.key === 'Escape' && document.activeElement?.tagName !== 'INPUT') {
-        const currentHasActiveFilters = searchQuery || Object.values(filters).some(value => value !== '' && value !== 'all');
-        if (currentHasActiveFilters) {
-          setSearchQuery('');
-          setFilters({
-            amountMin: '',
-            amountMax: '',
-            probability: '',
-            organisation: 'all',
-            contact: 'all',
-            currency: 'all'
-          });
-        }
-      }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showFilters, searchQuery, filters]);
+  }, []);
 
   useEffect(() => {
     // Auto-open creation dialog if create parameter is present
@@ -125,6 +138,15 @@ export default function DealsPage() {
       window.history.replaceState({}, '', newUrl);
     }
   }, []);
+
+  // Robust search with debouncing for better performance
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 150); // 150ms debounce for smoother UX
+    
+    return () => clearTimeout(timeoutId);
+  }, [searchQuery]);
 
   const loadData = async (retryCount = 0) => {
     try {
@@ -152,11 +174,12 @@ export default function DealsPage() {
         }
       };
 
-      const [pipelinesData, dealsData, organisationsData, contactsData] = await Promise.allSettled([
+      const [pipelinesData, dealsData, organisationsData, contactsData, tasksData] = await Promise.allSettled([
         fetchWithRetry('/api/crm/pipelines'),
         fetchWithRetry('/api/crm/deals'),
         fetchWithRetry('/api/crm/organisations'),
-        fetchWithRetry('/api/crm/contacts')
+        fetchWithRetry('/api/crm/contacts'),
+        fetchWithRetry('/api/crm/tasks')
       ]);
 
       // Handle results with fallbacks
@@ -164,17 +187,20 @@ export default function DealsPage() {
       const deals = dealsData.status === 'fulfilled' ? dealsData.value : [];
       const organisations = organisationsData.status === 'fulfilled' ? organisationsData.value : [];
       const contacts = contactsData.status === 'fulfilled' ? contactsData.value : [];
+      const tasks = tasksData.status === 'fulfilled' ? tasksData.value : [];
 
       // Log any failures
       if (pipelinesData.status === 'rejected') console.error('Failed to load pipelines:', pipelinesData.reason);
       if (dealsData.status === 'rejected') console.error('Failed to load deals:', dealsData.reason);
       if (organisationsData.status === 'rejected') console.error('Failed to load organisations:', organisationsData.reason);
       if (contactsData.status === 'rejected') console.error('Failed to load contacts:', contactsData.reason);
+      if (tasksData.status === 'rejected') console.error('Failed to load tasks:', tasksData.reason);
 
       setPipelines(pipelines || []);
       setDeals(deals || []);
       setOrganisations(organisations || []);
       setContacts(contacts || []);
+      setTasks(tasks || []);
 
       // Set default active pipeline
       if (pipelines && pipelines.length > 0 && !activePipelineId) {
@@ -183,12 +209,12 @@ export default function DealsPage() {
       }
 
       // Show partial success message if some data failed to load
-      const failedCount = [pipelinesData, dealsData, organisationsData, contactsData]
+      const failedCount = [pipelinesData, dealsData, organisationsData, contactsData, tasksData]
         .filter(result => result.status === 'rejected').length;
       
-      if (failedCount > 0 && failedCount < 4) {
-        toast.error(`Some data failed to load (${failedCount} of 4 sources)`);
-      } else if (failedCount === 4) {
+      if (failedCount > 0 && failedCount < 5) {
+        toast.error(`Some data failed to load (${failedCount} of 5 sources)`);
+      } else if (failedCount === 5) {
         toast.error('Failed to load CRM data. Please refresh the page.');
       }
 
@@ -256,6 +282,11 @@ export default function DealsPage() {
       deal.id === updatedDeal.id ? updatedDeal : deal
     ));
     toast.success(`Deal updated: ${updatedDeal.title}`);
+  };
+
+  const handleTaskCreated = (newTask: Task) => {
+    setTasks(prev => [...prev, newTask]);
+    toast.success(`Task created: ${newTask.title}`);
   };
 
   const handleOrganisationClick = (orgId: string) => {
@@ -354,7 +385,9 @@ export default function DealsPage() {
           probability: formData.probability ? parseInt(formData.probability) : undefined,
           organisationId: formData.organisationId || undefined,
           contactId: formData.contactId || undefined,
-          pipelineId: activePipelineId
+          status: 'OPEN',
+          pipelineId: activePipelineId,
+          stageId: quickAddStageId || undefined
         })
       });
 
@@ -371,6 +404,7 @@ export default function DealsPage() {
           organisationId: '',
           contactId: ''
         });
+        setQuickAddStageId(null);
         toast.success(`Deal Created: ${newDeal.title} has been created successfully.`);
       } else {
         const error = await response.json();
@@ -410,51 +444,115 @@ export default function DealsPage() {
     return acc;
   }, {} as Record<string, Deal[]>);
 
-  // Filter and search deals
-  const hasActiveFilters = Boolean(searchQuery || Object.values(filters).some(value => value !== '' && value !== 'all'));
+  // Simple filter and search deals with robust logic
+  const hasActiveFilters = Boolean(
+    debouncedSearchQuery?.trim() || 
+    (statusFilter && statusFilter !== 'all')
+  );
+
+  // Get filtered stages based on status filter
+  const getFilteredStages = (pipeline: Pipeline) => {
+    if (!pipeline.stages) return [];
+    
+    switch (statusFilter) {
+      case 'won':
+        return pipeline.stages.filter(stage => stage.isClosing);
+      case 'lost':
+        return pipeline.stages.filter(stage => stage.isLost);
+      case 'open':
+        return pipeline.stages.filter(stage => !stage.isClosing && !stage.isLost);
+      default:
+        return pipeline.stages;
+    }
+  };
 
   const filteredDeals = pipelineDeals.filter(deal => {
-    // Search filter
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      const matchesTitle = deal.title?.toLowerCase().includes(query);
-      const matchesAmount = deal.amount?.toString().includes(query);
-      const matchesOrg = organisations.find(org => org.id === deal.organisationId)?.name?.toLowerCase().includes(query);
-      const matchesContact = contacts.find(c => c.id === deal.contactId)?.firstName?.toLowerCase().includes(query) ||
-                           contacts.find(c => c.id === deal.contactId)?.lastName?.toLowerCase().includes(query);
-      const matchesNotes = deal.notes?.toLowerCase().includes(query);
+    // Search filter - comprehensive text matching across all related data
+    if (debouncedSearchQuery?.trim()) {
+      const query = debouncedSearchQuery.toLowerCase().trim();
       
-      if (!matchesTitle && !matchesAmount && !matchesOrg && !matchesContact && !matchesNotes) {
+      // Get connected organization data
+      const organization = organisations.find(org => org.id === deal.organisationId);
+      const organizationSearchFields = organization ? [
+        organization.name,
+        organization.companyId,
+        organization.industry,
+        organization.size,
+        organization.website,
+        organization.address,
+        organization.city,
+        organization.state,
+        organization.country,
+        organization.postalCode,
+        organization.notes,
+        // Organization contact methods (emails, phones, etc.)
+        ...(organization.contactMethods || []).map(cm => cm.value),
+        // Organization tags
+        ...(organization.tags || [])
+      ] : [];
+      
+      // Get connected contact data
+      const contact = contacts.find(c => c.id === deal.contactId);
+      const contactSearchFields = contact ? [
+        contact.firstName,
+        contact.lastName,
+        `${contact.firstName} ${contact.lastName}`.trim(),
+        contact.title,
+        contact.address,
+        contact.city,
+        contact.state,
+        contact.country,
+        contact.postalCode,
+        contact.notes,
+        // Contact methods (emails, phones, etc.)
+        ...(contact.contactMethods || []).map(cm => cm.value),
+        // Contact tags
+        ...(contact.tags || [])
+      ] : [];
+      
+      // Combine all searchable fields
+      const allSearchFields = [
+        // Deal core data
+        deal.title,
+        deal.notes,
+        deal.amount?.toString(),
+        deal.currency,
+        deal.status,
+        // Organization data
+        ...organizationSearchFields,
+        // Contact data
+        ...contactSearchFields
+      ];
+      
+      const matches = allSearchFields.some(field => 
+        field && typeof field === 'string' && field.trim() && field.toLowerCase().includes(query)
+      );
+      
+      if (!matches) return false;
+    }
+
+    // Status filter based on stage properties
+    if (statusFilter && statusFilter !== 'all') {
+      const dealCurrentStage = deal.currentStages?.find(cs => cs.pipelineId === activePipelineId);
+      if (dealCurrentStage) {
+        const stage = activePipeline?.stages?.find(s => s.id === dealCurrentStage.stageId);
+        if (stage) {
+          switch (statusFilter) {
+            case 'won':
+              if (!stage.isClosing) return false;
+              break;
+            case 'lost':
+              if (!stage.isLost) return false;
+              break;
+            case 'open':
+              if (stage.isClosing || stage.isLost) return false;
+              break;
+          }
+        }
+      } else if (statusFilter !== 'open') {
+        // If deal has no current stage, only show it in 'open' filter
         return false;
       }
-    }
-
-    // Amount range filter
-    if (filters.amountMin && deal.amount && deal.amount < parseFloat(filters.amountMin)) {
-      return false;
-    }
-    if (filters.amountMax && deal.amount && deal.amount > parseFloat(filters.amountMax)) {
-      return false;
-    }
-
-    // Probability filter
-    if (filters.probability && deal.probability && deal.probability < parseInt(filters.probability)) {
-      return false;
-    }
-
-    // Organisation filter
-    if (filters.organisation && filters.organisation !== 'all' && deal.organisationId !== filters.organisation) {
-      return false;
-    }
-
-    // Contact filter
-    if (filters.contact && filters.contact !== 'all' && deal.contactId !== filters.contact) {
-      return false;
-    }
-
-    // Currency filter
-    if (filters.currency && filters.currency !== 'all' && deal.currency !== filters.currency) {
-      return false;
     }
 
     return true;
@@ -469,40 +567,22 @@ export default function DealsPage() {
 
   const clearFilters = () => {
     setSearchQuery('');
-    setFilters({
-      amountMin: '',
-      amountMax: '',
-      probability: '',
-      organisation: 'all',
-      contact: 'all',
-      currency: 'all'
-    });
+    setStatusFilter('all');
   };
 
-  const saveCurrentFilter = () => {
-    if (!saveFilterName.trim() || !hasActiveFilters) return;
-    
-    const newSavedFilter = {
-      name: saveFilterName,
-      filters: { ...filters },
-      search: searchQuery
-    };
-    
-    setSavedFilters(prev => [...prev.filter(f => f.name !== saveFilterName), newSavedFilter]);
-    setShowSaveFilter(false);
-    setSaveFilterName('');
-    toast.success(`Filter "${saveFilterName}" saved successfully`);
-  };
-
-  const loadSavedFilter = (savedFilter: any) => {
-    setSearchQuery(savedFilter.search);
-    setFilters(savedFilter.filters);
-    setShowFilters(true);
-  };
-
-  const deleteSavedFilter = (name: string) => {
-    setSavedFilters(prev => prev.filter(f => f.name !== name));
-    toast.success(`Filter "${name}" deleted`);
+  const handleQuickAddDeal = (stageId: string) => {
+    setQuickAddStageId(stageId);
+    setIsCreateOpen(true);
+    // Auto-generate title based on stage
+    const stage = activePipeline?.stages?.find(s => s.id === stageId);
+    if (stage) {
+      setFormData(prev => ({
+        ...prev,
+        title: `New Deal - ${stage.name}`,
+        organisationId: '',
+        contactId: ''
+      }));
+    }
   };
 
   const newDealButton = (
@@ -595,19 +675,40 @@ export default function DealsPage() {
                     setFormData({ 
                       ...formData, 
                       contactId: newContactId,
-                      organisationId: '', // Clear org when contact is selected
-                      title: shouldAutoGenerate ? generateDealTitle(undefined, newContactId) : formData.title
+                      // Don't clear org if contact is from same org
+                      title: shouldAutoGenerate ? generateDealTitle(formData.organisationId, newContactId) : formData.title
                     });
                   }}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select contact (optional)" />
+                      <SelectValue placeholder={
+                        formData.organisationId 
+                          ? "Select contact from organisation" 
+                          : "Select any contact (optional)"
+                      } />
                     </SelectTrigger>
                     <SelectContent>
-                      {contacts.map(contact => (
-                        <SelectItem key={contact.id} value={contact.id}>
-                          {contact.firstName} {contact.lastName}
-                        </SelectItem>
-                      ))}
+                      {formData.organisationId ? (
+                        // Show only contacts from selected organisation
+                        contacts
+                          .filter(contact => contact.organisationId === formData.organisationId)
+                          .map(contact => (
+                            <SelectItem key={contact.id} value={contact.id}>
+                              {contact.firstName} {contact.lastName}
+                            </SelectItem>
+                          ))
+                      ) : (
+                        // Show all contacts when no organisation is selected
+                        contacts.map(contact => (
+                          <SelectItem key={contact.id} value={contact.id}>
+                            {contact.firstName} {contact.lastName}
+                            {contact.organisationId && (
+                              <span className="text-muted-foreground text-xs ml-2">
+                                ({organisations.find(org => org.id === contact.organisationId)?.name})
+                              </span>
+                            )}
+                          </SelectItem>
+                        ))
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
@@ -643,23 +744,23 @@ export default function DealsPage() {
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <strong className="text-sm text-gray-600">Industry:</strong>
+              <strong className="text-sm text-muted-foreground">Industry:</strong>
               <p className="text-sm">{selectedOrg.industry || 'Not specified'}</p>
             </div>
             <div>
-              <strong className="text-sm text-gray-600">Company Size:</strong>
+              <strong className="text-sm text-muted-foreground">Company Size:</strong>
               <p className="text-sm">{selectedOrg.size || 'Not specified'}</p>
             </div>
             <div>
-              <strong className="text-sm text-gray-600">Email:</strong>
-              <p className="text-sm">{selectedOrg.email || 'Not specified'}</p>
+              <strong className="text-sm text-muted-foreground">Email:</strong>
+              <p className="text-sm">{getEmail(selectedOrg.contactMethods) || 'Not specified'}</p>
             </div>
             <div>
-              <strong className="text-sm text-gray-600">Phone:</strong>
-              <p className="text-sm">{selectedOrg.phone || 'Not specified'}</p>
+              <strong className="text-sm text-muted-foreground">Phone:</strong>
+              <p className="text-sm">{getPhone(selectedOrg.contactMethods) || 'Not specified'}</p>
             </div>
             <div>
-              <strong className="text-sm text-gray-600">Website:</strong>
+              <strong className="text-sm text-muted-foreground">Website:</strong>
               <p className="text-sm">
                 {selectedOrg.website ? (
                   <a href={selectedOrg.website} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
@@ -671,14 +772,14 @@ export default function DealsPage() {
               </p>
             </div>
             <div>
-              <strong className="text-sm text-gray-600">Country:</strong>
+              <strong className="text-sm text-muted-foreground">Country:</strong>
               <p className="text-sm">{selectedOrg.country || 'Not specified'}</p>
             </div>
           </div>
           
           {selectedOrg.address && (
             <div>
-              <strong className="text-sm text-gray-600">Address:</strong>
+              <strong className="text-sm text-muted-foreground">Address:</strong>
               <p className="text-sm">
                 {selectedOrg.address}
                 {selectedOrg.city && `, ${selectedOrg.city}`}
@@ -690,17 +791,17 @@ export default function DealsPage() {
 
           {selectedOrg.notes && (
             <div>
-              <strong className="text-sm text-gray-600">Notes:</strong>
+              <strong className="text-sm text-muted-foreground">Notes:</strong>
               <p className="text-sm">{selectedOrg.notes}</p>
             </div>
           )}
 
           {selectedOrg.tags && selectedOrg.tags.length > 0 && (
             <div>
-              <strong className="text-sm text-gray-600">Tags:</strong>
+              <strong className="text-sm text-muted-foreground">Tags:</strong>
               <div className="flex flex-wrap gap-1 mt-1">
                 {selectedOrg.tags.map(tag => (
-                  <span key={tag} className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
+                  <span key={tag} className="bg-blue-100 dark:bg-blue-800 text-blue-800 dark:text-blue-100 text-xs px-2 py-1 rounded">
                     {tag}
                   </span>
                 ))}
@@ -708,7 +809,7 @@ export default function DealsPage() {
             </div>
           )}
 
-          <div className="text-xs text-gray-500 border-t pt-3">
+          <div className="text-xs text-muted-foreground border-t pt-3">
             Created: {new Date(selectedOrg.createdAt).toLocaleString()}
             {selectedOrg.updatedAt !== selectedOrg.createdAt && (
               <span> • Updated: {new Date(selectedOrg.updatedAt).toLocaleString()}</span>
@@ -728,27 +829,27 @@ export default function DealsPage() {
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <strong className="text-sm text-gray-600">First Name:</strong>
+              <strong className="text-sm text-muted-foreground">First Name:</strong>
               <p className="text-sm">{selectedContact.firstName}</p>
             </div>
             <div>
-              <strong className="text-sm text-gray-600">Last Name:</strong>
+              <strong className="text-sm text-muted-foreground">Last Name:</strong>
               <p className="text-sm">{selectedContact.lastName}</p>
             </div>
             <div>
-              <strong className="text-sm text-gray-600">Email:</strong>
-              <p className="text-sm">{selectedContact.email || 'Not specified'}</p>
+              <strong className="text-sm text-muted-foreground">Email:</strong>
+              <p className="text-sm">{getEmail(selectedContact.contactMethods) || 'Not specified'}</p>
             </div>
             <div>
-              <strong className="text-sm text-gray-600">Phone:</strong>
-              <p className="text-sm">{selectedContact.phone || 'Not specified'}</p>
+              <strong className="text-sm text-muted-foreground">Phone:</strong>
+              <p className="text-sm">{getPhone(selectedContact.contactMethods) || 'Not specified'}</p>
             </div>
             <div>
-              <strong className="text-sm text-gray-600">Title:</strong>
+              <strong className="text-sm text-muted-foreground">Title:</strong>
               <p className="text-sm">{selectedContact.title || 'Not specified'}</p>
             </div>
             <div>
-              <strong className="text-sm text-gray-600">Organisation:</strong>
+              <strong className="text-sm text-muted-foreground">Organisation:</strong>
               <p className="text-sm">
                 {selectedContact.organisationId ? (
                   (() => {
@@ -775,7 +876,7 @@ export default function DealsPage() {
 
           {selectedContact.address && (
             <div>
-              <strong className="text-sm text-gray-600">Address:</strong>
+              <strong className="text-sm text-muted-foreground">Address:</strong>
               <p className="text-sm">
                 {selectedContact.address}
                 {selectedContact.city && `, ${selectedContact.city}`}
@@ -788,17 +889,17 @@ export default function DealsPage() {
 
           {selectedContact.notes && (
             <div>
-              <strong className="text-sm text-gray-600">Notes:</strong>
+              <strong className="text-sm text-muted-foreground">Notes:</strong>
               <p className="text-sm">{selectedContact.notes}</p>
             </div>
           )}
 
           {selectedContact.tags && selectedContact.tags.length > 0 && (
             <div>
-              <strong className="text-sm text-gray-600">Tags:</strong>
+              <strong className="text-sm text-muted-foreground">Tags:</strong>
               <div className="flex flex-wrap gap-1 mt-1">
                 {selectedContact.tags.map(tag => (
-                  <span key={tag} className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded">
+                  <span key={tag} className="bg-green-100 dark:bg-green-800 text-green-800 dark:text-green-100 text-xs px-2 py-1 rounded">
                     {tag}
                   </span>
                 ))}
@@ -806,7 +907,7 @@ export default function DealsPage() {
             </div>
           )}
 
-          <div className="text-xs text-gray-500 border-t pt-3">
+          <div className="text-xs text-muted-foreground border-t pt-3">
             Created: {new Date(selectedContact.createdAt).toLocaleString()}
             {selectedContact.updatedAt !== selectedContact.createdAt && (
               <span> • Updated: {new Date(selectedContact.updatedAt).toLocaleString()}</span>
@@ -819,259 +920,138 @@ export default function DealsPage() {
 
   return (
     <AppLayout user={user}>
+      {/* Page Header - Fixed */}
       <PageHeader 
         title="Deals"
         description="Manage your sales pipeline"
         breadcrumbs={[{ label: 'CRM' }, { label: 'Deals' }]}
-        actions={newDealButton}
       />
       
-      <div className="px-4 sm:px-6 lg:px-8 py-6">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 h-full">
-          <div className="p-6 h-full flex flex-col min-h-0">
-            <Tabs value={activePipelineId} onValueChange={setActivePipelineId} className="flex flex-col h-full">
-            <TabsList className="mb-4 flex-shrink-0">
-              {pipelines.map((pipeline) => (
-                <TabsTrigger key={pipeline.id} value={pipeline.id}>
-                  <div className="flex items-center">
-                    <div 
-                      className="w-2 h-2 rounded-full mr-2"
-                      style={{ backgroundColor: pipeline.color || '#6B7280' }}
-                    />
-                    {pipeline.name}
-                    <span className="ml-2 text-xs bg-gray-200 px-2 py-0.5 rounded">
-                      {getDealCountForPipeline(pipeline.id)}
-                    </span>
-                  </div>
-                </TabsTrigger>
-              ))}
-            </TabsList>
+      {/* Main Content Container - Full Height */}
+      <div className="flex-1 flex flex-col min-w-0 w-full max-w-full overflow-hidden bg-gradient-to-br from-slate-50/90 via-slate-50/70 to-indigo-50/50 dark:from-slate-900/90 dark:via-slate-900/70 dark:to-indigo-950/50">
+        <div className="px-3 sm:px-6 lg:px-8 flex-1 flex flex-col min-w-0 max-w-full min-h-0 pt-6 pb-8">
+          <div className="flex-1 flex flex-col min-w-0 max-w-full min-h-0">
+            <Tabs value={activePipelineId} onValueChange={setActivePipelineId} className="flex-1 flex flex-col min-w-0 max-w-full min-h-0">
+            {/* Pipeline Tabs - Fixed Width */}
+            <div className="border-b border-slate-200/60 dark:border-slate-700/60 px-3 sm:px-6 pt-6 w-full overflow-hidden bg-gradient-to-r from-card/95 via-card to-card/95 backdrop-blur-md shadow-sm">
+              <div className="w-full overflow-x-auto">
+                <TabsList className="mb-6 flex-nowrap bg-slate-100/80 dark:bg-slate-800/80 border border-slate-200/50 dark:border-slate-700/50 shadow-sm p-1">
+                {pipelines.map((pipeline) => (
+                  <TabsTrigger key={pipeline.id} value={pipeline.id}>
+                    <div className="flex items-center">
+                      <div 
+                        className="w-2 h-2 rounded-full mr-2"
+                        style={{ backgroundColor: pipeline.color || '#6B7280' }}
+                      />
+                      {pipeline.name}
+                      <span className="ml-2 text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded">
+                        {getDealCountForPipeline(pipeline.id)}
+                      </span>
+                    </div>
+                  </TabsTrigger>
+                ))}
+                </TabsList>
+              </div>
+            </div>
 
             {pipelines.map((pipeline) => (
-              <TabsContent key={pipeline.id} value={pipeline.id} className="flex-1 min-h-0 mt-0">
+              <TabsContent key={pipeline.id} value={pipeline.id} className="data-[state=active]:flex data-[state=active]:flex-1 data-[state=active]:min-h-0 data-[state=active]:mt-0 data-[state=active]:min-w-0 data-[state=active]:max-w-full data-[state=active]:flex-col">
                 {activePipeline?.id === pipeline.id && (
-                  <div className="flex flex-col h-full">
-                    {/* Search and Filter Bar */}
-                    <div className="flex-shrink-0 mb-4 space-y-3">
-                      <div className="flex gap-3">
-                        {/* Search Input */}
-                        <div className="relative flex-1">
-                          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                          <Input
-                            placeholder="Search deals by title, amount, organisation, contact, or notes... (Ctrl+K)"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="pl-10 pr-4"
-                            onKeyDown={(e) => {
-                              if (e.key === 'Escape' && searchQuery) {
-                                setSearchQuery('');
-                                e.currentTarget.blur();
-                              }
-                            }}
-                          />
-                          {searchQuery && (
-                            <button
-                              onClick={() => setSearchQuery('')}
-                              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                            >
-                              <X className="h-4 w-4" />
-                            </button>
-                          )}
-                        </div>
-                        
-                        {/* Filter Toggle Button */}
-                        <Button
-                          variant={showFilters ? 'default' : 'outline'}
-                          size="sm"
-                          onClick={() => setShowFilters(!showFilters)}
-                          className="flex items-center gap-2"
-                          title="Toggle filters (Ctrl+F)"
-                        >
-                          <Filter className="h-4 w-4" />
-                          Filters
-                          {hasActiveFilters && (
-                            <span className="bg-blue-600 text-white text-xs px-1.5 py-0.5 rounded-full">
-                              {Object.values(filters).filter(v => v !== '').length + (searchQuery ? 1 : 0)}
-                            </span>
-                          )}
-                        </Button>
-                        
-                        {/* Save Filter */}
-                        {hasActiveFilters && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setShowSaveFilter(true)}
-                            className="text-blue-600 hover:text-blue-700"
-                          >
-                            Save Filter
-                          </Button>
-                        )}
-                        
-                        {/* Clear Filters */}
-                        {hasActiveFilters && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={clearFilters}
-                            className="text-gray-500 hover:text-gray-700"
-                          >
-                            Clear All
-                          </Button>
-                        )}
-                      </div>
-
-                      {/* Filter Panel */}
-                      {showFilters && (
-                        <div className="bg-gray-50 rounded-lg p-4 border">
-                          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                            {/* Amount Range */}
-                            <div>
-                              <Label className="text-xs text-gray-600">Min Amount</Label>
-                              <Input
-                                type="number"
-                                placeholder="0"
-                                value={filters.amountMin}
-                                onChange={(e) => setFilters({ ...filters, amountMin: e.target.value })}
-                                className="h-8 text-sm"
-                              />
-                            </div>
-                            <div>
-                              <Label className="text-xs text-gray-600">Max Amount</Label>
-                              <Input
-                                type="number"
-                                placeholder="∞"
-                                value={filters.amountMax}
-                                onChange={(e) => setFilters({ ...filters, amountMax: e.target.value })}
-                                className="h-8 text-sm"
-                              />
-                            </div>
-                            
-                            {/* Probability */}
-                            <div>
-                              <Label className="text-xs text-gray-600">Min Probability (%)</Label>
-                              <Input
-                                type="number"
-                                min="0"
-                                max="100"
-                                placeholder="0"
-                                value={filters.probability}
-                                onChange={(e) => setFilters({ ...filters, probability: e.target.value })}
-                                className="h-8 text-sm"
-                              />
-                            </div>
-                            
-                            {/* Organisation */}
-                            <div>
-                              <Label className="text-xs text-gray-600">Organisation</Label>
-                              <Select
-                                value={filters.organisation}
-                                onValueChange={(value) => setFilters({ ...filters, organisation: value })}
+                  <div className="flex-1 flex flex-col min-w-0 max-w-full min-h-0 overflow-hidden">
+                    {/* Simple Search and Filter Bar */}
+                    <div className="border-b border-slate-200/50 dark:border-slate-700/50 px-4 sm:px-6 py-6 w-full overflow-hidden bg-gradient-to-r from-card/98 via-card to-card/98 backdrop-blur-md shadow-sm">
+                      <div className="flex flex-col sm:flex-row gap-6 sm:items-center sm:justify-between">
+                        {/* Left Side: Search and Filter Controls */}
+                        <div className="flex flex-col sm:flex-row gap-4 flex-1 sm:items-center">
+                          {/* Search Input */}
+                          <div className="relative flex-1 max-w-md">
+                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                            <Input
+                              placeholder="Search deals, contacts, organizations, phones, emails..."
+                              value={searchQuery}
+                              onChange={(e) => setSearchQuery(e.target.value)}
+                              className="pl-10"
+                              onKeyDown={(e) => {
+                                if (e.key === 'Escape' && searchQuery) {
+                                  setSearchQuery('');
+                                  e.currentTarget.blur();
+                                }
+                              }}
+                            />
+                            {searchQuery && (
+                              <button
+                                onClick={() => setSearchQuery('')}
+                                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                                title="Clear search"
                               >
-                                <SelectTrigger className="h-8 text-sm">
-                                  <SelectValue placeholder="All" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="all">All Organisations</SelectItem>
-                                  {organisations.map(org => (
-                                    <SelectItem key={org.id} value={org.id}>
-                                      {org.name}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            
-                            {/* Contact */}
-                            <div>
-                              <Label className="text-xs text-gray-600">Contact</Label>
-                              <Select
-                                value={filters.contact}
-                                onValueChange={(value) => setFilters({ ...filters, contact: value })}
-                              >
-                                <SelectTrigger className="h-8 text-sm">
-                                  <SelectValue placeholder="All" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="all">All Contacts</SelectItem>
-                                  {contacts.map(contact => (
-                                    <SelectItem key={contact.id} value={contact.id}>
-                                      {contact.firstName} {contact.lastName}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            
-                            {/* Currency */}
-                            <div>
-                              <Label className="text-xs text-gray-600">Currency</Label>
-                              <Select
-                                value={filters.currency}
-                                onValueChange={(value) => setFilters({ ...filters, currency: value })}
-                              >
-                                <SelectTrigger className="h-8 text-sm">
-                                  <SelectValue placeholder="All" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="all">All Currencies</SelectItem>
-                                  <SelectItem value="USD">USD</SelectItem>
-                                  <SelectItem value="EUR">EUR</SelectItem>
-                                  <SelectItem value="GBP">GBP</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          </div>
-                          
-                          {/* Saved Filters */}
-                          {savedFilters.length > 0 && (
-                            <div className="mt-4 pt-3 border-t border-gray-200">
-                              <Label className="text-xs text-gray-600 mb-2 block">Saved Filters</Label>
-                              <div className="flex flex-wrap gap-2">
-                                {savedFilters.map((savedFilter) => (
-                                  <div key={savedFilter.name} className="flex items-center bg-blue-50 border border-blue-200 rounded-md">
-                                    <button
-                                      onClick={() => loadSavedFilter(savedFilter)}
-                                      className="px-2 py-1 text-xs text-blue-700 hover:text-blue-800 hover:bg-blue-100 rounded-l-md"
-                                      title={`Load filter: ${savedFilter.name}`}
-                                    >
-                                      {savedFilter.name}
-                                    </button>
-                                    <button
-                                      onClick={() => deleteSavedFilter(savedFilter.name)}
-                                      className="px-1.5 py-1 text-xs text-red-600 hover:text-red-700 hover:bg-red-50 border-l border-blue-200 rounded-r-md"
-                                      title="Delete saved filter"
-                                    >
-                                      <X className="h-3 w-3" />
-                                    </button>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Results summary */}
-                          <div className="mt-3 pt-3 border-t border-gray-200 text-sm text-gray-600">
-                            Showing <span className="font-medium text-gray-900">{filteredDeals.length}</span> of <span className="font-medium text-gray-900">{pipelineDeals.length}</span> deals
-                            {hasActiveFilters && (
-                              <span className="ml-2 text-blue-600">• Filtered</span>
+                                <X className="h-4 w-4" />
+                              </button>
                             )}
                           </div>
+
+                          {/* Status Filter */}
+                          <div className="flex gap-2">
+                            <Select
+                              value={statusFilter}
+                              onValueChange={(value) => {
+                                setStatusFilter(value as 'all' | 'open' | 'won' | 'lost');
+                              }}
+                            >
+                              <SelectTrigger className="w-32">
+                                <SelectValue placeholder="All Status" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="all">All Stages</SelectItem>
+                                <SelectItem value="open">Open Stages</SelectItem>
+                                <SelectItem value="won">Won Stages</SelectItem>
+                                <SelectItem value="lost">Lost Stages</SelectItem>
+                              </SelectContent>
+                            </Select>
+
+                            {hasActiveFilters && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={clearFilters}
+                                className="text-muted-foreground hover:text-foreground"
+                              >
+                                Clear
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Right Side: New Deal Button - Absolute Far Right */}
+                        <div className="flex-shrink-0">
+                          {newDealButton}
+                        </div>
+                      </div>
+
+                      {/* Results summary */}
+                      {hasActiveFilters && (
+                        <div className="mt-3 pt-3 border-t border-border text-sm text-muted-foreground">
+                          Showing <span className="font-medium text-foreground">{filteredDeals.length}</span> of <span className="font-medium text-foreground">{pipelineDeals.length}</span> deals
                         </div>
                       )}
                     </div>
                     
-                    {/* Kanban Board with filtered deals */}
-                    <div className="flex-1 min-h-0">
+                    {/* Scrollable Kanban Board Content - Full Height */}
+                    <div className="flex-1 min-w-0 w-full max-w-full min-h-0">
                       <KanbanBoard
-                        pipeline={pipeline}
+                        pipeline={{
+                          ...pipeline,
+                          stages: getFilteredStages(pipeline)
+                        }}
                         deals={filteredDeals}
                         organisations={organisations}
                         contacts={contacts}
+                        tasks={tasks}
                         onDealMoved={handleDealMoved}
                         onDealUpdated={handleDealUpdated}
+                        onTaskCreated={handleTaskCreated}
                         onOrganisationClick={handleOrganisationClick}
                         onContactClick={handleContactClick}
+                        onQuickAddDeal={handleQuickAddDeal}
                         isFiltered={hasActiveFilters}
                         totalDeals={pipelineDeals.length}
                         allDealsByStage={allDealsByStage}
@@ -1085,7 +1065,7 @@ export default function DealsPage() {
             
             {pipelines.length === 0 && !loading && (
               <div className="text-center py-12">
-                <div className="text-gray-500 mb-4">No pipelines found</div>
+                <div className="text-muted-foreground mb-4">No pipelines found</div>
                 <div className="space-x-2">
                   <Button variant="outline" onClick={() => setShowPipelineDialog(true)}>
                     Create Pipeline
@@ -1158,67 +1138,6 @@ export default function DealsPage() {
         </DialogContent>
       </Dialog>
       
-      {/* Save Filter Dialog */}
-      <Dialog open={showSaveFilter} onOpenChange={setShowSaveFilter}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Save Current Filter</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="filterName">Filter Name *</Label>
-              <Input
-                id="filterName"
-                value={saveFilterName}
-                onChange={(e) => setSaveFilterName(e.target.value)}
-                placeholder="e.g., High Value Deals"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && saveFilterName.trim()) {
-                    saveCurrentFilter();
-                  }
-                }}
-              />
-            </div>
-            
-            {/* Preview of what will be saved */}
-            <div className="bg-gray-50 rounded-lg p-3 text-sm">
-              <div className="font-medium text-gray-700 mb-2">Filter Preview:</div>
-              <div className="space-y-1 text-gray-600">
-                {searchQuery && (
-                  <div>Search: "{searchQuery}"</div>
-                )}
-                {filters.amountMin && (
-                  <div>Min Amount: ${filters.amountMin}</div>
-                )}
-                {filters.amountMax && (
-                  <div>Max Amount: ${filters.amountMax}</div>
-                )}
-                {filters.probability && (
-                  <div>Min Probability: {filters.probability}%</div>
-                )}
-                {filters.organisation && (
-                  <div>Organisation: {organisations.find(o => o.id === filters.organisation)?.name}</div>
-                )}
-                {filters.contact && (
-                  <div>Contact: {contacts.find(c => c.id === filters.contact)?.firstName} {contacts.find(c => c.id === filters.contact)?.lastName}</div>
-                )}
-                {filters.currency && (
-                  <div>Currency: {filters.currency}</div>
-                )}
-              </div>
-            </div>
-            
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setShowSaveFilter(false)}>
-                Cancel
-              </Button>
-              <Button onClick={saveCurrentFilter} disabled={!saveFilterName.trim()}>
-                Save Filter
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
     </AppLayout>
   );
 }

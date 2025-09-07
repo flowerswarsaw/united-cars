@@ -19,11 +19,14 @@ module.exports = {
     },
     extend: {
       colors: {
+        /* Base colors */
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
+        
+        /* Primary colors */
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
@@ -32,10 +35,26 @@ module.exports = {
           DEFAULT: "hsl(var(--secondary))",
           foreground: "hsl(var(--secondary-foreground))",
         },
+        
+        /* Status colors */
         destructive: {
           DEFAULT: "hsl(var(--destructive))",
           foreground: "hsl(var(--destructive-foreground))",
         },
+        success: {
+          DEFAULT: "hsl(var(--success))",
+          foreground: "hsl(var(--success-foreground))",
+        },
+        warning: {
+          DEFAULT: "hsl(var(--warning))",
+          foreground: "hsl(var(--warning-foreground))",
+        },
+        info: {
+          DEFAULT: "hsl(var(--info))",
+          foreground: "hsl(var(--info-foreground))",
+        },
+        
+        /* Utility colors */
         muted: {
           DEFAULT: "hsl(var(--muted))",
           foreground: "hsl(var(--muted-foreground))",
@@ -51,6 +70,51 @@ module.exports = {
         card: {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
+        },
+        
+        /* Surface variations */
+        surface: {
+          50: "hsl(var(--surface-50))",
+          100: "hsl(var(--surface-100))",
+          200: "hsl(var(--surface-200))",
+          300: "hsl(var(--surface-300))",
+          400: "hsl(var(--surface-400))",
+          500: "hsl(var(--surface-500))",
+        },
+        
+        /* Text hierarchy */
+        text: {
+          primary: "hsl(var(--text-primary))",
+          secondary: "hsl(var(--text-secondary))",
+          tertiary: "hsl(var(--text-tertiary))",
+          inverse: "hsl(var(--text-inverse))",
+          link: "hsl(var(--text-link))",
+          "link-hover": "hsl(var(--text-link-hover))",
+        },
+        
+        /* Interactive states */
+        hover: {
+          overlay: "hsl(var(--hover-overlay))",
+        },
+        active: {
+          overlay: "hsl(var(--active-overlay))",
+        },
+        focus: {
+          ring: "hsl(var(--focus-ring))",
+        },
+        
+        /* Border variations */
+        "border-subtle": "hsl(var(--border-subtle))",
+        "border-strong": "hsl(var(--border-strong))",
+        
+        /* Chart colors */
+        chart: {
+          1: "hsl(var(--chart-1))",
+          2: "hsl(var(--chart-2))",
+          3: "hsl(var(--chart-3))",
+          4: "hsl(var(--chart-4))",
+          5: "hsl(var(--chart-5))",
+          6: "hsl(var(--chart-6))",
         },
       },
       borderRadius: {

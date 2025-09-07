@@ -12,8 +12,67 @@ import {
 import { BaseRepository } from '../base-repository';
 import { activityRepository } from './activity-repository';
 import { pipelineRepository } from './pipeline-repository';
+// import { dealValidator } from '../validators';
 
-class DealRepositoryImpl extends BaseRepository<Deal> implements IDealRepository<Deal> {
+class DealRepositoryImpl extends BaseRepository<Deal> implements IDealRepository {
+  constructor() {
+    super();
+    // this.setValidator(dealValidator);
+    this.setEntityType(EntityType.DEAL);
+  }
+
+  async create(data: Omit<Deal, 'id' | 'tenantId' | 'createdAt' | 'updatedAt'>, createdBy?: string): Promise<Deal> {
+    const deal = await super.create(data, createdBy);
+    
+    // Track deal creation - use a default user ID if none provided for testing
+    const userId = createdBy || 'system';
+    
+    try {
+      const { ChangeTracker } = await import('../change-tracker');
+      await ChangeTracker.trackEntityChange(
+        EntityType.DEAL,
+        deal.id,
+        null,
+        deal,
+        userId,
+        ActivityType.CREATED,
+        undefined,
+        { userName: userId }
+      );
+    } catch (error) {
+      console.warn('Failed to track deal creation:', error);
+    }
+
+    return deal;
+  }
+
+  async update(id: string, data: Partial<Omit<Deal, 'id' | 'tenantId' | 'createdAt' | 'updatedAt'>>, updatedBy?: string): Promise<Deal | undefined> {
+    const existing = await this.get(id);
+    if (!existing) return undefined;
+
+    const updated = await super.update(id, data, updatedBy);
+    
+    // Track deal update
+    if (updated && updatedBy) {
+      try {
+        const { ChangeTracker } = await import('../change-tracker');
+        await ChangeTracker.trackEntityChange(
+          EntityType.DEAL,
+          id,
+          existing,
+          updated,
+          updatedBy,
+          ActivityType.UPDATED,
+          undefined,
+          { userName: updatedBy }
+        );
+      } catch (error) {
+        console.warn('Failed to track deal update:', error);
+      }
+    }
+
+    return updated;
+  }
   async moveStage(
     dealId: string, 
     input: { 
@@ -43,7 +102,8 @@ class DealRepositoryImpl extends BaseRepository<Deal> implements IDealRepository
       input.toStageId,
       {
         fromStageId,
-        note: input.note
+        note: input.note,
+        movedBy: input.movedBy
       }
     );
 
@@ -116,7 +176,7 @@ class DealRepositoryImpl extends BaseRepository<Deal> implements IDealRepository
       currentStages: updatedCurrentStages,
       stageHistory: [...(deal.stageHistory || []), historyEntry],
       lossReason: input.lossReason || deal.lossReason
-    });
+    }, input.movedBy);
 
     // Log activity
     await activityRepository.log(

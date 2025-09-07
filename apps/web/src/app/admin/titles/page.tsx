@@ -26,26 +26,40 @@ import {
 import toast from 'react-hot-toast'
 import { 
   mockTitleData, 
+  mockTitleDatabase,
   getTitleTypeLabel, 
   getPriorityLabel,
   getPriorityColor,
-  isOverdue, 
   formatDate 
 } from '@/lib/title-mock-data'
 import { 
   mockPackageData,
+  mockPackageDatabase,
   getOrganizationTypeLabel,
   getProviderLabel,
   formatTrackingNumber,
   packageStatusConfig,
   packagePriorityConfig
 } from '@/lib/package-mock-data'
-import type { EnhancedTitle, EnhancedPackage, TitleStatus } from '@/types/title-enhanced'
+import type { 
+  EnhancedTitle, 
+  EnhancedPackage, 
+  TitleStatus,
+  DynamicTitleStatus
+} from '@/types/title-enhanced'
+import { DYNAMIC_STATUS_CONFIG } from '@/types/title-enhanced'
 
 type ViewMode = 'titles' | 'packages'
 
 // Available organizations for title assignment
 const availableOrganizations = [
+  // Internal United Cars Organizations
+  { id: 'org-united-cars-main', name: 'United Cars - Main Office', type: 'processor' },
+  { id: 'org-united-cars-processing', name: 'United Cars - Processing Center', type: 'processor' },
+  { id: 'org-united-cars-warehouse', name: 'United Cars - Warehouse Houston', type: 'processor' },
+  { id: 'org-united-cars-shipping', name: 'United Cars - Shipping Dept', type: 'processor' },
+  
+  // External Dealers
   { id: 'org-dealer-1', name: 'Premium Auto Dealers', type: 'dealer' },
   { id: 'org-dealer-2', name: 'Gulf Coast Motors', type: 'dealer' },
   { id: 'org-dealer-3', name: 'Mountain View Auto', type: 'dealer' },
@@ -53,6 +67,8 @@ const availableOrganizations = [
   { id: 'org-dealer-5', name: 'Texas Auto Group', type: 'dealer' },
   { id: 'org-dealer-6', name: 'Florida Motor Exchange', type: 'dealer' },
   { id: 'org-dealer-7', name: 'California Auto Sales', type: 'dealer' },
+  
+  // External Auction Houses
   { id: 'org-auction-1', name: 'Copart Dallas', type: 'auction' },
   { id: 'org-auction-2', name: 'IAA Seattle', type: 'auction' },
   { id: 'org-auction-3', name: 'Manheim Auto Auction', type: 'auction' }
@@ -61,10 +77,10 @@ const availableOrganizations = [
 export default function AdminTitlePackagesPage() {
   const router = useRouter()
   const [viewMode, setViewMode] = useState<ViewMode>('titles')
-  const [titles] = useState<EnhancedTitle[]>(mockTitleData)
+  const [titles] = useState<(EnhancedTitle & { dynamicStatus: DynamicTitleStatus })[]>(mockTitleDatabase.getAllWithDynamicStatus())
   const [packages] = useState<EnhancedPackage[]>(mockPackageData)
   
-  const [filteredTitles, setFilteredTitles] = useState<EnhancedTitle[]>([])
+  const [filteredTitles, setFilteredTitles] = useState<(EnhancedTitle & { dynamicStatus: DynamicTitleStatus })[]>([])
   const [filteredPackages, setFilteredPackages] = useState<EnhancedPackage[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -75,32 +91,44 @@ export default function AdminTitlePackagesPage() {
   const [sortField, setSortField] = useState<string>('createdAt')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [showCreatePackageModal, setShowCreatePackageModal] = useState(false)
   const [createForm, setCreateForm] = useState({
     vin: '',
     orgId: 'org-dealer-1',
     orgName: 'Premium Auto Dealers',
     notes: ''
   })
+  const [createPackageForm, setCreatePackageForm] = useState({
+    senderOrgId: availableOrganizations[11].id,    // Copart Dallas (auction)
+    senderOrgName: availableOrganizations[11].name,
+    recipientOrgId: availableOrganizations[0].id,   // United Cars - Main Office
+    recipientOrgName: availableOrganizations[0].name,
+    trackingNumber: '',
+    carrier: '',
+    notes: ''
+  })
+  const [packageTitleSelection, setPackageTitleSelection] = useState({
+    selectedTitleIds: new Set<string>(),
+    titleFilter: {
+      orgFilter: availableOrganizations[11].id, // Default to sender org (Copart Dallas)
+      statusFilter: 'all',
+      search: ''
+    }
+  })
   
   const [titleStatusCounts, setTitleStatusCounts] = useState({
     all: 0,
     pending: 0,
-    received: 0,
-    processing: 0,
-    completed: 0,
-    cancelled: 0,
-    on_hold: 0,
-    pending_docs: 0
+    packed: 0,
+    sent_to: 0,
+    received_by: 0
   })
   
   const [packageStatusCounts, setPackageStatusCounts] = useState({
     all: 0,
-    pending: 0,
-    prepared: 0,
-    shipped: 0,
-    in_transit: 0,
-    delivered: 0,
-    exception: 0
+    packed: 0,
+    sent: 0,
+    delivered: 0
   })
   
   const { user, loading: sessionLoading } = useSession()
@@ -128,24 +156,18 @@ export default function AdminTitlePackagesPage() {
       // Calculate title status counts
       setTitleStatusCounts({
         all: titles.length,
-        pending: titles.filter(t => t.status === 'pending').length,
-        received: titles.filter(t => t.status === 'received').length,
-        processing: titles.filter(t => t.status === 'processing').length,
-        completed: titles.filter(t => t.status === 'completed').length,
-        cancelled: titles.filter(t => t.status === 'cancelled').length,
-        on_hold: titles.filter(t => t.status === 'on_hold').length,
-        pending_docs: titles.filter(t => t.status === 'pending_docs').length,
+        pending: titles.filter(t => t.dynamicStatus.status === 'pending').length,
+        packed: titles.filter(t => t.dynamicStatus.status === 'packed').length,
+        sent_to: titles.filter(t => t.dynamicStatus.status === 'sent_to').length,
+        received_by: titles.filter(t => t.dynamicStatus.status === 'received_by').length,
       })
       
       // Calculate package status counts
       setPackageStatusCounts({
         all: packages.length,
-        pending: packages.filter(p => p.status === 'pending').length,
-        prepared: packages.filter(p => p.status === 'prepared').length,
-        shipped: packages.filter(p => p.status === 'shipped').length,
-        in_transit: packages.filter(p => p.status === 'in_transit').length,
-        delivered: packages.filter(p => p.status === 'delivered').length,
-        exception: packages.filter(p => p.status === 'exception').length,
+        packed: packages.filter(p => p.status === 'packed').length,
+        sent: packages.filter(p => p.status === 'sent').length,
+        delivered: packages.filter(p => p.status === 'delivered').length
       })
     } catch (error) {
       toast.error('Error fetching data')
@@ -175,7 +197,7 @@ export default function AdminTitlePackagesPage() {
 
     // Status filter
     if (statusFilter !== 'all') {
-      filtered = filtered.filter(title => title.status === statusFilter)
+      filtered = filtered.filter(title => title.dynamicStatus.status === statusFilter)
     }
 
     // Type filter
@@ -241,10 +263,6 @@ export default function AdminTitlePackagesPage() {
           aValue = a.issuingState
           bValue = b.issuingState
           break
-        case 'expectedCompletionDate':
-          aValue = a.expectedCompletionDate ? new Date(a.expectedCompletionDate).getTime() : 0
-          bValue = b.expectedCompletionDate ? new Date(b.expectedCompletionDate).getTime() : 0
-          break
         case 'createdAt':
           aValue = new Date(a.createdAt).getTime()
           bValue = new Date(b.createdAt).getTime()
@@ -253,7 +271,7 @@ export default function AdminTitlePackagesPage() {
           return 0
       }
 
-      if (sortField === 'createdAt' || sortField === 'expectedCompletionDate') {
+      if (sortField === 'createdAt') {
         return sortDirection === 'asc' ? aValue - bValue : bValue - aValue
       } else {
         const comparison = String(aValue).localeCompare(String(bValue))
@@ -284,10 +302,7 @@ export default function AdminTitlePackagesPage() {
       filtered = filtered.filter(pkg => pkg.status === statusFilter)
     }
 
-    // Type filter (using type filter for package type)
-    if (typeFilter !== 'all') {
-      filtered = filtered.filter(pkg => pkg.type.toLowerCase() === typeFilter.toLowerCase())
-    }
+    // Note: No type filter for packages since they don't have types anymore
 
     // Date filter
     if (dateFilter !== 'all') {
@@ -365,10 +380,9 @@ export default function AdminTitlePackagesPage() {
   const handleCreateNew = () => {
     if (viewMode === 'titles') {
       setShowCreateModal(true)
-      toast.success('Opening new title form!')
       console.log('Creating new title...')
     } else {
-      toast.success('Package creation - Coming soon!')
+      setShowCreatePackageModal(true)
       console.log('Creating new package...')
     }
   }
@@ -405,13 +419,10 @@ export default function AdminTitlePackagesPage() {
       },
       status: 'received' as any,
       priority: 'normal' as any, // Default priority
-      receivedDate: new Date().toISOString(),
-      processedDate: null,
-      expectedCompletionDate: null,
-      actualCompletionDate: null,
       assignedTo: null,
       location: 'Receiving Dock',
-      package: null,
+      packageIds: [],
+      packages: [],
       processingFee: 15.00,
       rushFee: null,
       notes: createForm.notes,
@@ -433,6 +444,196 @@ export default function AdminTitlePackagesPage() {
       orgId: 'org-dealer-1',
       orgName: 'Premium Auto Dealers',
       notes: ''
+    })
+  }
+
+  // Helper functions for package title selection
+  const getAvailableTitlesForPackage = () => {
+    const filters = packageTitleSelection.titleFilter
+    console.log('🔍 Filter Debug:', {
+      orgFilter: filters.orgFilter,
+      statusFilter: filters.statusFilter,
+      search: filters.search,
+      totalTitles: titles.length
+    })
+
+    const filtered = titles.filter(title => {
+      // Only show titles that aren't already in a package
+      const isUnassigned = !title.packageIds || title.packageIds.length === 0
+
+      // Filter by organization
+      const orgMatch = filters.orgFilter === 'all' || 
+                      (title.vehicle?.org?.id === filters.orgFilter)
+
+      // Filter by status using dynamic status
+      const statusMatch = filters.statusFilter === 'all' || 
+                         (title.dynamicStatus.status === filters.statusFilter)
+
+      // Filter by search (VIN or vehicle info) - with safe string handling
+      let searchMatch = true
+      if (filters.search !== '') {
+        const searchTerm = filters.search.toLowerCase()
+        const vin = (title.vehicle?.vin || '').toLowerCase()
+        const vehicleInfo = `${title.vehicle?.year || ''} ${title.vehicle?.make || ''} ${title.vehicle?.model || ''}`.toLowerCase()
+        const titleType = (title.titleType || '').toLowerCase()
+        
+        searchMatch = vin.includes(searchTerm) || 
+                     vehicleInfo.includes(searchTerm) || 
+                     titleType.includes(searchTerm)
+      }
+
+      const matches = isUnassigned && orgMatch && statusMatch && searchMatch
+      
+      // Debug individual title matching
+      if (filters.orgFilter !== 'all' || filters.statusFilter !== 'all' || filters.search !== '') {
+        console.log(`📋 Title ${title.id}:`, {
+          org: title.vehicle?.org?.id,
+          orgName: title.vehicle?.org?.name,
+          status: title.dynamicStatus.status,
+          statusDisplay: title.dynamicStatus.displayText,
+          vin: title.vehicle?.vin,
+          isUnassigned,
+          orgMatch,
+          statusMatch,
+          searchMatch,
+          finalMatch: matches
+        })
+      }
+
+      return matches
+    })
+
+    console.log(`✅ Filtered Results: ${filtered.length} titles match filters`)
+    return filtered
+  }
+
+  const handleTitleSelect = (titleId: string, selected: boolean) => {
+    const newSelectedIds = new Set(packageTitleSelection.selectedTitleIds)
+    if (selected) {
+      newSelectedIds.add(titleId)
+    } else {
+      newSelectedIds.delete(titleId)
+    }
+    setPackageTitleSelection(prev => ({
+      ...prev,
+      selectedTitleIds: newSelectedIds
+    }))
+  }
+
+  const handleSelectAllTitles = () => {
+    const availableTitles = getAvailableTitlesForPackage()
+    const filteredIds = new Set(availableTitles.map(title => title.id))
+    console.log(`🎯 Select All: Selecting ${filteredIds.size} titles that match current filters:`, 
+      Array.from(filteredIds))
+    setPackageTitleSelection(prev => ({
+      ...prev,
+      selectedTitleIds: filteredIds
+    }))
+  }
+
+  const handleClearAllTitles = () => {
+    console.log('Clearing all title selections')
+    setPackageTitleSelection(prev => ({
+      ...prev,
+      selectedTitleIds: new Set()
+    }))
+  }
+
+  const handleCreatePackageSubmit = () => {
+    // Validate required fields
+    if (!createPackageForm.trackingNumber || createPackageForm.trackingNumber.trim() === '') {
+      toast.error('Tracking number is required')
+      return
+    }
+
+    if (!createPackageForm.carrier || createPackageForm.carrier.trim() === '') {
+      toast.error('Carrier is required')
+      return
+    }
+
+    if (packageTitleSelection.selectedTitleIds.size === 0) {
+      toast.error('Please select at least one title for the package')
+      return
+    }
+
+    // Create the package in mock database
+    const newPackageId = `package-enhanced-${String(Date.now()).slice(-6)}`
+    const selectedTitleIds = Array.from(packageTitleSelection.selectedTitleIds)
+    
+    // Find sender and recipient organizations
+    const senderOrg = availableOrganizations.find(org => org.id === createPackageForm.senderOrgId)
+    const recipientOrg = availableOrganizations.find(org => org.id === createPackageForm.recipientOrgId)
+    
+    if (!senderOrg || !recipientOrg) {
+      toast.error('Invalid organization selection')
+      return
+    }
+    
+    // Create package object
+    const newPackage = {
+      id: newPackageId,
+      trackingNumber: createPackageForm.trackingNumber,
+      provider: createPackageForm.carrier,
+      estimatedDelivery: null,
+      actualDelivery: null,
+      status: 'packed' as const,
+      priority: 'standard' as const,
+      senderOrg: {
+        id: senderOrg.id,
+        name: senderOrg.name,
+        type: senderOrg.type as any,
+        email: `contact@${senderOrg.name.toLowerCase().replace(/\s+/g, '')}.com`,
+        phone: null
+      },
+      recipientOrg: {
+        id: recipientOrg.id,
+        name: recipientOrg.name,
+        type: recipientOrg.type as any,
+        email: `contact@${recipientOrg.name.toLowerCase().replace(/\s+/g, '')}.com`,
+        phone: null
+      },
+      weight: null,
+      dimensions: null,
+      insuranceValue: null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      titles: [], // Will be populated by title database
+      documents: []
+    }
+    
+    // Add package to package database
+    mockPackageDatabase.addPackage(newPackage)
+    
+    // Connect selected titles to the package
+    selectedTitleIds.forEach(titleId => {
+      mockTitleDatabase.addTitleToPackage(titleId, newPackageId)
+    })
+
+    toast.success(`Package ${newPackageId} created successfully with ${selectedTitleIds.length} titles!`)
+    setShowCreatePackageModal(false)
+    
+    // Refresh data to show new package and updated title statuses
+    setTimeout(() => {
+      window.location.reload()
+    }, 500)
+    
+    // Reset form
+    setCreatePackageForm({
+      senderOrgId: availableOrganizations[11].id,    // Copart Dallas (auction)
+      senderOrgName: availableOrganizations[11].name,
+      recipientOrgId: availableOrganizations[0].id,   // United Cars - Main Office
+      recipientOrgName: availableOrganizations[0].name,
+      trackingNumber: '',
+      carrier: '',
+      notes: ''
+    })
+    setPackageTitleSelection({
+      selectedTitleIds: new Set(),
+      titleFilter: {
+        orgFilter: availableOrganizations[7].id,
+        statusFilter: 'all',
+        search: ''
+      }
     })
   }
 
@@ -472,12 +673,9 @@ export default function AdminTitlePackagesPage() {
     
     // Package statuses
     const packageColors: Record<string, string> = {
-      pending: 'warning',
-      prepared: 'info',
-      shipped: 'info',
-      in_transit: 'info', 
-      delivered: 'success',
-      exception: 'error'
+      packed: 'warning',
+      sent: 'primary',
+      delivered: 'success'
     }
     
     return viewMode === 'titles' 
@@ -501,7 +699,7 @@ export default function AdminTitlePackagesPage() {
         <div className="px-4 sm:px-6 lg:px-8 py-6">
           <div className="text-center">
             <h2 className="text-2xl font-semibold text-gray-900">Access Denied</h2>
-            <p className="mt-2 text-gray-600">You need admin privileges to view this page.</p>
+            <p className="mt-2 text-text-secondary">You need admin privileges to view this page.</p>
           </div>
         </div>
       </AppLayout>
@@ -521,15 +719,15 @@ export default function AdminTitlePackagesPage() {
       
       <div className="px-4 sm:px-6 lg:px-8 py-6">
         {/* View Mode Toggle */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6 p-4">
+        <div className="bg-card rounded-lg shadow-sm border border-border mb-6 p-4">
           <div className="flex items-center justify-between">
-            <div className="flex bg-gray-100 rounded-lg p-1">
+            <div className="flex bg-surface-100 rounded-lg p-1">
               <button
                 onClick={() => setViewMode('titles')}
                 className={`flex items-center px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                   viewMode === 'titles'
-                    ? 'bg-white text-blue-700 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
+                    ? 'bg-white text-primary shadow-sm'
+                    : 'text-text-secondary hover:text-foreground'
                 }`}
               >
                 <FileText className="h-4 w-4 mr-2" />
@@ -539,8 +737,8 @@ export default function AdminTitlePackagesPage() {
                 onClick={() => setViewMode('packages')}
                 className={`flex items-center px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                   viewMode === 'packages'
-                    ? 'bg-white text-blue-700 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
+                    ? 'bg-white text-primary shadow-sm'
+                    : 'text-text-secondary hover:text-foreground'
                 }`}
               >
                 <Package className="h-4 w-4 mr-2" />
@@ -550,7 +748,7 @@ export default function AdminTitlePackagesPage() {
             
             <button
               onClick={handleCreateNew}
-              className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+              className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary hover:bg-primary/90"
             >
               <Plus className="h-4 w-4 mr-2" />
               {viewMode === 'titles' ? 'New Title' : 'New Package'}
@@ -559,21 +757,21 @@ export default function AdminTitlePackagesPage() {
         </div>
 
         {/* Filters Section */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6 p-4">
+        <div className="bg-card rounded-lg shadow-sm border border-border mb-6 p-4">
           <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
             {/* Search */}
             <div className="md:col-span-2">
               <label htmlFor="search" className="sr-only">Search</label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Search className="h-4 w-4 text-gray-400" />
+                  <Search className="h-4 w-4 text-text-tertiary" />
                 </div>
                 <input
                   type="text"
                   id="search"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                  className="block w-full pl-10 pr-3 py-2 border border-border rounded-md leading-5 bg-white placeholder-text-tertiary focus:outline-none focus:placeholder-text-secondary focus:ring-1 focus:ring-primary focus:border-primary text-sm"
                   placeholder={viewMode === 'titles' 
                     ? "Search by VIN, title #, vehicle, organization..." 
                     : "Search by tracking #, provider, contact..."}
@@ -588,61 +786,47 @@ export default function AdminTitlePackagesPage() {
                 id="status"
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="block w-full pl-3 pr-10 py-2 text-sm border border-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 rounded-md"
+                className="block w-full pl-3 pr-10 py-2 text-sm border border-border focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary rounded-md"
               >
                 {viewMode === 'titles' ? (
                   <>
                     <option value="all">All Status ({currentCounts.all})</option>
                     <option value="pending">Pending ({currentCounts.pending})</option>
-                    <option value="received">Received ({currentCounts.received})</option>
-                    <option value="processing">Processing ({currentCounts.processing})</option>
-                    <option value="pending_docs">Pending Docs ({currentCounts.pending_docs})</option>
-                    <option value="on_hold">On Hold ({currentCounts.on_hold})</option>
-                    <option value="completed">Completed ({currentCounts.completed})</option>
-                    <option value="cancelled">Cancelled ({currentCounts.cancelled})</option>
+                    <option value="packed">Packed ({currentCounts.packed})</option>
+                    <option value="sent_to">Sent To Org ({currentCounts.sent_to})</option>
+                    <option value="received_by">Received By Org ({currentCounts.received_by})</option>
                   </>
                 ) : (
                   <>
                     <option value="all">All Status ({currentCounts.all})</option>
-                    <option value="pending">Pending ({currentCounts.pending})</option>
-                    <option value="prepared">Prepared ({currentCounts.prepared})</option>
-                    <option value="shipped">Shipped ({currentCounts.shipped})</option>
-                    <option value="in_transit">In Transit ({currentCounts.in_transit})</option>
+                    <option value="packed">Packed ({currentCounts.packed})</option>
+                    <option value="sent">Sent ({currentCounts.sent})</option>
                     <option value="delivered">Delivered ({currentCounts.delivered})</option>
-                    <option value="exception">Exception ({currentCounts.exception})</option>
                   </>
                 )}
               </select>
             </div>
 
-            {/* Type/Priority Filter */}
-            <div>
-              <label htmlFor="type" className="sr-only">{viewMode === 'titles' ? 'Title Type' : 'Package Type'}</label>
-              <select
-                id="type"
-                value={typeFilter}
-                onChange={(e) => setTypeFilter(e.target.value)}
-                className="block w-full pl-3 pr-10 py-2 text-sm border border-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 rounded-md"
-              >
-                {viewMode === 'titles' ? (
-                  <>
-                    <option value="all">All Types</option>
-                    <option value="clean">Clean</option>
-                    <option value="salvage">Salvage</option>
-                    <option value="flood">Flood</option>
-                    <option value="lemon">Lemon</option>
-                    <option value="rebuilt">Rebuilt</option>
-                    <option value="junk">Junk</option>
-                  </>
-                ) : (
-                  <>
-                    <option value="all">All Types</option>
-                    <option value="receiving">Receiving</option>
-                    <option value="sending">Sending</option>
-                  </>
-                )}
-              </select>
-            </div>
+            {/* Type Filter (only for titles) */}
+            {viewMode === 'titles' && (
+              <div>
+                <label htmlFor="type" className="sr-only">Title Type</label>
+                <select
+                  id="type"
+                  value={typeFilter}
+                  onChange={(e) => setTypeFilter(e.target.value)}
+                  className="block w-full pl-3 pr-10 py-2 text-sm border border-border focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary rounded-md"
+                >
+                  <option value="all">All Types</option>
+                  <option value="clean">Clean</option>
+                  <option value="salvage">Salvage</option>
+                  <option value="flood">Flood</option>
+                  <option value="lemon">Lemon</option>
+                  <option value="rebuilt">Rebuilt</option>
+                  <option value="junk">Junk</option>
+                </select>
+              </div>
+            )}
 
             {/* State/Provider Filter */}
             <div>
@@ -651,7 +835,7 @@ export default function AdminTitlePackagesPage() {
                 id="state"
                 value={stateFilter}
                 onChange={(e) => setStateFilter(e.target.value)}
-                className="block w-full pl-3 pr-10 py-2 text-sm border border-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 rounded-md"
+                className="block w-full pl-3 pr-10 py-2 text-sm border border-border focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary rounded-md"
               >
                 {viewMode === 'titles' ? (
                   <>
@@ -682,7 +866,7 @@ export default function AdminTitlePackagesPage() {
                 id="date"
                 value={dateFilter}
                 onChange={(e) => setDateFilter(e.target.value)}
-                className="block w-full pl-3 pr-10 py-2 text-sm border border-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 rounded-md"
+                className="block w-full pl-3 pr-10 py-2 text-sm border border-border focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary rounded-md"
               >
                 <option value="all">All Time</option>
                 <option value="today">Today</option>
@@ -737,7 +921,7 @@ export default function AdminTitlePackagesPage() {
                   <thead className="bg-gray-50">
                     <tr>
                       <th 
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-surface-100 transition-colors"
                         onClick={() => handleSort('id')}
                       >
                         <div className="flex items-center space-x-1">
@@ -746,7 +930,7 @@ export default function AdminTitlePackagesPage() {
                         </div>
                       </th>
                       <th 
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-surface-100 transition-colors"
                         onClick={() => handleSort('vehicle')}
                       >
                         <div className="flex items-center space-x-1">
@@ -755,7 +939,7 @@ export default function AdminTitlePackagesPage() {
                         </div>
                       </th>
                       <th 
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-surface-100 transition-colors"
                         onClick={() => handleSort('titleType')}
                       >
                         <div className="flex items-center space-x-1">
@@ -764,7 +948,7 @@ export default function AdminTitlePackagesPage() {
                         </div>
                       </th>
                       <th 
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-surface-100 transition-colors"
                         onClick={() => handleSort('issuingState')}
                       >
                         <div className="flex items-center space-x-1">
@@ -773,7 +957,7 @@ export default function AdminTitlePackagesPage() {
                         </div>
                       </th>
                       <th 
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-surface-100 transition-colors"
                         onClick={() => handleSort('org')}
                       >
                         <div className="flex items-center space-x-1">
@@ -782,21 +966,12 @@ export default function AdminTitlePackagesPage() {
                         </div>
                       </th>
                       <th 
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-surface-100 transition-colors"
                         onClick={() => handleSort('status')}
                       >
                         <div className="flex items-center space-x-1">
                           <span>Status</span>
                           {getSortIcon('status')}
-                        </div>
-                      </th>
-                      <th 
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
-                        onClick={() => handleSort('expectedCompletionDate')}
-                      >
-                        <div className="flex items-center space-x-1">
-                          <span>Expected Completion</span>
-                          {getSortIcon('expectedCompletionDate')}
                         </div>
                       </th>
                       <th className="relative px-6 py-3">
@@ -835,21 +1010,10 @@ export default function AdminTitlePackagesPage() {
                           <div className="text-sm text-gray-900">{title.vehicle?.org?.name || 'N/A'}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <StatusBadge status={getStatusColor(title.status)} />
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            {isOverdue(title.expectedCompletionDate) ? (
-                              <AlertTriangle className="h-3 w-3 mr-1 text-red-500" />
-                            ) : title.status === 'completed' ? (
-                              <CheckCircle className="h-3 w-3 mr-1 text-green-500" />
-                            ) : (
-                              <Calendar className="h-3 w-3 mr-1 text-gray-400" />
-                            )}
-                            <span className={`text-sm ${isOverdue(title.expectedCompletionDate) ? 'text-red-600 font-medium' : 'text-gray-500'}`}>
-                              {formatDate(title.expectedCompletionDate)}
-                            </span>
-                          </div>
+                          <StatusBadge 
+                            status={title.dynamicStatus.status} 
+                            label={title.dynamicStatus.displayText}
+                          />
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                           <button
@@ -873,7 +1037,7 @@ export default function AdminTitlePackagesPage() {
                   <thead className="bg-gray-50">
                     <tr>
                       <th 
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-surface-100 transition-colors"
                         onClick={() => handleSort('id')}
                       >
                         <div className="flex items-center space-x-1">
@@ -885,7 +1049,7 @@ export default function AdminTitlePackagesPage() {
                         Route
                       </th>
                       <th 
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-surface-100 transition-colors"
                         onClick={() => handleSort('trackingNumber')}
                       >
                         <div className="flex items-center space-x-1">
@@ -894,7 +1058,7 @@ export default function AdminTitlePackagesPage() {
                         </div>
                       </th>
                       <th 
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-surface-100 transition-colors"
                         onClick={() => handleSort('provider')}
                       >
                         <div className="flex items-center space-x-1">
@@ -906,16 +1070,13 @@ export default function AdminTitlePackagesPage() {
                         Titles
                       </th>
                       <th 
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-surface-100 transition-colors"
                         onClick={() => handleSort('status')}
                       >
                         <div className="flex items-center space-x-1">
                           <span>Status</span>
                           {getSortIcon('status')}
                         </div>
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Titles
                       </th>
                       <th className="relative px-6 py-3">
                         <span className="sr-only">Actions</span>
@@ -959,12 +1120,7 @@ export default function AdminTitlePackagesPage() {
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <StatusBadge status={getStatusColor(pkg.status)} />
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">
-                            {pkg.titles.length} title{pkg.titles.length !== 1 ? 's' : ''}
-                          </div>
+                          <StatusBadge status={pkg.status} />
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                           <button
@@ -1006,7 +1162,7 @@ export default function AdminTitlePackagesPage() {
               <h3 className="text-lg font-medium text-gray-900 text-center mb-2">
                 Create New Title
               </h3>
-              <p className="text-sm text-gray-600 text-center mb-4">
+              <p className="text-sm text-text-secondary text-center mb-4">
                 Enter VIN and assign to organization. Vehicle details will be fetched automatically.
               </p>
               
@@ -1019,7 +1175,7 @@ export default function AdminTitlePackagesPage() {
                     onChange={(e) => setCreateForm({...createForm, vin: e.target.value.toUpperCase()})}
                     placeholder="Enter 17-character VIN"
                     maxLength={17}
-                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 font-mono"
+                    className="mt-1 block w-full border border-border rounded-md px-3 py-2 font-mono"
                   />
                   <p className="mt-1 text-xs text-gray-500">
                     Vehicle details will be automatically retrieved from auction API
@@ -1038,7 +1194,7 @@ export default function AdminTitlePackagesPage() {
                         orgName: selectedOrg?.name || ''
                       })
                     }}
-                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                    className="mt-1 block w-full border border-border rounded-md px-3 py-2"
                   >
                     <optgroup label="Dealers">
                       {availableOrganizations.filter(org => org.type === 'dealer').map(org => (
@@ -1062,7 +1218,7 @@ export default function AdminTitlePackagesPage() {
                     value={createForm.notes}
                     onChange={(e) => setCreateForm({...createForm, notes: e.target.value})}
                     rows={3}
-                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                    className="mt-1 block w-full border border-border rounded-md px-3 py-2"
                     placeholder="Any additional information..."
                   />
                 </div>
@@ -1077,9 +1233,272 @@ export default function AdminTitlePackagesPage() {
                 </button>
                 <button
                   onClick={handleCreateSubmit}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                  className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90"
                 >
                   Create Title
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create Package Modal */}
+      {showCreatePackageModal && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div className="mt-3">
+              <h3 className="text-lg font-medium text-gray-900 text-center mb-2">
+                Create New Package
+              </h3>
+              <p className="text-sm text-gray-500 text-center mb-4">
+                Create a new package for title shipping
+              </p>
+              
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">From Organization</label>
+                    <select
+                      value={createPackageForm.senderOrgId}
+                      onChange={(e) => {
+                        const selectedOrg = e.target.value
+                        const orgName = e.target.options[e.target.selectedIndex].text
+                        setCreatePackageForm({...createPackageForm, senderOrgId: selectedOrg, senderOrgName: orgName})
+                        // Auto-update title filter to show titles from sender org
+                        setPackageTitleSelection(prev => ({
+                          ...prev,
+                          titleFilter: { ...prev.titleFilter, orgFilter: selectedOrg },
+                          selectedTitleIds: new Set() // Clear selections when org changes
+                        }))
+                      }}
+                      className="mt-1 block w-full border border-border rounded-md px-3 py-2"
+                    >
+                      {availableOrganizations.map(org => (
+                        <option key={org.id} value={org.id}>
+                          {org.name} ({org.type.charAt(0).toUpperCase() + org.type.slice(1)})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">To Organization</label>
+                    <select
+                      value={createPackageForm.recipientOrgId}
+                      onChange={(e) => {
+                        const selectedOrg = e.target.value
+                        const orgName = e.target.options[e.target.selectedIndex].text
+                        setCreatePackageForm({...createPackageForm, recipientOrgId: selectedOrg, recipientOrgName: orgName})
+                      }}
+                      className="mt-1 block w-full border border-border rounded-md px-3 py-2"
+                    >
+                      {availableOrganizations.map(org => (
+                        <option key={org.id} value={org.id}>
+                          {org.name} ({org.type.charAt(0).toUpperCase() + org.type.slice(1)})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Tracking Number <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={createPackageForm.trackingNumber}
+                      onChange={(e) => setCreatePackageForm({...createPackageForm, trackingNumber: e.target.value})}
+                      className="mt-1 block w-full border border-border rounded-md px-3 py-2 font-mono"
+                      placeholder="Enter tracking number"
+                      required
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Carrier <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      value={createPackageForm.carrier}
+                      onChange={(e) => setCreatePackageForm({...createPackageForm, carrier: e.target.value})}
+                      className="mt-1 block w-full border border-border rounded-md px-3 py-2"
+                      required
+                    >
+                      <option value="">Select carrier...</option>
+                      <option value="FedEx">FedEx</option>
+                      <option value="UPS">UPS</option>
+                      <option value="DHL">DHL</option>
+                      <option value="USPS">USPS</option>
+                      <option value="OnTrac">OnTrac</option>
+                      <option value="Lasership">Lasership</option>
+                      <option value="Amazon Logistics">Amazon Logistics</option>
+                      <option value="Purolator">Purolator</option>
+                      <option value="Canada Post">Canada Post</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                  
+                  {/* Title Selection Section */}
+                  <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                    <div className="flex items-center justify-between mb-4">
+                      <h4 className="text-sm font-medium text-gray-900">
+                        Select Titles for Package
+                        {packageTitleSelection.selectedTitleIds.size > 0 && (
+                          <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                            {packageTitleSelection.selectedTitleIds.size} selected
+                          </span>
+                        )}
+                      </h4>
+                      <div className="flex space-x-2">
+                        <button
+                          type="button"
+                          onClick={handleSelectAllTitles}
+                          className="text-xs text-blue-600 hover:text-blue-800"
+                        >
+                          Select All
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleClearAllTitles}
+                          className="text-xs text-text-secondary hover:text-gray-800"
+                        >
+                          Clear All
+                        </button>
+                      </div>
+                    </div>
+                    
+                    {/* Title Filters */}
+                    <div className="grid grid-cols-3 gap-2 mb-4">
+                      <div>
+                        <select
+                          value={packageTitleSelection.titleFilter.orgFilter}
+                          onChange={(e) => setPackageTitleSelection(prev => ({
+                            ...prev,
+                            titleFilter: { ...prev.titleFilter, orgFilter: e.target.value }
+                          }))}
+                          className="w-full text-xs border border-border rounded px-2 py-1"
+                        >
+                          <option value="all">All Organizations</option>
+                          <option value="org-auction-1">Copart Dallas</option>
+                          <option value="org-auction-2">Manheim Austin</option>
+                          <option value="org-auction-3">IAAI Houston</option>
+                          <option value="org-dealer-1">Premium Auto Dealers</option>
+                          <option value="org-dealer-2">Elite Car Sales</option>
+                          <option value="org-processing-1">United Cars Processing</option>
+                        </select>
+                      </div>
+                      <div>
+                        <select
+                          value={packageTitleSelection.titleFilter.statusFilter}
+                          onChange={(e) => setPackageTitleSelection(prev => ({
+                            ...prev,
+                            titleFilter: { ...prev.titleFilter, statusFilter: e.target.value }
+                          }))}
+                          className="w-full text-xs border border-border rounded px-2 py-1"
+                        >
+                          <option value="all">All Statuses</option>
+                          <option value="pending">Pending</option>
+                          <option value="packed">Packed</option>
+                          <option value="sent_to">Sent To Org</option>
+                          <option value="received_by">Received By Org</option>
+                        </select>
+                      </div>
+                      <div>
+                        <input
+                          type="text"
+                          placeholder="Search VIN, make, model..."
+                          value={packageTitleSelection.titleFilter.search}
+                          onChange={(e) => setPackageTitleSelection(prev => ({
+                            ...prev,
+                            titleFilter: { ...prev.titleFilter, search: e.target.value }
+                          }))}
+                          className="w-full text-xs border border-border rounded px-2 py-1"
+                        />
+                      </div>
+                    </div>
+                    
+                    {/* Title List */}
+                    <div className="max-h-60 overflow-y-auto border border-gray-200 rounded bg-white">
+                      {getAvailableTitlesForPackage().length > 0 ? (
+                        <div className="divide-y divide-gray-200">
+                          {getAvailableTitlesForPackage().map(title => (
+                            <div key={title.id} className="p-3 hover:bg-gray-50">
+                              <label className="flex items-center cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={packageTitleSelection.selectedTitleIds.has(title.id)}
+                                  onChange={(e) => handleTitleSelect(title.id, e.target.checked)}
+                                  className="h-4 w-4 text-blue-600 rounded border-border focus:ring-primary"
+                                />
+                                <div className="ml-3 flex-1">
+                                  <div className="flex items-center justify-between">
+                                    <div>
+                                      <p className="text-sm font-medium text-gray-900">
+                                        VIN: {title.vehicle?.vin || 'N/A'}
+                                      </p>
+                                      <p className="text-xs text-gray-500">
+                                        {title.vehicle?.year} {title.vehicle?.make} {title.vehicle?.model}
+                                      </p>
+                                      <p className="text-xs text-text-tertiary">
+                                        {title.vehicle?.org?.name} • {title.titleType}
+                                      </p>
+                                    </div>
+                                    <StatusBadge 
+                                      status={title.dynamicStatus.status} 
+                                      label={title.dynamicStatus.displayText}
+                                      size="sm" 
+                                    />
+                                  </div>
+                                </div>
+                              </label>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="p-4 text-center text-sm text-gray-500">
+                          No unassigned titles match your filters
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Notes</label>
+                    <textarea
+                      value={createPackageForm.notes}
+                      onChange={(e) => setCreatePackageForm({...createPackageForm, notes: e.target.value})}
+                      rows={3}
+                      className="mt-1 block w-full border border-border rounded-md px-3 py-2"
+                      placeholder="Package handling instructions..."
+                    />
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex justify-end space-x-3 mt-6">
+                <button
+                  onClick={() => {
+                    setShowCreatePackageModal(false)
+                    // Reset title selection when canceling
+                    setPackageTitleSelection({
+                      selectedTitleIds: new Set(),
+                      titleFilter: {
+                        orgFilter: createPackageForm.senderOrgId,
+                        statusFilter: 'all',
+                        search: ''
+                      }
+                    })
+                  }}
+                  className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleCreatePackageSubmit}
+                  className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90"
+                >
+                  Create Package
                 </button>
               </div>
             </div>

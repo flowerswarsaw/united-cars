@@ -9,8 +9,6 @@ import {
   ActivityType,
   CustomFieldType,
   ContactMethodType,
-  PhoneType,
-  EmailType,
   SocialPlatform,
   OrganisationRelationType
 } from './types';
@@ -19,7 +17,6 @@ export const contactMethodSchema = z.object({
   id: z.string(),
   type: z.nativeEnum(ContactMethodType),
   value: z.string().min(1),
-  subtype: z.union([z.nativeEnum(PhoneType), z.nativeEnum(EmailType)]).optional(),
   isPrimary: z.boolean().optional(),
   label: z.string().optional(),
   notes: z.string().optional()
@@ -54,11 +51,7 @@ export const organisationSchema = z.object({
   name: z.string().min(1),
   companyId: z.string().min(1),
   type: z.nativeEnum(OrganizationType),
-  // Legacy fields for backward compatibility
-  email: z.string().email().optional(),
-  phone: z.string().optional(),
-  // New multi-contact system
-  contactMethods: z.array(contactMethodSchema).optional(),
+  contactMethods: z.array(contactMethodSchema),
   socialMedia: z.array(socialMediaLinkSchema).optional(),
   website: z.string().url().optional(),
   address: z.string().optional(),
@@ -80,11 +73,7 @@ export const contactSchema = z.object({
   tenantId: z.string(),
   firstName: z.string().min(1),
   lastName: z.string().min(1),
-  // Legacy fields for backward compatibility
-  email: z.string().email().optional(),
-  phone: z.string().optional(),
-  // New multi-contact system
-  contactMethods: z.array(contactMethodSchema).optional(),
+  contactMethods: z.array(contactMethodSchema),
   title: z.string().optional(),
   organisationId: z.string().optional(),
   address: z.string().optional(),
@@ -252,6 +241,31 @@ export const activitySchema = z.object({
   updatedAt: z.date()
 });
 
+export const fieldChangeSchema = z.object({
+  field: z.string(),
+  oldValue: z.any(),
+  newValue: z.any(),
+  displayOldValue: z.string().optional(),
+  displayNewValue: z.string().optional()
+});
+
+export const changeLogSchema = z.object({
+  id: z.string(),
+  tenantId: z.string(),
+  entityType: z.nativeEnum(EntityType),
+  entityId: z.string(),
+  action: z.nativeEnum(ActivityType),
+  summary: z.string(),
+  changes: z.array(fieldChangeSchema),
+  userId: z.string(),
+  userName: z.string().optional(),
+  userEmail: z.string().optional(),
+  ipAddress: z.string().optional(),
+  userAgent: z.string().optional(),
+  createdAt: z.date(),
+  updatedAt: z.date()
+});
+
 // Input schemas
 export const createOrganisationSchema = organisationSchema.omit({
   id: true,
@@ -306,7 +320,8 @@ export const moveDealInputSchema = z.object({
   pipelineId: z.string(),
   toStageId: z.string(),
   note: z.string().optional(),
-  lossReason: z.nativeEnum(LossReason).optional()
+  lossReason: z.nativeEnum(LossReason).optional(),
+  movedBy: z.string().optional()
 });
 
 export const createTaskSchema = taskSchema.omit({
@@ -409,3 +424,7 @@ export const organizationTypeConfigSchema = z.object({
   customFields: z.array(typeSpecificFieldDefSchema),
   features: z.array(organizationFeatureSchema)
 });
+
+// Type inference exports
+export type ConvertLeadInput = z.infer<typeof convertLeadInputSchema>;
+export type MoveDealInput = z.infer<typeof moveDealInputSchema>;

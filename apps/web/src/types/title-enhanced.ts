@@ -45,13 +45,14 @@ export interface EnhancedTitle {
   location: string | null // Physical location of title
   
   // Package/Shipping Integration
-  package: {
+  packageIds: string[] // IDs of packages this title is assigned to (many-to-many)
+  packages: {
     id: string
     trackingNumber: string | null
     provider: string | null
     type: 'RECEIVING' | 'SENDING'
     status: string
-  } | null
+  }[] // Array of packages this title is assigned to
   
   // Financial
   processingFee: number | null
@@ -77,18 +78,21 @@ export interface EnhancedTitle {
   }
 }
 
-// Enhanced Title Status aligned with business workflow
+// Dynamic Title Status based on latest package containing the title
 export type TitleStatus = 
-  | 'received'          // Physical title received from auction
-  | 'processing'        // Being processed (DMV work, corrections, validations)
-  | 'pending_docs'      // Waiting for additional documentation
-  | 'on_hold'           // Temporarily stopped (legal issues, customer issues, etc.)
-  | 'quality_review'    // Final review before shipping
-  | 'ready_to_ship'     // Processed and ready for packaging
-  | 'shipped'           // Packed and shipped to recipient
-  | 'completed'         // Delivered and process fully completed
-  | 'cancelled'         // Cancelled by request
-  | 'rejected'          // Rejected due to issues
+  | 'pending'           // Neutral status (no packages yet)
+  | 'packed'            // Package packed with this title, title is also packed
+  | 'sent_to'           // Title sent to recipient (latest package is sent)
+  | 'received_by'       // Title received by recipient (latest package is delivered)
+
+// Dynamic status calculation result
+export interface DynamicTitleStatus {
+  status: TitleStatus
+  displayText: string      // e.g., "Packed", "Sent to Copart", "Received by United Cars"
+  organizationName: string | null // The organization name for sent_to/received_by
+  packageId: string | null // ID of the latest package that determined this status
+  updatedAt: string | null // When the status was last updated (package update time)
+}
 
 // Comprehensive title types
 export type TitleType = 
@@ -175,6 +179,7 @@ export type TitleDocumentType =
   | 'dmv_forms'            // Various DMV forms
   | 'correspondence'       // Email/letter correspondence
   | 'photos'               // Title photos
+  | 'scan'                 // Scanned document
   | 'other'                // Other supporting documents
 
 // Activity Logging System
@@ -304,17 +309,14 @@ export interface EnhancedPackage {
   insuranceValue: number | null
   createdAt: string
   updatedAt: string
-  titles: string[] // Array of title IDs
+  titles: EnhancedTitle[] // Array of title objects
   documents: PackageDocument[]
 }
 
 export type PackageStatus = 
-  | 'prepared'          // Package prepared and ready to ship
-  | 'shipped'           // Package shipped and in carrier network
-  | 'in_transit'        // Package moving to destination
-  | 'out_for_delivery'  // Package out for final delivery
+  | 'packed'            // Package packed and ready to ship
+  | 'sent'              // Package sent/shipped
   | 'delivered'         // Package successfully delivered
-  | 'exception'         // Delivery issue requiring attention
 
 export type PackagePriority = 
   | 'standard'
@@ -325,7 +327,7 @@ export type PackagePriority =
 export interface PackageDocument {
   id: string
   packageId: string
-  type: 'shipping_label' | 'packing_list' | 'customs_form' | 'receipt' | 'tracking_info'
+  type: 'shipping_label' | 'packing_list' | 'customs_form' | 'receipt' | 'tracking_info' | 'scan'
   filename: string
   fileUrl: string
   uploadedAt: string
@@ -406,6 +408,53 @@ export type TitleStatusConfig = {
     nextStatuses: TitleStatus[]
     requiresConfirmation: boolean
     adminOnly: boolean
+  }
+}
+
+// Utility functions for dynamic status calculation
+export interface DynamicStatusUtils {
+  // Find the latest package for a title based on creation/update date
+  findLatestPackage: (titleId: string, packages: EnhancedPackage[]) => EnhancedPackage | null
+  
+  // Calculate dynamic status based on latest package
+  calculateDynamicStatus: (titleId: string, packages: EnhancedPackage[]) => DynamicTitleStatus
+  
+  // Get display text for a dynamic status
+  getStatusDisplayText: (status: TitleStatus, organizationName?: string) => string
+}
+
+// Package status to title status mapping
+export const PACKAGE_TO_TITLE_STATUS_MAP: Record<PackageStatus, TitleStatus> = {
+  'packed': 'packed',
+  'sent': 'sent_to', 
+  'delivered': 'received_by'
+}
+
+// Status display configuration for dynamic statuses
+export const DYNAMIC_STATUS_CONFIG: Record<TitleStatus, {
+  label: string
+  color: 'default' | 'primary' | 'secondary' | 'success' | 'warning' | 'error'
+  description: string
+}> = {
+  pending: {
+    label: 'Pending',
+    color: 'default',
+    description: 'Title not yet assigned to any package'
+  },
+  packed: {
+    label: 'Packed',
+    color: 'warning',
+    description: 'Title packed in a package, ready to ship'
+  },
+  sent_to: {
+    label: 'Sent',
+    color: 'primary',
+    description: 'Title sent to recipient organization'
+  },
+  received_by: {
+    label: 'Received',
+    color: 'success',
+    description: 'Title received by recipient organization'
   }
 }
 

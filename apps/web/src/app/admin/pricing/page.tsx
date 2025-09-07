@@ -7,7 +7,7 @@ import { PageHeader } from '@/components/layout/page-header'
 import { LoadingState } from '@/components/ui/loading-state'
 import { useSession } from '@/hooks/useSession'
 import { 
-  DollarSign, Calculator, Truck, Ship, Globe, Plus
+  DollarSign, Calculator, Truck, Ship, Globe
 } from 'lucide-react'
 import { AuctionPricingTab } from '@/components/admin/pricing/auction-pricing-tab'
 import { TowingPricingTab } from '@/components/admin/pricing/towing-pricing-tab'
@@ -95,17 +95,11 @@ export default function AdminPricingPage() {
         {/* Tab Navigation */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
           <div className="px-6 py-4">
-            <div className="flex items-center justify-between mb-4">
+            <div className="mb-4">
               <h2 className="text-lg font-semibold text-gray-900 flex items-center">
                 <DollarSign className="h-5 w-5 mr-2 text-blue-600" />
                 Pricing Configuration
               </h2>
-              <button
-                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                New Matrix
-              </button>
             </div>
             
             <div className="border-b border-gray-200">

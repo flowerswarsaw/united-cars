@@ -5,6 +5,8 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { CheckCircle, XCircle, Clock, FileText, Camera, ArrowLeft } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { useSession } from '@/hooks/useSession'
+import { PaymentConfirmationUpload } from '@/components/intake/PaymentConfirmationUpload'
 
 interface IntakeDetail {
   id: string
@@ -72,18 +74,24 @@ export default function IntakeDetailPage() {
   const router = useRouter()
   const [intake, setIntake] = useState<IntakeDetail | null>(null)
   const [loading, setLoading] = useState(true)
-  const [user] = useState({
-    name: 'Admin User',
-    email: 'admin@demo.com',
-    roles: ['ADMIN'],
-    orgName: 'United Cars Admin'
-  })
+  const { user, loading: sessionLoading } = useSession()
   const [reviewAction, setReviewAction] = useState<'approve' | 'reject' | null>(null)
   const [reviewNotes, setReviewNotes] = useState('')
 
   useEffect(() => {
     if (params.id) {
       fetchIntakeDetail(params.id as string)
+      
+      // Check for success message
+      const urlParams = new URLSearchParams(window.location.search)
+      const success = urlParams.get('success')
+      
+      if (success === 'declared') {
+        toast.success('🏆 Auction win declared successfully! Awaiting admin approval.')
+        
+        // Clean up URL
+        window.history.replaceState({}, '', `/intake/${params.id}`)
+      }
     }
   }, [params.id])
 
@@ -138,6 +146,35 @@ export default function IntakeDetailPage() {
     }
   }
 
+  const handleRetract = async () => {
+    if (!intake) return
+
+    if (!confirm('Are you sure you want to retract this intake request?')) {
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/intakes/${intake.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+
+      const result = await response.json()
+
+      if (response.ok) {
+        toast.success('Intake retracted successfully!')
+        router.push('/intake')
+      } else {
+        toast.error(`Failed to retract intake: ${result.error}`)
+      }
+    } catch (error) {
+      console.error('Error retracting intake:', error)
+      toast.error('Error retracting intake')
+    }
+  }
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -157,8 +194,10 @@ export default function IntakeDetailPage() {
     return parts.join(' ') || 'Unknown Vehicle'
   }
 
-  const canReview = user.roles.includes('ADMIN') || user.roles.includes('OPS')
+  const canReview = user?.roles?.includes('ADMIN') || user?.roles?.includes('OPS') || false
   const isPending = intake?.status === 'PENDING'
+  const isOwner = intake?.org?.id === user?.orgId
+  const isDealer = user?.roles?.includes('DEALER') || false
 
   if (loading) {
     return (
@@ -260,7 +299,7 @@ export default function IntakeDetailPage() {
             {/* Attachments */}
             <div className="bg-white shadow rounded-lg p-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Documents & Photos</h2>
-              {intake.attachments.length === 0 ? (
+              {(intake.attachments || []).length === 0 ? (
                 <div className="text-center py-6">
                   <Camera className="h-12 w-12 text-gray-400 mx-auto mb-3" />
                   <p className="text-gray-500">No files uploaded yet</p>
@@ -272,7 +311,7 @@ export default function IntakeDetailPage() {
                 </div>
               ) : (
                 <div className="grid grid-cols-2 gap-4">
-                  {intake.attachments.map((attachment) => (
+                  {(intake.attachments || []).map((attachment) => (
                     <div key={attachment.id} className="border border-gray-200 rounded p-3">
                       <div className="flex items-center">
                         <FileText className="h-5 w-5 text-gray-400 mr-2" />
@@ -289,12 +328,20 @@ export default function IntakeDetailPage() {
                   ))}
                 </div>
               )}
+              
+              {/* Payment Confirmation Upload */}
+              {isPending && isOwner && (
+                <div className="mt-6 pt-6 border-t">
+                  <h3 className="text-md font-medium text-gray-900 mb-4">Upload Payment Confirmations</h3>
+                  <PaymentConfirmationUpload intakeId={intake.id} onUpload={fetchIntakeDetail} />
+                </div>
+              )}
             </div>
 
             {/* Review Actions for Admin/OPS */}
             {canReview && isPending && (
               <div className="bg-white shadow rounded-lg p-6">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">Review Actions</h2>
+                <h2 className="text-lg font-semibold text-gray-900 mb-4">Admin Review Actions</h2>
                 {reviewAction ? (
                   <div className="space-y-4">
                     <div>
@@ -351,6 +398,42 @@ export default function IntakeDetailPage() {
                 )}
               </div>
             )}
+
+            {/* Dealer Actions - Retract for pending intakes they created */}
+            {isOwner && isDealer && isPending && (
+              <div className="bg-white shadow rounded-lg p-6">
+                <h2 className="text-lg font-semibold text-gray-900 mb-4">Dealer Actions</h2>
+                <div className="space-y-3">
+                  <p className="text-sm text-gray-600">
+                    You can retract this intake request if it's no longer needed. This action cannot be undone.
+                  </p>
+                  <button
+                    onClick={handleRetract}
+                    className="inline-flex items-center px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700"
+                  >
+                    <XCircle className="h-4 w-4 mr-2" />
+                    Retract Intake Request
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Info message for dealers when intake is not pending */}
+            {isOwner && isDealer && !isPending && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex">
+                  <div className="flex-shrink-0">
+                    <FileText className="h-5 w-5 text-blue-400" />
+                  </div>
+                  <div className="ml-3">
+                    <p className="text-sm text-blue-800">
+                      This intake has been {intake?.status === 'APPROVED' ? 'approved' : 'rejected'} by admin. 
+                      {intake?.status === 'REJECTED' && ' You may create a new intake request if needed.'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Sidebar */}
@@ -368,7 +451,9 @@ export default function IntakeDetailPage() {
                   <div className="ml-3">
                     <p className="text-sm font-medium text-gray-900">Intake Created</p>
                     <p className="text-xs text-gray-500">{formatDate(intake.createdAt)}</p>
-                    <p className="text-xs text-gray-500">by {intake.createdBy.name}</p>
+                    {intake.createdBy && (
+                      <p className="text-xs text-gray-500">by {intake.createdBy?.name || 'Unknown'}</p>
+                    )}
                   </div>
                 </div>
 
@@ -388,7 +473,7 @@ export default function IntakeDetailPage() {
                         {intake.status === 'APPROVED' ? 'Approved' : 'Rejected'}
                       </p>
                       <p className="text-xs text-gray-500">{formatDate(intake.reviewedAt)}</p>
-                      <p className="text-xs text-gray-500">by {intake.reviewedBy.name}</p>
+                      <p className="text-xs text-gray-500">by {intake.reviewedBy?.name || 'Unknown'}</p>
                     </div>
                   </div>
                 )}
@@ -398,8 +483,8 @@ export default function IntakeDetailPage() {
             {/* Organization */}
             <div className="bg-white shadow rounded-lg p-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Organization</h2>
-              <p className="text-sm text-gray-900">{intake.org.name}</p>
-              <p className="text-xs text-gray-500 capitalize">{intake.org.type}</p>
+              <p className="text-sm text-gray-900">{intake.org?.name || 'Unknown Organization'}</p>
+              <p className="text-xs text-gray-500 capitalize">{intake.org?.type || 'unknown'}</p>
             </div>
           </div>
         </div>

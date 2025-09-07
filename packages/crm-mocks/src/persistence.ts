@@ -10,6 +10,7 @@ import {
   customFieldRepository,
   activityRepository
 } from './seeds';
+import { changeLogRepository } from './repositories/change-log-repository';
 
 const DATA_DIR = path.join(process.cwd(), '.crm-data');
 const DATA_FILE = path.join(DATA_DIR, 'data.json');
@@ -27,6 +28,7 @@ interface CRMData {
     fieldValues: any[];
   };
   activities: any[];
+  changeLogs: any[];
 }
 
 export class JSONPersistenceAdapter {
@@ -47,7 +49,8 @@ export class JSONPersistenceAdapter {
         stages: pipelineRepository.stagesToJSON(),
         tasks: taskRepository.toJSON(),
         customFields: customFieldRepository.toJSON(),
-        activities: activityRepository.toJSON()
+        activities: activityRepository.toJSON(),
+        changeLogs: changeLogRepository.toJSON()
       };
 
       await fs.writeFile(DATA_FILE, JSON.stringify(data, null, 2));
@@ -72,6 +75,7 @@ export class JSONPersistenceAdapter {
       taskRepository.fromJSON(data.tasks);
       customFieldRepository.fromJSON(data.customFields);
       activityRepository.fromJSON(data.activities);
+      changeLogRepository.fromJSON(data.changeLogs || []);
 
       return true;
     } catch (error) {

@@ -239,28 +239,31 @@ model Purchase {
 }
 
 model AuctionLocation {
-  id             String          @id @default(cuid())
-  auction        AuctionSource
-  code           String
-  name           String
-  state          String?
-  country        String          @default("US")
-  auctionLots    AuctionLot[]
-  towingRules    TowingRule[]
-  vehicleIntakes VehicleIntake[]
+  id                String          @id @default(cuid())
+  auction           AuctionSource
+  code              String
+  name              String
+  state             String?
+  country           String          @default("US")
+  preferredPortId   String?         @map("preferred_port_id")
+  auctionLots       AuctionLot[]
+  towingRules       TowingRule[]
+  vehicleIntakes    VehicleIntake[]
+  preferredPort     Port?           @relation("PreferredPort", fields: [preferredPortId], references: [id])
 
   @@unique([auction, code])
   @@map("auction_locations")
 }
 
 model Port {
-  id                  String         @id @default(cuid())
-  name                String
-  state               String?
-  country             String         @default("US")
-  code                String?
-  shippingRulesExit   ShippingRule[] @relation("ShippingRuleExitPort")
-  towingRulesDelivery TowingRule[]   @relation("TowingRuleDeliveryPort")
+  id                      String            @id @default(cuid())
+  name                    String
+  state                   String?
+  country                 String            @default("US")
+  code                    String?
+  shippingRulesExit       ShippingRule[]    @relation("ShippingRuleExitPort")
+  towingRulesDelivery     TowingRule[]      @relation("TowingRuleDeliveryPort")
+  preferredByLocations    AuctionLocation[] @relation("PreferredPort")
 
   @@map("ports")
 }
@@ -557,6 +560,8 @@ enum VehicleStatus {
 enum AuctionSource {
   COPART
   IAA
+  MANHEIM
+  ADESA
 }
 
 enum RuleType {
@@ -571,6 +576,15 @@ enum VehicleTypeKey {
   BIGSUV
   VAN
   PICKUP
+  MOTORCYCLE
+  ATV
+  BOAT
+  RV
+  COUPE
+  HATCHBACK
+  CONVERTIBLE
+  WAGON
+  TRUCK
 }
 
 enum TitleStatus {

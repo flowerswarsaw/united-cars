@@ -4,48 +4,141 @@
 
 @layer base {
   :root {
+    /* Base tokens */
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
     --card: 0 0% 100%;
     --card-foreground: 222.2 84% 4.9%;
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
+    
+    /* Primary colors */
     --primary: 221.2 83.2% 53.3%;
     --primary-foreground: 210 40% 98%;
     --secondary: 210 40% 96%;
     --secondary-foreground: 222.2 84% 4.9%;
+    
+    /* Muted tokens */
     --muted: 210 40% 96%;
     --muted-foreground: 215.4 16.3% 46.9%;
     --accent: 210 40% 96%;
     --accent-foreground: 222.2 84% 4.9%;
+    
+    /* Status colors */
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
+    --success: 142 76% 36%;
+    --success-foreground: 355 100% 97%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 48 96% 89%;
+    --info: 199 89% 48%;
+    --info-foreground: 210 40% 98%;
+    
+    /* Surface variations */
+    --surface-50: 210 40% 98%;
+    --surface-100: 210 40% 96%;
+    --surface-200: 214.3 31.8% 91.4%;
+    --surface-300: 212.7 26.8% 83.9%;
+    --surface-400: 215 20.2% 65.1%;
+    --surface-500: 215.4 16.3% 46.9%;
+    
+    /* Text hierarchy */
+    --text-primary: 222.2 84% 4.9%;
+    --text-secondary: 215.4 16.3% 46.9%;
+    --text-tertiary: 215 20.2% 65.1%;
+    --text-inverse: 210 40% 98%;
+    --text-link: 221.2 83.2% 53.3%;
+    --text-link-hover: 224 76.3% 48%;
+    
+    /* Interactive states */
+    --hover-overlay: 210 40% 96%;
+    --active-overlay: 214.3 31.8% 91.4%;
+    --focus-ring: 221.2 83.2% 53.3%;
+    
+    /* Borders */
     --border: 214.3 31.8% 91.4%;
+    --border-subtle: 210 40% 96%;
+    --border-strong: 212.7 26.8% 83.9%;
     --input: 214.3 31.8% 91.4%;
     --ring: 221.2 83.2% 53.3%;
+    
+    /* Chart colors */
+    --chart-1: 221.2 83.2% 53.3%;
+    --chart-2: 142 76% 36%;
+    --chart-3: 38 92% 50%;
+    --chart-4: 271 81% 56%;
+    --chart-5: 0 84.2% 60.2%;
+    --chart-6: 199 89% 48%;
+    
     --radius: 0.5rem;
   }
 
   .dark {
+    /* Base tokens */
     --background: 222.2 84% 4.9%;
     --foreground: 210 40% 98%;
     --card: 222.2 84% 4.9%;
     --card-foreground: 210 40% 98%;
     --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
+    
+    /* Primary colors */
     --primary: 217.2 91.2% 59.8%;
     --primary-foreground: 222.2 84% 4.9%;
     --secondary: 217.2 32.6% 17.5%;
     --secondary-foreground: 210 40% 98%;
+    
+    /* Muted tokens */
     --muted: 217.2 32.6% 17.5%;
     --muted-foreground: 215 20.2% 65.1%;
     --accent: 217.2 32.6% 17.5%;
     --accent-foreground: 210 40% 98%;
+    
+    /* Status colors */
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
+    --success: 142 84% 27%;
+    --success-foreground: 210 40% 98%;
+    --warning: 38 100% 45%;
+    --warning-foreground: 20 14.3% 4.1%;
+    --info: 199 95% 52%;
+    --info-foreground: 222.2 84% 4.9%;
+    
+    /* Surface variations */
+    --surface-50: 217.2 32.6% 17.5%;
+    --surface-100: 215 27.9% 16.9%;
+    --surface-200: 217.2 32.6% 17.5%;
+    --surface-300: 215 20.2% 25.1%;
+    --surface-400: 215 16.3% 46.9%;
+    --surface-500: 215 20.2% 65.1%;
+    
+    /* Text hierarchy */
+    --text-primary: 210 40% 98%;
+    --text-secondary: 215 20.2% 65.1%;
+    --text-tertiary: 215 16.3% 46.9%;
+    --text-inverse: 222.2 84% 4.9%;
+    --text-link: 217.2 91.2% 59.8%;
+    --text-link-hover: 224.3 76.3% 94.1%;
+    
+    /* Interactive states */
+    --hover-overlay: 217.2 32.6% 17.5%;
+    --active-overlay: 215 27.9% 16.9%;
+    --focus-ring: 217.2 91.2% 59.8%;
+    
+    /* Borders */
     --border: 217.2 32.6% 17.5%;
+    --border-subtle: 215 27.9% 16.9%;
+    --border-strong: 215 20.2% 25.1%;
     --input: 217.2 32.6% 17.5%;
     --ring: 224.3 76.3% 94.1%;
+    
+    /* Chart colors - adjusted for dark mode */
+    --chart-1: 217.2 91.2% 59.8%;
+    --chart-2: 142 84% 47%;
+    --chart-3: 38 100% 65%;
+    --chart-4: 271 91% 65%;
+    --chart-5: 0 72.2% 50.6%;
+    --chart-6: 199 95% 62%;
   }
 }
 
@@ -55,5 +148,95 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+/* Custom scrollbar styles */
+.scrollbar-thin {
+  scrollbar-width: thin;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: hsl(var(--muted));
+  border-radius: 3px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.3);
+  border-radius: 3px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.5);
+}
+
+.scrollbar-thin::-webkit-scrollbar-corner {
+  background: hsl(var(--muted));
+}
+
+/* Dark mode scrollbar overrides */
+.dark .scrollbar-thin::-webkit-scrollbar-track {
+  background: hsl(var(--muted));
+}
+
+.dark .scrollbar-thin::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.4);
+}
+
+.dark .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.6);
+}
+
+.dark .scrollbar-thin::-webkit-scrollbar-corner {
+  background: hsl(var(--muted));
+}
+
+/* Smooth transitions for theme changes */
+* {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+/* Animation utilities */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { 
+    opacity: 0; 
+    transform: translateY(10px); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0); 
+  }
+}
+
+.animate-in {
+  animation: fadeIn 0.2s ease-out;
+}
+
+.fade-in-0 {
+  animation: fadeIn 0.15s ease-out;
+}
+
+.zoom-in-95 {
+  animation: zoomIn95 0.1s ease-out;
+}
+
+@keyframes zoomIn95 {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
   }
 }

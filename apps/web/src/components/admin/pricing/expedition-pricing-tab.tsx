@@ -6,12 +6,11 @@ import { EmptyState } from '@/components/ui/empty-state'
 import toast from 'react-hot-toast'
 
 interface VehicleTypeTax {
-  sedan: number
-  suv: number
-  bigSuv: number
-  pickup: number
-  van: number
-  motorcycle: number
+  car: number // 10% - Regular cars
+  classicCar: number // 0% - Classic cars
+  truck: number // 22% - Trucks/Vans
+  motorcycle: number // 6% - Motorcycles
+  jetSki: number // 1.7% - Jet Ski/Boats
 }
 
 interface ConsolidationPricing {
@@ -25,12 +24,14 @@ interface ExpeditionMatrix {
   destinationPort: string
   country: string
   region: string
-  consolidationPricing: ConsolidationPricing // expedition + clearance combined
-  vatRatesByVehicle: VehicleTypeTax // VAT rates by vehicle type
-  taxRatesByVehicle: VehicleTypeTax // Tax/duty rates by vehicle type
+  consolidationPricing: ConsolidationPricing // expedition + clearance combined (like €500 "All In" fee)
+  vatRate: number // Country-specific VAT rate (21% Rotterdam, 19% Bremen, 23% Gdynia, 9% Classic Cars)
+  taxRatesByVehicle: VehicleTypeTax // Tax/duty rates by vehicle type (applied to vehicle value)
+  thc?: number // Terminal Handling Charge (optional)
+  freeParkingDays: number | 'unlimited' // Free parking days or unlimited
+  parkingPricePerDay: number // Parking price per day after free period
+  t1Declaration: number // T1 declaration cost
   currency: 'USD' | 'EUR' | 'GBP'
-  estimatedDays: string
-  notes: string
   active: boolean
   createdAt: string
   updatedAt: string
@@ -40,7 +41,7 @@ const DESTINATION_PORTS = [
   { port: 'Rotterdam, Netherlands', country: 'Netherlands', region: 'Europe', currency: 'EUR' },
   { port: 'Bremerhaven, Germany', country: 'Germany', region: 'Europe', currency: 'EUR' },
   { port: 'Hamburg, Germany', country: 'Germany', region: 'Europe', currency: 'EUR' },
-  { port: 'Klaipeda, Lithuania', country: 'Lithuania', region: 'Europe', currency: 'EUR' },
+  { port: 'Gdynia, Poland', country: 'Poland', region: 'Europe', currency: 'EUR' },
   { port: 'Poti, Georgia', country: 'Georgia', region: 'Caucasus', currency: 'USD' },
   { port: 'Batumi, Georgia', country: 'Georgia', region: 'Caucasus', currency: 'USD' },
   { port: 'Dubai, UAE', country: 'UAE', region: 'Middle East', currency: 'USD' },
@@ -59,22 +60,28 @@ const CONSOLIDATION_TYPES = [
 ]
 
 const VEHICLE_TYPES = [
-  { key: 'sedan', label: 'Sedan' },
-  { key: 'suv', label: 'SUV' },
-  { key: 'bigSuv', label: 'Big SUV' },
-  { key: 'pickup', label: 'Pickup Truck' },
-  { key: 'van', label: 'Van' },
-  { key: 'motorcycle', label: 'Motorcycle' }
+  { key: 'car', label: 'Car' },
+  { key: 'classicCar', label: 'Classic Car' },
+  { key: 'truck', label: 'Truck' },
+  { key: 'motorcycle', label: 'Motorcycle' },
+  { key: 'jetSki', label: 'Jet Ski/Boat' }
 ]
 
 export function ExpeditionPricingTab() {
   const [matrices, setMatrices] = useState<ExpeditionMatrix[]>([])
+  const [allMatrices, setAllMatrices] = useState<ExpeditionMatrix[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterRegion, setFilterRegion] = useState<string>('all')
   const [filterCurrency, setFilterCurrency] = useState<string>('all')
   const [showAddForm, setShowAddForm] = useState(false)
   const [editingMatrix, setEditingMatrix] = useState<ExpeditionMatrix | null>(null)
+  const [editingPrice, setEditingPrice] = useState<{
+    matrixId: string
+    priceType: 'consolidation'
+    priceKey: keyof ConsolidationPricing
+  } | null>(null)
+  const [editingPriceValue, setEditingPriceValue] = useState<number>(0)
   const [formData, setFormData] = useState({
     destinationPort: 'Rotterdam, Netherlands',
     country: 'Netherlands',
@@ -84,25 +91,19 @@ export function ExpeditionPricingTab() {
       thirdContainer: 550,   // 1/3 container expedition + clearance
       halfContainer: 700     // 1/2 container expedition + clearance
     },
-    vatRatesByVehicle: {
-      sedan: 0.21,
-      suv: 0.21,
-      bigSuv: 0.21,
-      pickup: 0.21,
-      van: 0.21,
-      motorcycle: 0.21
-    },
+    vatRate: 0.21, // Rotterdam standard rate
     taxRatesByVehicle: {
-      sedan: 0.10,
-      suv: 0.12,
-      bigSuv: 0.15,
-      pickup: 0.12,
-      van: 0.15,
-      motorcycle: 0.08
+      car: 0.10,          // 10% - Car
+      classicCar: 0.00,   // 0% - Classic Car
+      truck: 0.22,        // 22% - Truck
+      motorcycle: 0.06,   // 6% - Motorcycle
+      jetSki: 0.017       // 1.7% - Jet Ski/Boat
     },
-    currency: 'EUR' as 'USD' | 'EUR' | 'GBP',
-    estimatedDays: '3-5 days',
-    notes: ''
+    thc: undefined as number | undefined,
+    freeParkingDays: 14 as number | 'unlimited',
+    parkingPricePerDay: 10,
+    t1Declaration: 150,
+    currency: 'EUR' as 'USD' | 'EUR' | 'GBP'
   })
 
   // Mock data based on consolidation pricing structure
@@ -117,24 +118,15 @@ export function ExpeditionPricingTab() {
         thirdContainer: 550,   // 1/3 container expedition + clearance
         halfContainer: 700     // 1/2 container expedition + clearance
       },
-      vatRatesByVehicle: {
-        sedan: 0.21,
-        suv: 0.21,
-        bigSuv: 0.21,
-        pickup: 0.21,
-        van: 0.21,
-        motorcycle: 0.21
-      },
+      vatRate: 0.21, // Netherlands standard rate
       taxRatesByVehicle: {
-        sedan: 0.10,
-        suv: 0.12,
-        bigSuv: 0.15,
-        pickup: 0.12,
-        van: 0.15,
-        motorcycle: 0.08
+        car: 0.10,          // 10% - Car
+        classicCar: 0.00,   // 0% - Classic Car
+        truck: 0.22,        // 22% - Truck
+        motorcycle: 0.06,   // 6% - Motorcycle
+        jetSki: 0.017       // 1.7% - Jet Ski/Boat
       },
       currency: 'EUR',
-      estimatedDays: '3-5 days',
       notes: 'Standard EU customs procedures. VAT and tax rates vary by vehicle type.',
       active: true,
       createdAt: '2024-02-10T10:00:00Z',
@@ -150,58 +142,46 @@ export function ExpeditionPricingTab() {
         thirdContainer: 575,
         halfContainer: 725
       },
-      vatRatesByVehicle: {
-        sedan: 0.19,
-        suv: 0.19,
-        bigSuv: 0.19,
-        pickup: 0.19,
-        van: 0.19,
-        motorcycle: 0.19
-      },
+      vatRate: 0.19, // Germany standard rate
       taxRatesByVehicle: {
-        sedan: 0.10,
-        suv: 0.12,
-        bigSuv: 0.15,
-        pickup: 0.12,
-        van: 0.15,
-        motorcycle: 0.08
+        car: 0.10,          // 10% - Car
+        classicCar: 0.00,   // 0% - Classic Car
+        truck: 0.22,        // 22% - Truck
+        motorcycle: 0.06,   // 6% - Motorcycle
+        jetSki: 0.017       // 1.7% - Jet Ski/Boat
       },
+      thc: undefined,
+      freeParkingDays: 21,
+      parkingPricePerDay: 12,
+      t1Declaration: 175,
       currency: 'EUR',
-      estimatedDays: '4-6 days',
-      notes: 'German customs requires additional environmental certificate for certain vehicles.',
       active: true,
       createdAt: '2024-02-10T11:00:00Z',
       updatedAt: '2024-03-15T10:30:00Z'
     },
     {
       id: 'expedition-3',
-      destinationPort: 'Klaipeda, Lithuania',
-      country: 'Lithuania',
+      destinationPort: 'Gdynia, Poland',
+      country: 'Poland',
       region: 'Europe',
       consolidationPricing: {
         quarterContainer: 450,
         thirdContainer: 500,
         halfContainer: 650
       },
-      vatRatesByVehicle: {
-        sedan: 0.21,
-        suv: 0.21,
-        bigSuv: 0.21,
-        pickup: 0.21,
-        van: 0.21,
-        motorcycle: 0.21
-      },
+      vatRate: 0.23, // Poland standard rate
       taxRatesByVehicle: {
-        sedan: 0.10,
-        suv: 0.11,
-        bigSuv: 0.13,
-        pickup: 0.11,
-        van: 0.13,
-        motorcycle: 0.07
+        car: 0.10,          // 10% - Car
+        classicCar: 0.00,   // 0% - Classic Car
+        truck: 0.22,        // 22% - Truck
+        motorcycle: 0.06,   // 6% - Motorcycle
+        jetSki: 0.017       // 1.7% - Jet Ski/Boat
       },
+      thc: undefined,
+      freeParkingDays: 7,
+      parkingPricePerDay: 8,
+      t1Declaration: 120,
       currency: 'EUR',
-      estimatedDays: '2-4 days',
-      notes: 'Lower consolidation fees due to Lithuania\'s competitive port position.',
       active: true,
       createdAt: '2024-02-10T12:00:00Z',
       updatedAt: '2024-03-15T11:30:00Z'
@@ -216,25 +196,19 @@ export function ExpeditionPricingTab() {
         thirdContainer: 430,
         halfContainer: 580
       },
-      vatRatesByVehicle: {
-        sedan: 0.18,
-        suv: 0.18,
-        bigSuv: 0.18,
-        pickup: 0.18,
-        van: 0.18,
-        motorcycle: 0.18
-      },
+      vatRate: 0.18, // Georgia rate (not EU)
       taxRatesByVehicle: {
-        sedan: 0.08,
-        suv: 0.10,
-        bigSuv: 0.12,
-        pickup: 0.10,
-        van: 0.12,
-        motorcycle: 0.05
+        car: 0.08,          // Georgia rates (different from EU)
+        classicCar: 0.00,   // 0% - Classic Car
+        truck: 0.12,        // Truck rate for Georgia
+        motorcycle: 0.05,   // Motorcycle rate for Georgia
+        jetSki: 0.08        // Jet Ski rate for Georgia
       },
+      thc: 200, // Terminal Handling Charge for Poti
+      freeParkingDays: 5,
+      parkingPricePerDay: 15,
+      t1Declaration: 100,
       currency: 'USD',
-      estimatedDays: '2-3 days',
-      notes: 'Favorable rates for vehicles over 3 years old. Lower consolidation costs.',
       active: true,
       createdAt: '2024-02-10T13:00:00Z',
       updatedAt: '2024-03-15T12:30:00Z'
@@ -242,35 +216,90 @@ export function ExpeditionPricingTab() {
   ]
 
   useEffect(() => {
-    fetchMatrices()
-  }, [filterRegion, filterCurrency, searchTerm])
+    // Check for version compatibility and clear old data
+    const dataVersion = localStorage.getItem('expedition-matrices-version')
+    const currentVersion = '2.0' // Updated version for simplified vehicle types
+    
+    if (dataVersion !== currentVersion) {
+      // Clear old incompatible data
+      localStorage.removeItem('expedition-matrices')
+      localStorage.setItem('expedition-matrices-version', currentVersion)
+      fetchMatrices()
+      return
+    }
+    
+    // Load data from localStorage if available
+    const savedMatrices = localStorage.getItem('expedition-matrices')
+    if (savedMatrices) {
+      try {
+        const parsedMatrices = JSON.parse(savedMatrices)
+        // Validate data structure
+        if (parsedMatrices[0]?.taxRatesByVehicle?.car !== undefined) {
+          setAllMatrices(parsedMatrices)
+          setMatrices(parsedMatrices)
+          setLoading(false)
+        } else {
+          // Old data structure, reload fresh data
+          fetchMatrices()
+        }
+      } catch (error) {
+        console.error('Failed to load saved matrices:', error)
+        fetchMatrices()
+      }
+    } else {
+      fetchMatrices()
+    }
+  }, [])
+
+  useEffect(() => {
+    if (allMatrices.length > 0) {
+      // Save to localStorage whenever all matrices change
+      localStorage.setItem('expedition-matrices', JSON.stringify(allMatrices))
+      // Dispatch custom event to notify calculator of updates
+      window.dispatchEvent(new CustomEvent('pricingMatricesUpdated'))
+    }
+  }, [allMatrices])
+
+  useEffect(() => {
+    // Apply filters when they change
+    if (allMatrices.length > 0) {
+      applyFilters()
+    }
+  }, [filterRegion, filterCurrency, searchTerm, allMatrices])
 
   const fetchMatrices = async () => {
     try {
-      // In production, this would fetch from API
-      let filteredData = [...mockExpeditionData]
-      
-      if (filterRegion !== 'all') {
-        filteredData = filteredData.filter(m => m.region === filterRegion)
-      }
-      
-      if (filterCurrency !== 'all') {
-        filteredData = filteredData.filter(m => m.currency === filterCurrency)
-      }
-      
-      if (searchTerm) {
-        filteredData = filteredData.filter(m => 
-          m.destinationPort.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          m.country.toLowerCase().includes(searchTerm.toLowerCase())
-        )
-      }
-      
-      setMatrices(filteredData)
+      // Load initial mock data
+      setAllMatrices(mockExpeditionData)
+      setMatrices(mockExpeditionData)
+      // Save to localStorage for persistence
+      localStorage.setItem('expedition-matrices', JSON.stringify(mockExpeditionData))
     } catch (error) {
       toast.error('Failed to fetch expedition matrices')
     } finally {
       setLoading(false)
     }
+  }
+
+  const applyFilters = () => {
+    let filteredData = [...allMatrices]
+    
+    if (filterRegion !== 'all') {
+      filteredData = filteredData.filter((m: ExpeditionMatrix) => m.region === filterRegion)
+    }
+    
+    if (filterCurrency !== 'all') {
+      filteredData = filteredData.filter((m: ExpeditionMatrix) => m.currency === filterCurrency)
+    }
+    
+    if (searchTerm) {
+      filteredData = filteredData.filter((m: ExpeditionMatrix) => 
+        m.destinationPort.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        m.country.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+    }
+    
+    setMatrices(filteredData)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -279,10 +308,9 @@ export function ExpeditionPricingTab() {
     try {
       if (editingMatrix) {
         // Update existing matrix
-        setMatrices(prev => prev.map(m => 
-          m.id === editingMatrix.id 
-            ? { ...m, ...formData, updatedAt: new Date().toISOString() }
-            : m
+        const updatedMatrix = { ...editingMatrix, ...formData, updatedAt: new Date().toISOString() }
+        setAllMatrices(prev => prev.map(m => 
+          m.id === editingMatrix.id ? updatedMatrix : m
         ))
         toast.success('Expedition matrix updated successfully')
       } else {
@@ -294,7 +322,7 @@ export function ExpeditionPricingTab() {
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString()
         }
-        setMatrices(prev => [newMatrix, ...prev])
+        setAllMatrices(prev => [newMatrix, ...prev])
         toast.success('Expedition matrix created successfully')
       }
       
@@ -311,11 +339,13 @@ export function ExpeditionPricingTab() {
       country: matrix.country,
       region: matrix.region,
       consolidationPricing: { ...matrix.consolidationPricing },
-      vatRatesByVehicle: { ...matrix.vatRatesByVehicle },
+      vatRate: matrix.vatRate,
       taxRatesByVehicle: { ...matrix.taxRatesByVehicle },
-      currency: matrix.currency,
-      estimatedDays: matrix.estimatedDays,
-      notes: matrix.notes
+      thc: matrix.thc,
+      freeParkingDays: matrix.freeParkingDays,
+      parkingPricePerDay: matrix.parkingPricePerDay,
+      t1Declaration: matrix.t1Declaration,
+      currency: matrix.currency
     })
     setShowAddForm(true)
   }
@@ -323,7 +353,7 @@ export function ExpeditionPricingTab() {
   const handleDelete = async (id: string) => {
     if (confirm('Are you sure you want to delete this expedition matrix?')) {
       try {
-        setMatrices(prev => prev.filter(m => m.id !== id))
+        setAllMatrices(prev => prev.filter(m => m.id !== id))
         toast.success('Expedition matrix deleted successfully')
       } catch (error) {
         toast.error('Failed to delete expedition matrix')
@@ -333,8 +363,8 @@ export function ExpeditionPricingTab() {
 
   const handleToggleStatus = async (id: string) => {
     try {
-      setMatrices(prev => prev.map(m => 
-        m.id === id ? { ...m, active: !m.active } : m
+      setAllMatrices(prev => prev.map(m => 
+        m.id === id ? { ...m, active: !m.active, updatedAt: new Date().toISOString() } : m
       ))
       toast.success('Status updated successfully')
     } catch (error) {
@@ -354,25 +384,19 @@ export function ExpeditionPricingTab() {
         thirdContainer: 550,
         halfContainer: 700
       },
-      vatRatesByVehicle: {
-        sedan: 0.21,
-        suv: 0.21,
-        bigSuv: 0.21,
-        pickup: 0.21,
-        van: 0.21,
-        motorcycle: 0.21
-      },
+      vatRate: 0.21, // Reset form VAT rate
       taxRatesByVehicle: {
-        sedan: 0.10,
-        suv: 0.12,
-        bigSuv: 0.15,
-        pickup: 0.12,
-        van: 0.15,
-        motorcycle: 0.08
+        car: 0.10,          // 10% - Car
+        classicCar: 0.00,   // 0% - Classic Car
+        truck: 0.22,        // 22% - Truck
+        motorcycle: 0.06,   // 6% - Motorcycle
+        jetSki: 0.017       // 1.7% - Jet Ski/Boat
       },
-      currency: 'EUR',
-      estimatedDays: '3-5 days',
-      notes: ''
+      thc: undefined,
+      freeParkingDays: 14,
+      parkingPricePerDay: 10,
+      t1Declaration: 150,
+      currency: 'EUR'
     })
   }
 
@@ -384,19 +408,43 @@ export function ExpeditionPricingTab() {
     })
   }
 
-  const getAverageConsolidationPrice = (matrix: ExpeditionMatrix) => {
-    const prices = Object.values(matrix.consolidationPricing)
-    return Math.round(prices.reduce((sum, price) => sum + price, 0) / prices.length)
+  const getVATRate = (matrix: ExpeditionMatrix) => {
+    return matrix.vatRate
   }
 
-  const getAverageVATRate = (matrix: ExpeditionMatrix) => {
-    const rates = Object.values(matrix.vatRatesByVehicle)
-    return rates.reduce((sum, rate) => sum + rate, 0) / rates.length
+  const startEditingPrice = (matrixId: string, priceKey: keyof ConsolidationPricing, currentValue: number) => {
+    setEditingPrice({
+      matrixId,
+      priceType: 'consolidation',
+      priceKey
+    })
+    setEditingPriceValue(currentValue)
   }
 
-  const getAverageTaxRate = (matrix: ExpeditionMatrix) => {
-    const rates = Object.values(matrix.taxRatesByVehicle)
-    return rates.reduce((sum, rate) => sum + rate, 0) / rates.length
+  const saveEditedPrice = () => {
+    if (!editingPrice) return
+    
+    setAllMatrices(prev => prev.map(matrix => {
+      if (matrix.id === editingPrice.matrixId) {
+        return {
+          ...matrix,
+          consolidationPricing: {
+            ...matrix.consolidationPricing,
+            [editingPrice.priceKey]: editingPriceValue
+          },
+          updatedAt: new Date().toISOString()
+        }
+      }
+      return matrix
+    }))
+    
+    cancelEditingPrice()
+    toast.success('Price updated successfully')
+  }
+
+  const cancelEditingPrice = () => {
+    setEditingPrice(null)
+    setEditingPriceValue(0)
   }
 
   const formatCurrency = (amount: number, currency: string) => {
@@ -421,19 +469,6 @@ export function ExpeditionPricingTab() {
 
   return (
     <div className="p-6">
-      {/* Warning Banner */}
-      <div className="mb-6 bg-amber-50 border border-amber-200 rounded-lg p-4">
-        <div className="flex items-start">
-          <AlertTriangle className="h-5 w-5 text-amber-500 mt-0.5 mr-3 flex-shrink-0" />
-          <div>
-            <h3 className="text-sm font-medium text-amber-800">Important Notice</h3>
-            <p className="text-sm text-amber-700 mt-1">
-              Customs duties and VAT rates change frequently. Always verify current rates with local customs authorities.
-              These matrices are for estimation purposes only.
-            </p>
-          </div>
-        </div>
-      </div>
 
       {/* Filters and Actions */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 space-y-4 sm:space-y-0">
@@ -498,13 +533,38 @@ export function ExpeditionPricingTab() {
                   value={formData.destinationPort}
                   onChange={(e) => {
                     const selected = DESTINATION_PORTS.find(d => d.port === e.target.value)
-                    setFormData({ 
+                    const newFormData = { 
                       ...formData, 
                       destinationPort: e.target.value,
                       country: selected?.country || '',
                       region: selected?.region || '',
                       currency: selected?.currency as 'USD' | 'EUR' | 'GBP' || 'USD'
-                    })
+                    }
+                    
+                    // Set port-specific defaults
+                    if (e.target.value === 'Rotterdam, Netherlands') {
+                      newFormData.vatRate = 0.21 // 21%
+                      newFormData.freeParkingDays = 14
+                      newFormData.parkingPricePerDay = 10
+                      newFormData.thc = undefined
+                    } else if (e.target.value === 'Bremerhaven, Germany' || e.target.value === 'Hamburg, Germany') {
+                      newFormData.vatRate = 0.19 // 19%
+                      newFormData.freeParkingDays = 21
+                      newFormData.parkingPricePerDay = 12
+                      newFormData.thc = undefined
+                    } else if (e.target.value === 'Gdynia, Poland') {
+                      newFormData.vatRate = 0.23 // 23%
+                      newFormData.freeParkingDays = 7
+                      newFormData.parkingPricePerDay = 8
+                      newFormData.thc = undefined
+                    } else if (e.target.value === 'Poti, Georgia') {
+                      newFormData.vatRate = 0.18 // 18% (non-EU)
+                      newFormData.thc = 200
+                      newFormData.freeParkingDays = 5
+                      newFormData.parkingPricePerDay = 15
+                    }
+                    
+                    setFormData(newFormData)
                   }}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   required
@@ -533,19 +593,6 @@ export function ExpeditionPricingTab() {
                 </select>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Processing Time
-                </label>
-                <input
-                  type="text"
-                  value={formData.estimatedDays}
-                  onChange={(e) => setFormData({ ...formData, estimatedDays: e.target.value })}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="e.g., 3-5 days"
-                  required
-                />
-              </div>
             </div>
 
             {/* Consolidation Pricing */}
@@ -579,35 +626,31 @@ export function ExpeditionPricingTab() {
               </div>
             </div>
 
-            {/* VAT Rates by Vehicle Type */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                VAT Rates by Vehicle Type (%)
-              </label>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                {VEHICLE_TYPES.map(type => (
-                  <div key={type.key}>
-                    <label className="block text-xs text-gray-600 mb-1">
-                      {type.label}
-                    </label>
-                    <input
-                      type="number"
-                      value={formData.vatRatesByVehicle[type.key as keyof VehicleTypeTax] * 100}
-                      onChange={(e) => setFormData({ 
-                        ...formData, 
-                        vatRatesByVehicle: { 
-                          ...formData.vatRatesByVehicle, 
-                          [type.key]: (parseFloat(e.target.value) || 0) / 100
-                        }
-                      })}
-                      className="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      min="0"
-                      max="100"
-                      step="0.5"
-                      required
-                    />
-                  </div>
-                ))}
+            {/* VAT Rate (Country-specific) */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  VAT Rate (%) - Country Standard
+                </label>
+                <input
+                  type="number"
+                  value={Number((formData.vatRate * 100).toFixed(2))}
+                  onChange={(e) => setFormData({ 
+                    ...formData, 
+                    vatRate: (parseFloat(e.target.value) || 0) / 100
+                  })}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  min="0"
+                  max="30"
+                  step="0.1"
+                  required
+                  placeholder="21% (Netherlands), 19% (Germany), 23% (Poland), 9% (Classic)"
+                />
+              </div>
+              <div className="text-sm text-gray-600 pt-6">
+                <div><strong>Standard Rates:</strong></div>
+                <div>Netherlands: 21% • Germany: 19%</div>
+                <div>Poland: 23% • Classic Cars: 9%</div>
               </div>
             </div>
 
@@ -624,7 +667,7 @@ export function ExpeditionPricingTab() {
                     </label>
                     <input
                       type="number"
-                      value={formData.taxRatesByVehicle[type.key as keyof VehicleTypeTax] * 100}
+                      value={Number((formData.taxRatesByVehicle[type.key as keyof VehicleTypeTax] * 100).toFixed(2))}
                       onChange={(e) => setFormData({ 
                         ...formData, 
                         taxRatesByVehicle: { 
@@ -635,7 +678,7 @@ export function ExpeditionPricingTab() {
                       className="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                       min="0"
                       max="100"
-                      step="0.5"
+                      step="0.1"
                       required
                     />
                   </div>
@@ -643,17 +686,100 @@ export function ExpeditionPricingTab() {
               </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Notes
-              </label>
-              <textarea
-                value={formData.notes}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                rows={3}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Important notes about customs procedures, requirements, or special conditions..."
-              />
+            {/* Additional Port Charges */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  THC (Terminal Handling Charge) {formData.currency}
+                </label>
+                <input
+                  type="number"
+                  value={formData.thc ?? ''}
+                  onChange={(e) => setFormData({ 
+                    ...formData, 
+                    thc: e.target.value ? parseFloat(e.target.value) || 0 : undefined
+                  })}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Optional (e.g., 200 for Poti)"
+                  min="0"
+                  step="10"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  T1 Declaration Cost {formData.currency}
+                </label>
+                <input
+                  type="number"
+                  value={formData.t1Declaration}
+                  onChange={(e) => setFormData({ 
+                    ...formData, 
+                    t1Declaration: parseFloat(e.target.value) || 0
+                  })}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="T1 declaration cost"
+                  min="0"
+                  step="10"
+                  required
+                />
+              </div>
+            </div>
+
+            {/* Parking Information */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Free Parking Days
+                </label>
+                <div className="flex space-x-2">
+                  <input
+                    type="number"
+                    value={formData.freeParkingDays === 'unlimited' ? '' : formData.freeParkingDays}
+                    onChange={(e) => setFormData({ 
+                      ...formData, 
+                      freeParkingDays: e.target.value ? parseInt(e.target.value) : 0
+                    })}
+                    className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Days"
+                    min="0"
+                    disabled={formData.freeParkingDays === 'unlimited'}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ 
+                      ...formData, 
+                      freeParkingDays: formData.freeParkingDays === 'unlimited' ? 14 : 'unlimited'
+                    })}
+                    className={`px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+                      formData.freeParkingDays === 'unlimited' 
+                        ? 'bg-blue-600 text-white' 
+                        : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    Unlimited
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Parking Price per Day {formData.currency}
+                </label>
+                <input
+                  type="number"
+                  value={formData.parkingPricePerDay}
+                  onChange={(e) => setFormData({ 
+                    ...formData, 
+                    parkingPricePerDay: parseFloat(e.target.value) || 0
+                  })}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Price per day after free period"
+                  min="0"
+                  step="1"
+                  required
+                />
+              </div>
             </div>
 
             <div className="flex justify-end space-x-3">
@@ -685,137 +811,188 @@ export function ExpeditionPricingTab() {
       ) : (
         <div className="space-y-6">
           {matrices.map((matrix) => (
-            <div key={matrix.id} className="bg-white border border-gray-200 rounded-lg p-6">
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center space-x-3">
-                  <Globe className="h-5 w-5 text-gray-400" />
-                  <div>
-                    <h3 className="text-lg font-medium text-gray-900">{matrix.destinationPort}</h3>
-                    <p className="text-sm text-gray-600">{matrix.country} • {matrix.region}</p>
+            <div key={matrix.id} className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+              {/* Header */}
+              <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-4">
+                    <span className={`px-3 py-1 text-sm font-medium rounded-full ${
+                      matrix.region === 'Europe' ? 'bg-blue-100 text-blue-800' :
+                      matrix.region === 'Caucasus' ? 'bg-green-100 text-green-800' :
+                      matrix.region === 'Middle East' ? 'bg-orange-100 text-orange-800' :
+                      'bg-purple-100 text-purple-800'
+                    }`}>
+                      {matrix.region}
+                    </span>
+                    <div className="flex items-center">
+                      <Globe className="h-4 w-4 text-gray-400 mr-2" />
+                      <span className="text-lg font-semibold text-gray-900">{matrix.destinationPort}</span>
+                    </div>
+                    <span className="px-2 py-1 text-xs bg-gray-100 text-gray-800 rounded">{matrix.country}</span>
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      matrix.active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                    }`}>
+                      {matrix.active ? 'Active' : 'Inactive'}
+                    </span>
                   </div>
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                    matrix.active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                  }`}>
-                    {matrix.active ? 'Active' : 'Inactive'}
-                  </span>
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <button
-                    onClick={() => handleToggleStatus(matrix.id)}
-                    className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
-                      matrix.active
-                        ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
-                        : 'bg-green-100 text-green-800 hover:bg-green-200'
-                    }`}
-                  >
-                    {matrix.active ? 'Deactivate' : 'Activate'}
-                  </button>
-                  <button
-                    onClick={() => handleEdit(matrix)}
-                    className="text-blue-600 hover:text-blue-900 p-1"
-                  >
-                    <Edit className="h-4 w-4" />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(matrix.id)}
-                    className="text-red-600 hover:text-red-900 p-1"
-                  >
-                    <Trash className="h-4 w-4" />
-                  </button>
+                  
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => handleToggleStatus(matrix.id)}
+                      className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                        matrix.active
+                          ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
+                          : 'bg-green-100 text-green-800 hover:bg-green-200'
+                      }`}
+                    >
+                      {matrix.active ? 'Deactivate' : 'Activate'}
+                    </button>
+                    <button
+                      onClick={() => handleEdit(matrix)}
+                      className="text-blue-600 hover:text-blue-900 p-1"
+                    >
+                      <Edit className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(matrix.id)}
+                      className="text-red-600 hover:text-red-900 p-1"
+                    >
+                      <Trash className="h-4 w-4" />
+                    </button>
+                  </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                {/* Consolidation Pricing */}
-                <div>
-                  <h4 className="text-sm font-medium text-gray-700 mb-3">Consolidation Pricing</h4>
-                  <div className="bg-blue-50 p-3 rounded space-y-2">
-                    {CONSOLIDATION_TYPES.map(type => (
-                      <div key={type.key} className="flex justify-between items-center">
-                        <span className="text-sm text-gray-600">{type.label}:</span>
-                        <span className="text-sm font-medium text-gray-900">
-                          {formatCurrency(matrix.consolidationPricing[type.key as keyof ConsolidationPricing], matrix.currency)}
-                        </span>
+              {/* Pricing Details */}
+              <div className="p-6">
+                <h4 className="text-sm font-medium text-gray-700 mb-4">Expedition Pricing & Customs Rates</h4>
+                
+                <div className="border border-gray-200 rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                      <span className="font-medium text-gray-900">All-in Expedition Service</span>
+                      <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">{matrix.currency}</span>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    {/* Consolidation Pricing */}
+                    <div>
+                      <h5 className="text-xs font-medium text-gray-600 mb-2">Consolidation Pricing</h5>
+                      <div className="grid grid-cols-1 gap-2">
+                        {CONSOLIDATION_TYPES.map(type => {
+                          const isEditing = editingPrice && 
+                            editingPrice.matrixId === matrix.id && 
+                            editingPrice.priceType === 'consolidation' &&
+                            editingPrice.priceKey === type.key
+                          
+                          return (
+                            <div key={type.key} className="text-center">
+                              <div className="text-xs text-gray-600 mb-1">{type.label}</div>
+                              {isEditing ? (
+                                <input
+                                  type="text"
+                                  inputMode="numeric"
+                                  value={editingPriceValue === 0 ? '' : editingPriceValue}
+                                  onChange={(e) => {
+                                    const value = e.target.value.replace(/[^0-9.]/g, '')
+                                    setEditingPriceValue(value === '' ? 0 : parseFloat(value) || 0)
+                                  }}
+                                  className="w-full text-sm font-medium text-center px-2 py-1 border border-blue-500 rounded bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  min="0"
+                                  step="25"
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') saveEditedPrice()
+                                    if (e.key === 'Escape') cancelEditingPrice()
+                                  }}
+                                  onBlur={saveEditedPrice}
+                                  autoFocus
+                                />
+                              ) : (
+                                <div 
+                                  className="text-sm font-medium text-gray-900 bg-gray-50 py-1 px-2 rounded cursor-pointer hover:bg-gray-100 transition-colors"
+                                  onClick={() => startEditingPrice(
+                                    matrix.id, 
+                                    type.key as keyof ConsolidationPricing,
+                                    matrix.consolidationPricing[type.key as keyof ConsolidationPricing]
+                                  )}
+                                >
+                                  {formatCurrency(matrix.consolidationPricing[type.key as keyof ConsolidationPricing], matrix.currency)}
+                                </div>
+                              )}
+                            </div>
+                          )
+                        })}
                       </div>
-                    ))}
-                  </div>
-                  <div className="mt-2 text-center">
-                    <span className="text-lg font-semibold text-blue-700">
-                      Avg: {formatCurrency(getAverageConsolidationPrice(matrix), matrix.currency)}
-                    </span>
-                  </div>
-                </div>
+                    </div>
 
-                {/* VAT Rates */}
-                <div>
-                  <h4 className="text-sm font-medium text-gray-700 mb-3">VAT Rates by Vehicle</h4>
-                  <div className="space-y-2">
-                    {VEHICLE_TYPES.map(type => (
-                      <div key={type.key} className="flex justify-between items-center">
-                        <span className="text-xs text-gray-600">{type.label}:</span>
-                        <span className="text-xs font-medium text-gray-900">
-                          {formatPercentage(matrix.vatRatesByVehicle[type.key as keyof VehicleTypeTax])}
-                        </span>
+                    {/* Tax & VAT Rates */}
+                    <div>
+                      <h5 className="text-xs font-medium text-gray-600 mb-2">Customs Rates</h5>
+                      <div className="space-y-2">
+                        <div className="bg-blue-50 p-2 rounded">
+                          <div className="text-xs text-gray-600">VAT Rate (Country)</div>
+                          <div className="text-sm font-medium text-blue-700">
+                            {formatPercentage(matrix.vatRate)}
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          {VEHICLE_TYPES.slice(0, 4).map(type => (
+                            <div key={type.key} className="text-center">
+                              <div className="text-xs text-gray-600 mb-1">{type.label}</div>
+                              <div className="text-xs font-medium text-gray-900">
+                                {formatPercentage(matrix.taxRatesByVehicle[type.key as keyof VehicleTypeTax])}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="grid grid-cols-1 gap-2">
+                          {VEHICLE_TYPES.slice(4).map(type => (
+                            <div key={type.key} className="text-center">
+                              <div className="text-xs text-gray-600 mb-1">{type.label}</div>
+                              <div className="text-xs font-medium text-gray-900">
+                                {formatPercentage(matrix.taxRatesByVehicle[type.key as keyof VehicleTypeTax])}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    ))}
-                  </div>
-                  <div className="mt-2 pt-2 border-t border-gray-200">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Average:</span>
-                      <span className="text-sm font-medium text-gray-900">
-                        {formatPercentage(getAverageVATRate(matrix))}
-                      </span>
                     </div>
-                  </div>
-                </div>
 
-                {/* Tax/Duty Rates */}
-                <div>
-                  <h4 className="text-sm font-medium text-gray-700 mb-3">Tax/Duty Rates by Vehicle</h4>
-                  <div className="space-y-2">
-                    {VEHICLE_TYPES.map(type => (
-                      <div key={type.key} className="flex justify-between items-center">
-                        <span className="text-xs text-gray-600">{type.label}:</span>
-                        <span className="text-xs font-medium text-gray-900">
-                          {formatPercentage(matrix.taxRatesByVehicle[type.key as keyof VehicleTypeTax])}
-                        </span>
+                    {/* Additional Charges */}
+                    <div>
+                      <h5 className="text-xs font-medium text-gray-600 mb-2">Additional Services</h5>
+                      <div className="space-y-2">
+                        <div className="bg-gray-50 p-2 rounded">
+                          <div className="text-xs text-gray-600">T1 Declaration</div>
+                          <div className="text-sm font-medium text-blue-700">
+                            {formatCurrency(matrix.t1Declaration, matrix.currency)}
+                          </div>
+                        </div>
+                        <div className="bg-gray-50 p-2 rounded">
+                          <div className="text-xs text-gray-600">Free Parking</div>
+                          <div className="text-sm font-medium text-green-700">
+                            {matrix.freeParkingDays === 'unlimited' ? 'Unlimited' : `${matrix.freeParkingDays} days`}
+                          </div>
+                        </div>
+                        <div className="bg-gray-50 p-2 rounded">
+                          <div className="text-xs text-gray-600">Parking/Day</div>
+                          <div className="text-sm font-medium text-orange-700">
+                            {formatCurrency(matrix.parkingPricePerDay, matrix.currency)}
+                          </div>
+                        </div>
+                        {matrix.thc && (
+                          <div className="bg-gray-50 p-2 rounded">
+                            <div className="text-xs text-gray-600">THC</div>
+                            <div className="text-sm font-medium text-purple-700">
+                              {formatCurrency(matrix.thc, matrix.currency)}
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    ))}
-                  </div>
-                  <div className="mt-2 pt-2 border-t border-gray-200">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Average:</span>
-                      <span className="text-sm font-medium text-gray-900">
-                        {formatPercentage(getAverageTaxRate(matrix))}
-                      </span>
                     </div>
                   </div>
-                </div>
-
-                {/* Summary */}
-                <div>
-                  <h4 className="text-sm font-medium text-gray-700 mb-3">Summary</h4>
-                  <div className="bg-gray-50 p-3 rounded space-y-2">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Processing:</span>
-                      <span className="text-sm font-medium text-gray-900">{matrix.estimatedDays}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Currency:</span>
-                      <span className="text-sm font-medium text-gray-900">{matrix.currency}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Updated:</span>
-                      <span className="text-sm font-medium text-gray-900">{formatDate(matrix.updatedAt)}</span>
-                    </div>
-                  </div>
-                  {matrix.notes && (
-                    <div className="mt-3 p-2 bg-amber-50 rounded text-xs text-amber-800">
-                      <FileText className="h-3 w-3 inline mr-1" />
-                      {matrix.notes}
-                    </div>
-                  )}
                 </div>
               </div>
             </div>
@@ -828,13 +1005,12 @@ export function ExpeditionPricingTab() {
         <div className="flex items-start">
           <FileText className="h-5 w-5 text-blue-500 mt-0.5 mr-3 flex-shrink-0" />
           <div>
-            <h4 className="text-sm font-medium text-blue-800">Expedition Consolidation Structure</h4>
+            <h4 className="text-sm font-medium text-blue-800">Customs Calculation Structure</h4>
             <ul className="text-sm text-blue-700 mt-1 space-y-1">
-              <li>• Consolidation pricing combines expedition and clearance fees based on container size (1/4, 1/3, 1/2)</li>
-              <li>• VAT rates vary by vehicle type and destination country customs regulations</li>
-              <li>• Tax/duty rates are differentiated by vehicle category (sedans, SUVs, trucks, motorcycles)</li>
-              <li>• Processing time varies by destination port and documentation requirements</li>
-              <li>• Example: Rotterdam 500 EUR (1/4), 550 EUR (1/3), 700 EUR (1/2)</li>
+              <li>• <strong>Tax/Duty</strong>: Applied to vehicle value (e.g., €10,000 × 10% = €1,000)</li>
+              <li>• <strong>VAT</strong>: Applied to value + tax (e.g., €11,000 × 21% = €2,310)</li>
+              <li>• <strong>Consolidation</strong>: Fixed expedition + clearance fee based on container size</li>
+              <li>• <strong>Total Customs</strong>: Tax + VAT + Consolidation + THC (if applicable)</li>
             </ul>
           </div>
         </div>

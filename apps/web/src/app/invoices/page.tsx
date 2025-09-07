@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Plus, Filter, Search, FileText, Download, Eye } from 'lucide-react'
+import { Plus, Filter, Search, FileText, Download, Eye, X } from 'lucide-react'
 import { AppLayout } from '@/components/layout/app-layout'
 import { PageHeader } from '@/components/layout/page-header'
 import { StatusBadge } from '@/components/ui/status-badge'
@@ -14,11 +14,12 @@ import { useSession } from '@/hooks/useSession'
 interface Invoice {
   id: string
   number: string
-  status: 'DRAFT' | 'SENT' | 'PAID' | 'OVERDUE' | 'CANCELLED'
+  status: 'PENDING' | 'PAID' | 'OVERDUE' | 'CANCELED'
   total: number
   subtotal: number
   currency: string
   issuedAt: string
+  dueDate: string | null
   createdAt: string
   org: {
     name: string
@@ -48,6 +49,13 @@ export default function InvoicesPage() {
     total: 0,
     totalPages: 0
   })
+  const [statusCounts, setStatusCounts] = useState({
+    all: 0,
+    PENDING: 0,
+    PAID: 0,
+    OVERDUE: 0,
+    CANCELED: 0
+  })
   const { user, loading: sessionLoading } = useSession()
 
   useEffect(() => {
@@ -70,6 +78,9 @@ export default function InvoicesPage() {
       if (response.ok) {
         setInvoices(data.invoices || [])
         setPagination(data.pagination)
+        if (data.statusCounts) {
+          setStatusCounts(data.statusCounts)
+        }
       } else {
         toast.error(`Failed to fetch invoices: ${data.error}`)
       }
@@ -100,16 +111,64 @@ export default function InvoicesPage() {
   const filteredInvoices = invoices
 
   const filterOptions = [
-    { value: 'all', label: 'All Invoices', count: invoices.length },
-    { value: 'DRAFT', label: 'Draft', count: invoices.filter(i => i.status === 'DRAFT').length },
-    { value: 'SENT', label: 'Sent', count: invoices.filter(i => i.status === 'SENT').length },
-    { value: 'PAID', label: 'Paid', count: invoices.filter(i => i.status === 'PAID').length },
-    { value: 'OVERDUE', label: 'Overdue', count: invoices.filter(i => i.status === 'OVERDUE').length },
-    { value: 'CANCELLED', label: 'Cancelled', count: invoices.filter(i => i.status === 'CANCELLED').length },
+    { value: 'all', label: 'All Invoices', count: statusCounts.all },
+    { value: 'PENDING', label: 'Pending', count: statusCounts.PENDING },
+    { value: 'PAID', label: 'Paid', count: statusCounts.PAID },
+    { value: 'OVERDUE', label: 'Overdue', count: statusCounts.OVERDUE },
+    { value: 'CANCELED', label: 'Canceled', count: statusCounts.CANCELED },
   ]
 
   const handlePageChange = (newPage: number) => {
     setPagination(prev => ({ ...prev, page: newPage }))
+  }
+
+  const handleDownloadPDF = async (invoiceNumber: string) => {
+    try {
+      const response = await fetch(`/api/invoices/${invoiceNumber}/pdf`)
+      if (!response.ok) {
+        throw new Error('Failed to generate PDF')
+      }
+      
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.style.display = 'none'
+      a.href = url
+      a.download = `invoice-${invoiceNumber}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+      
+      toast.success('PDF downloaded successfully!')
+    } catch (error) {
+      console.error('Download failed:', error)
+      toast.error('Failed to download PDF')
+    }
+  }
+
+  const handleCancelInvoice = async (invoiceId: string) => {
+    const reason = prompt('Please provide a reason for canceling this invoice:')
+    if (!reason) return
+
+    try {
+      const response = await fetch(`/api/invoices/${invoiceId}/cancel`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason })
+      })
+
+      if (response.ok) {
+        toast.success('Invoice canceled successfully')
+        fetchInvoices()
+      } else {
+        const data = await response.json()
+        toast.error(data.error || 'Failed to cancel invoice')
+      }
+    } catch (error) {
+      toast.error('Error canceling invoice')
+      console.error('Error canceling invoice:', error)
+    }
   }
 
   return (
@@ -158,10 +217,12 @@ export default function InvoicesPage() {
                     className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                   />
                 </div>
-                <button className="inline-flex items-center px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 transition-colors">
-                  <Plus className="h-4 w-4 mr-2" />
-                  New Invoice
-                </button>
+                {user?.role === 'ADMIN' && (
+                  <button className="inline-flex items-center px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 transition-colors">
+                    <Plus className="h-4 w-4 mr-2" />
+                    New Invoice
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -174,10 +235,6 @@ export default function InvoicesPage() {
               <h2 className="text-lg font-semibold text-gray-900">
                 Invoices {filteredInvoices.length > 0 && `(${pagination.total})`}
               </h2>
-              <button className="inline-flex items-center px-3 py-1 text-sm text-gray-500 hover:text-gray-700">
-                <Download className="h-4 w-4 mr-1" />
-                Export
-              </button>
             </div>
           </div>
 
@@ -218,6 +275,9 @@ export default function InvoicesPage() {
                           Issued
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Due Date
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Actions
                         </th>
                       </tr>
@@ -245,17 +305,33 @@ export default function InvoicesPage() {
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             {formatDate(invoice.issuedAt)}
                           </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {invoice.dueDate ? formatDate(invoice.dueDate) : 'N/A'}
+                          </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                             <div className="flex items-center space-x-2">
                               <Link
-                                href={`/invoices/${invoice.id}`}
+                                href={`/invoices/${invoice.number}`}
                                 className="text-blue-600 hover:text-blue-900"
                               >
                                 <Eye className="h-4 w-4" />
                               </Link>
-                              <button className="text-gray-400 hover:text-gray-600">
+                              <button 
+                                onClick={() => handleDownloadPDF(invoice.number)}
+                                className="text-gray-400 hover:text-gray-600"
+                                title="Download PDF"
+                              >
                                 <Download className="h-4 w-4" />
                               </button>
+                              {user?.role === 'ADMIN' && ['PENDING', 'OVERDUE'].includes(invoice.status) && (
+                                <button 
+                                  onClick={() => handleCancelInvoice(invoice.id)}
+                                  className="text-red-600 hover:text-red-900"
+                                  title="Cancel Invoice"
+                                >
+                                  <X className="h-4 w-4" />
+                                </button>
+                              )}
                             </div>
                           </td>
                         </tr>

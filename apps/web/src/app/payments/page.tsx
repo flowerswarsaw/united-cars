@@ -1,24 +1,28 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Plus, Filter, Search, CreditCard, Upload, Eye } from 'lucide-react'
+import { Plus, Filter, Search, CreditCard, Upload, Eye, Download, FileText } from 'lucide-react'
 import { AppLayout } from '@/components/layout/app-layout'
 import { PageHeader } from '@/components/layout/page-header'
 import { StatusBadge } from '@/components/ui/status-badge'
 import { LoadingState } from '@/components/ui/loading-state'
 import { EmptyState } from '@/components/ui/empty-state'
+import { PaymentSubmissionModal } from '@/components/payments/payment-submission-modal'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
 import { useSession } from '@/hooks/useSession'
+import { formatCurrency, formatDate } from '@/lib/utils'
 
 interface Payment {
   id: string
   method: string
   amount: number
   currency: string
-  status: 'SUBMITTED' | 'APPROVED' | 'REJECTED' | 'PROCESSED'
+  status: 'PENDING' | 'APPROVED' | 'DECLINED' | 'CANCELED'
   proofUrl: string | null
   ref: string | null
+  senderName: string | null
+  transferDate: string | null
   createdAt: string
   org: {
     name: string
@@ -33,6 +37,70 @@ interface Payment {
   }
 }
 
+// Component to display allocated invoices for a payment
+function PaymentInvoiceDisplay({ payment }: { payment: Payment }) {
+  // Parse allocation data from the payment
+  const getAllocatedInvoices = () => {
+    try {
+      // If payment has allocations JSON, parse it
+      if ((payment as any).allocations) {
+        const allocations = JSON.parse((payment as any).allocations)
+        return Object.keys(allocations).filter(invoiceId => allocations[invoiceId] > 0)
+      }
+      
+      // Fallback to single invoice if exists
+      if (payment.invoice) {
+        return [payment.invoice.id]
+      }
+      
+      return []
+    } catch (error) {
+      console.error('Error parsing payment allocations:', error)
+      return payment.invoice ? [payment.invoice.id] : []
+    }
+  }
+
+  const allocatedInvoices = getAllocatedInvoices()
+
+  if (allocatedInvoices.length === 0) {
+    return <span className="text-sm text-gray-500">No invoice allocation</span>
+  }
+
+  if (allocatedInvoices.length === 1) {
+    // Single invoice - show as link if we have invoice data
+    const invoiceId = allocatedInvoices[0]
+    if (payment.invoice && payment.invoice.id === invoiceId) {
+      return (
+        <Link
+          href={`/invoices/${payment.invoice.id}`}
+          className="text-sm text-blue-600 hover:text-blue-900"
+        >
+          {payment.invoice.number}
+        </Link>
+      )
+    } else {
+      return <span className="text-sm text-gray-900">{invoiceId}</span>
+    }
+  }
+
+  // Multiple invoices - show count with tooltip or expandable list
+  return (
+    <div className="text-sm">
+      <span className="text-gray-900 font-medium">{allocatedInvoices.length} invoices</span>
+      <div className="text-xs text-gray-500 mt-1">
+        {allocatedInvoices.slice(0, 2).map((invoiceId, index) => (
+          <div key={invoiceId}>
+            {invoiceId}
+            {index === 1 && allocatedInvoices.length > 2 && (
+              <span className="text-gray-400">... +{allocatedInvoices.length - 2} more</span>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export default function PaymentsPage() {
   const [payments, setPayments] = useState<Payment[]>([])
   const [loading, setLoading] = useState(true)
@@ -44,10 +112,22 @@ export default function PaymentsPage() {
     total: 0,
     totalPages: 0
   })
+  const [statusCounts, setStatusCounts] = useState({
+    all: 0,
+    PENDING: 0,
+    APPROVED: 0,
+    DECLINED: 0,
+    CANCELED: 0
+  })
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [outstandingInvoices, setOutstandingInvoices] = useState<any[]>([])
+  const [userBalance, setUserBalance] = useState(0)
   const { user, loading: sessionLoading } = useSession()
 
   useEffect(() => {
     fetchPayments()
+    fetchOutstandingInvoices()
+    fetchUserBalance()
   }, [filter, pagination.page, searchTerm])
 
   const fetchPayments = async () => {
@@ -66,6 +146,9 @@ export default function PaymentsPage() {
       if (response.ok) {
         setPayments(data.payments || [])
         setPagination(data.pagination)
+        if (data.statusCounts) {
+          setStatusCounts(data.statusCounts)
+        }
       } else {
         toast.error(`Failed to fetch payments: ${data.error}`)
       }
@@ -77,31 +160,64 @@ export default function PaymentsPage() {
     }
   }
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    })
-  }
-
-  const formatCurrency = (amount: number, currency: string = 'USD') => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: currency,
-      minimumFractionDigits: 2,
-    }).format(Number(amount))
-  }
 
   const filteredPayments = payments
 
   const filterOptions = [
-    { value: 'all', label: 'All Payments', count: payments.length },
-    { value: 'SUBMITTED', label: 'Submitted', count: payments.filter(p => p.status === 'SUBMITTED').length },
-    { value: 'APPROVED', label: 'Approved', count: payments.filter(p => p.status === 'APPROVED').length },
-    { value: 'REJECTED', label: 'Rejected', count: payments.filter(p => p.status === 'REJECTED').length },
-    { value: 'PROCESSED', label: 'Processed', count: payments.filter(p => p.status === 'PROCESSED').length },
+    { value: 'all', label: 'All Payments', count: statusCounts.all },
+    { value: 'PENDING', label: 'Pending Review', count: statusCounts.PENDING },
+    { value: 'APPROVED', label: 'Approved', count: statusCounts.APPROVED },
+    { value: 'DECLINED', label: 'Declined', count: statusCounts.DECLINED },
+    { value: 'CANCELED', label: 'Canceled', count: statusCounts.CANCELED },
   ]
+
+  const fetchOutstandingInvoices = async () => {
+    try {
+      const response = await fetch('/api/invoices/outstanding')
+      const data = await response.json()
+      
+      if (response.ok) {
+        // Map to expected format for payment modal
+        const invoicesForModal = data.invoices.map((inv: any) => ({
+          id: inv.id,
+          number: inv.number,
+          amount: inv.remainingAmount, // Use remaining amount instead of total
+          dueDate: inv.issuedAt
+        }))
+        setOutstandingInvoices(invoicesForModal)
+      } else {
+        console.error('Failed to fetch outstanding invoices:', data.error)
+        // Fallback to empty array
+        setOutstandingInvoices([])
+      }
+    } catch (error) {
+      console.error('Error fetching outstanding invoices:', error)
+      setOutstandingInvoices([])
+    }
+  }
+
+  const fetchUserBalance = async () => {
+    try {
+      const response = await fetch('/api/user/balance')
+      const data = await response.json()
+      
+      if (response.ok) {
+        setUserBalance(data.balance || 0)
+      } else {
+        console.error('Failed to fetch user balance:', data.error)
+        setUserBalance(0)
+      }
+    } catch (error) {
+      console.error('Error fetching user balance:', error)
+      setUserBalance(0)
+    }
+  }
+
+  const handlePaymentSubmit = () => {
+    fetchPayments()
+    fetchUserBalance()
+    setIsModalOpen(false)
+  }
 
   const handlePageChange = (newPage: number) => {
     setPagination(prev => ({ ...prev, page: newPage }))
@@ -153,7 +269,10 @@ export default function PaymentsPage() {
                     className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                   />
                 </div>
-                <button className="inline-flex items-center px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors">
+                <button 
+                  onClick={() => setIsModalOpen(true)}
+                  className="inline-flex items-center px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors"
+                >
                   <Plus className="h-4 w-4 mr-2" />
                   Submit Payment
                 </button>
@@ -206,6 +325,9 @@ export default function PaymentsPage() {
                           Amount
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Transfer Details
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Status
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -234,22 +356,44 @@ export default function PaymentsPage() {
                             )}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            {payment.invoice ? (
-                              <Link
-                                href={`/invoices/${payment.invoice.id}`}
-                                className="text-sm text-blue-600 hover:text-blue-900"
-                              >
-                                {payment.invoice.number}
-                              </Link>
-                            ) : (
-                              <span className="text-sm text-gray-500">-</span>
-                            )}
+                            <PaymentInvoiceDisplay payment={payment} />
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             {payment.method}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                             {formatCurrency(payment.amount, payment.currency)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm text-gray-900">
+                              {(payment as any).senderName || 'N/A'}
+                            </div>
+                            {(payment as any).transferDate && (
+                              <div className="text-sm text-gray-500">
+                                {formatDate((payment as any).transferDate)}
+                              </div>
+                            )}
+                            {payment.proofUrl && (
+                              <div className="flex items-center mt-1 space-x-2">
+                                <a
+                                  href={payment.proofUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-blue-600 hover:text-blue-900 flex items-center text-xs"
+                                >
+                                  <FileText className="h-3 w-3 mr-1" />
+                                  View Proof
+                                </a>
+                                <a
+                                  href={payment.proofUrl}
+                                  download
+                                  className="text-green-600 hover:text-green-900 flex items-center text-xs"
+                                >
+                                  <Download className="h-3 w-3 mr-1" />
+                                  Download
+                                </a>
+                              </div>
+                            )}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <StatusBadge status={payment.status} />
@@ -319,6 +463,15 @@ export default function PaymentsPage() {
           </div>
         </div>
       </div>
+      
+      {/* Payment Submission Modal */}
+      <PaymentSubmissionModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        outstandingInvoices={outstandingInvoices}
+        userBalance={userBalance}
+        onSubmit={handlePaymentSubmit}
+      />
     </AppLayout>
   )
 }

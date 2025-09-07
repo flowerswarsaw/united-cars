@@ -5,7 +5,16 @@
 
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
-import { Prisma } from '@prisma/client'
+
+// Conditionally import Prisma for real database usage
+let Prisma: any = null
+try {
+  const prismaModule = require('@prisma/client')
+  Prisma = prismaModule.Prisma
+} catch (error) {
+  // Prisma not available - using mock data
+}
+
 import { logger, LogCategory, RequestContext } from './logger'
 
 /**
@@ -353,13 +362,13 @@ export function handleError(
     })
   }
 
-  // Handle Prisma errors
-  if (error instanceof Prisma.PrismaClientValidationError) {
+  // Handle Prisma errors (only when Prisma is available)
+  if (Prisma && error instanceof Prisma.PrismaClientValidationError) {
     logError(error, context, { code: ErrorCode.VALIDATION_ERROR, severity: ErrorSeverity.LOW })
     return createErrorResponse(ErrorCode.VALIDATION_ERROR, { requestId })
   }
 
-  if (error instanceof Prisma.PrismaClientKnownRequestError) {
+  if (Prisma && error instanceof Prisma.PrismaClientKnownRequestError) {
     switch (error.code) {
       case 'P2002': // Unique constraint violation
         logError(error, context, { code: ErrorCode.ALREADY_EXISTS, severity: ErrorSeverity.LOW })

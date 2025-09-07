@@ -9,7 +9,11 @@ import {
 import { BaseRepository } from '../base-repository';
 import { activityRepository } from './activity-repository';
 
-class TaskRepositoryImpl extends BaseRepository<Task> implements ITaskRepository<Task> {
+class TaskRepositoryImpl extends BaseRepository<Task> implements ITaskRepository {
+  constructor() {
+    super();
+    this.setEntityType(EntityType.TASK);
+  }
   async getByTarget(targetType: EntityType, targetId: string): Promise<Task[]> {
     return this.list({ targetType, targetId });
   }

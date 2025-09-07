@@ -1,7 +1,11 @@
-import { Organisation, OrganizationType, getOrganizationTypeConfig, getApplicablePipelines } from '@united-cars/crm-core';
+import { Organisation, OrganizationType, getOrganizationTypeConfig, getApplicablePipelines, EntityType } from '@united-cars/crm-core';
 import { BaseRepository } from '../base-repository';
 
 export class OrganisationRepository extends BaseRepository<Organisation> {
+  constructor() {
+    super();
+    this.setEntityType(EntityType.ORGANISATION);
+  }
   async getWithContacts(id: string): Promise<Organisation & { contacts?: any[] }> {
     const org = await this.get(id);
     if (!org) throw new Error('Organisation not found');

@@ -75,6 +75,7 @@ const CONSOLIDATION_TYPES = [
 
 export function ShippingPricingTab() {
   const [matrices, setMatrices] = useState<ShippingMatrix[]>([])
+  const [allMatrices, setAllMatrices] = useState<ShippingMatrix[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterPort, setFilterPort] = useState<string>('all')
@@ -239,38 +240,75 @@ export function ShippingPricingTab() {
   ]
 
   useEffect(() => {
-    fetchMatrices()
-  }, [filterPort, filterDestination, searchTerm])
+    // Load data from localStorage if available
+    const savedMatrices = localStorage.getItem('shipping-matrices')
+    if (savedMatrices) {
+      try {
+        const parsedMatrices = JSON.parse(savedMatrices)
+        setAllMatrices(parsedMatrices)
+        setMatrices(parsedMatrices)
+        setLoading(false)
+      } catch (error) {
+        console.error('Failed to load saved matrices:', error)
+        fetchMatrices()
+      }
+    } else {
+      fetchMatrices()
+    }
+  }, [])
+
+  useEffect(() => {
+    if (allMatrices.length > 0) {
+      // Save to localStorage whenever all matrices change
+      localStorage.setItem('shipping-matrices', JSON.stringify(allMatrices))
+      // Dispatch custom event to notify calculator of updates
+      window.dispatchEvent(new CustomEvent('pricingMatricesUpdated'))
+    }
+  }, [allMatrices])
+
+  useEffect(() => {
+    // Apply filters when they change
+    if (allMatrices.length > 0) {
+      applyFilters()
+    }
+  }, [filterPort, filterDestination, searchTerm, allMatrices])
 
   const fetchMatrices = async () => {
     try {
-      // In production, this would fetch from API
-      let filteredData = [...mockShippingData]
-      
-      if (filterPort !== 'all') {
-        filteredData = filteredData.filter(m => m.shippingPort === filterPort)
-      }
-      
-      if (filterDestination !== 'all') {
-        filteredData = filteredData.filter(m => 
-          Object.values(m.destinationPricing).some(dest => dest.country === filterDestination)
-        )
-      }
-      
-      if (searchTerm) {
-        filteredData = filteredData.filter(m => 
-          Object.keys(m.destinationPricing).some(port => 
-            port.toLowerCase().includes(searchTerm.toLowerCase())
-          )
-        )
-      }
-      
-      setMatrices(filteredData)
+      // Load initial mock data
+      setAllMatrices(mockShippingData)
+      setMatrices(mockShippingData)
+      // Save to localStorage for persistence
+      localStorage.setItem('shipping-matrices', JSON.stringify(mockShippingData))
     } catch (error) {
       toast.error('Failed to fetch shipping matrices')
     } finally {
       setLoading(false)
     }
+  }
+
+  const applyFilters = () => {
+    let filteredData = [...allMatrices]
+    
+    if (filterPort !== 'all') {
+      filteredData = filteredData.filter((m: ShippingMatrix) => m.shippingPort === filterPort)
+    }
+    
+    if (filterDestination !== 'all') {
+      filteredData = filteredData.filter((m: ShippingMatrix) => 
+        Object.values(m.destinationPricing).some((dest: any) => dest.country === filterDestination)
+      )
+    }
+    
+    if (searchTerm) {
+      filteredData = filteredData.filter((m: ShippingMatrix) => 
+        Object.keys(m.destinationPricing).some(port => 
+          port.toLowerCase().includes(searchTerm.toLowerCase())
+        )
+      )
+    }
+    
+    setMatrices(filteredData)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -285,10 +323,9 @@ export function ShippingPricingTab() {
     try {
       if (editingMatrix) {
         // Update existing matrix
-        setMatrices(prev => prev.map(m => 
-          m.id === editingMatrix.id 
-            ? { ...m, ...formData, updatedAt: new Date().toISOString() }
-            : m
+        const updatedMatrix = { ...editingMatrix, ...formData, updatedAt: new Date().toISOString() }
+        setAllMatrices(prev => prev.map(m => 
+          m.id === editingMatrix.id ? updatedMatrix : m
         ))
         toast.success('Shipping matrix updated successfully')
       } else {
@@ -300,7 +337,7 @@ export function ShippingPricingTab() {
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString()
         }
-        setMatrices(prev => [newMatrix, ...prev])
+        setAllMatrices(prev => [newMatrix, ...prev])
         toast.success('Shipping matrix created successfully')
       }
       
@@ -322,7 +359,7 @@ export function ShippingPricingTab() {
   const handleDelete = async (id: string) => {
     if (confirm('Are you sure you want to delete this shipping matrix?')) {
       try {
-        setMatrices(prev => prev.filter(m => m.id !== id))
+        setAllMatrices(prev => prev.filter(m => m.id !== id))
         toast.success('Shipping matrix deleted successfully')
       } catch (error) {
         toast.error('Failed to delete shipping matrix')
@@ -332,8 +369,8 @@ export function ShippingPricingTab() {
 
   const handleToggleStatus = async (id: string) => {
     try {
-      setMatrices(prev => prev.map(m => 
-        m.id === id ? { ...m, active: !m.active } : m
+      setAllMatrices(prev => prev.map(m => 
+        m.id === id ? { ...m, active: !m.active, updatedAt: new Date().toISOString() } : m
       ))
       toast.success('Status updated successfully')
     } catch (error) {
@@ -426,7 +463,7 @@ export function ShippingPricingTab() {
     if (!editingPrice) return
     
     try {
-      setMatrices(prev => prev.map(matrix => {
+      setAllMatrices(prev => prev.map(matrix => {
         if (matrix.id === editingPrice.matrixId) {
           const updatedMatrix = { ...matrix }
           if (editingPrice.priceType === 'vehicle') {
@@ -800,9 +837,13 @@ export function ShippingPricingTab() {
                                   <div className="text-xs text-gray-600 mb-1">{vehicleType.label}</div>
                                   {isEditing ? (
                                     <input
-                                      type="number"
-                                      value={editingPriceValue}
-                                      onChange={(e) => setEditingPriceValue(parseFloat(e.target.value) || 0)}
+                                      type="text"
+                                      inputMode="numeric"
+                                      value={editingPriceValue === 0 ? '' : editingPriceValue}
+                                      onChange={(e) => {
+                                        const value = e.target.value.replace(/[^0-9.]/g, '')
+                                        setEditingPriceValue(value === '' ? 0 : parseFloat(value) || 0)
+                                      }}
                                       className="w-full text-xs font-medium text-center px-1 py-1 border border-blue-500 rounded bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                                       min="0"
                                       step="25"
@@ -849,9 +890,13 @@ export function ShippingPricingTab() {
                                   <div className="text-xs text-gray-600 mb-1">{consolidationType.label}</div>
                                   {isEditing ? (
                                     <input
-                                      type="number"
-                                      value={editingPriceValue}
-                                      onChange={(e) => setEditingPriceValue(parseFloat(e.target.value) || 0)}
+                                      type="text"
+                                      inputMode="numeric"
+                                      value={editingPriceValue === 0 ? '' : editingPriceValue}
+                                      onChange={(e) => {
+                                        const value = e.target.value.replace(/[^0-9.]/g, '')
+                                        setEditingPriceValue(value === '' ? 0 : parseFloat(value) || 0)
+                                      }}
                                       className="w-full text-xs font-medium text-center px-1 py-1 border border-blue-500 rounded bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                                       min="0"
                                       step="25"

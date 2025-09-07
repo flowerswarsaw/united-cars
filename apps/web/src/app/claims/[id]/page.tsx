@@ -3,12 +3,12 @@
 import React, { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Shield, ArrowLeft, Clock, Eye, CheckCircle, XCircle, DollarSign, Camera, Upload, FileImage, Trash2 } from 'lucide-react'
+import { Shield, ArrowLeft, Clock, Eye, CheckCircle, XCircle, DollarSign, Camera, Upload, FileImage, Trash2, Printer } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 interface ClaimDetail {
   id: string
-  status: 'new' | 'review' | 'approved' | 'rejected' | 'paid'
+  status: 'new' | 'investigating' | 'under_review' | 'approved' | 'rejected' | 'settled' | 'paid' | 'closed'
   description?: string
   incidentAt?: string
   photos?: Array<{
@@ -47,30 +47,48 @@ const statusConfig = {
     color: 'bg-blue-100 text-blue-800 border-blue-200',
     icon: Shield,
     label: 'New Claim',
-    nextStatuses: ['review', 'rejected']
+    nextStatuses: ['investigating', 'rejected']
   },
-  review: {
+  investigating: {
     color: 'bg-yellow-100 text-yellow-800 border-yellow-200',
     icon: Eye,
+    label: 'Investigating',
+    nextStatuses: ['under_review', 'rejected']
+  },
+  under_review: {
+    color: 'bg-orange-100 text-orange-800 border-orange-200',
+    icon: Clock,
     label: 'Under Review',
-    nextStatuses: ['approved', 'rejected']
+    nextStatuses: ['approved', 'rejected', 'closed']
   },
   approved: {
     color: 'bg-green-100 text-green-800 border-green-200',
     icon: CheckCircle,
     label: 'Approved',
-    nextStatuses: ['paid', 'rejected']
+    nextStatuses: ['settled', 'rejected']
   },
   rejected: {
     color: 'bg-red-100 text-red-800 border-red-200',
     icon: XCircle,
     label: 'Rejected',
-    nextStatuses: []
+    nextStatuses: ['closed']
+  },
+  settled: {
+    color: 'bg-purple-100 text-purple-800 border-purple-200',
+    icon: DollarSign,
+    label: 'Settled',
+    nextStatuses: ['paid']
   },
   paid: {
     color: 'bg-green-100 text-green-800 border-green-200',
     icon: DollarSign,
     label: 'Paid',
+    nextStatuses: ['closed']
+  },
+  closed: {
+    color: 'bg-gray-100 text-gray-800 border-gray-200',
+    icon: CheckCircle,
+    label: 'Closed',
     nextStatuses: []
   }
 }
@@ -222,7 +240,7 @@ export default function ClaimDetailPage() {
   }
 
   const getVehicleDisplay = () => {
-    if (!claim) return 'Unknown Vehicle'
+    if (!claim || !claim.vehicle) return 'Unknown Vehicle'
     const parts = []
     if (claim.vehicle.year) parts.push(claim.vehicle.year.toString())
     if (claim.vehicle.make) parts.push(claim.vehicle.make)
@@ -230,9 +248,16 @@ export default function ClaimDetailPage() {
     return parts.join(' ') || 'Unknown Vehicle'
   }
 
-  const canUpdateStatus = (user.roles.includes('ADMIN') || user.roles.includes('OPS')) && 
-                          claim?.status !== 'paid' && claim?.status !== 'rejected'
-  const canUploadPhotos = claim?.status === 'new' || claim?.status === 'review'
+  // Dealers can only create claims and provide evidence, not change statuses
+  const canUpdateStatus = (user.roles.includes('ADMIN') || user.roles.includes('CLAIMS')) && 
+                          claim?.status !== 'paid' && claim?.status !== 'rejected' && claim?.status !== 'closed'
+  // Dealers can provide evidence (upload photos) for new and investigating claims
+  const canUploadPhotos = (user.roles.includes('DEALER') || user.roles.includes('ADMIN')) &&
+                          (claim?.status === 'new' || claim?.status === 'investigating')
+
+  const handlePrint = () => {
+    window.print()
+  }
 
   if (loading) {
     return (
@@ -262,32 +287,40 @@ export default function ClaimDetailPage() {
   const nextStatuses = statusConfig[claim.status].nextStatuses
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-4xl mx-auto py-8 px-4">
+    <div className="min-h-screen bg-gray-50 print:bg-white print:min-h-0">
+      <div className="max-w-4xl mx-auto py-8 px-4 print:py-4 print:px-0 print:max-w-full">
         {/* Header */}
         <div className="mb-6">
           <Link
             href="/claims"
-            className="inline-flex items-center text-blue-600 hover:text-blue-800 mb-4"
+            className="inline-flex items-center text-blue-600 hover:text-blue-800 mb-4 print:hidden"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Claims
           </Link>
-          <div className="flex justify-between items-start">
+          <div className="flex justify-between items-start print:block">
             <div>
               <h1 className="text-3xl font-bold text-gray-900 flex items-center">
                 <Shield className="h-8 w-8 mr-3 text-red-600" />
                 Insurance Claim
               </h1>
-              <p className="text-gray-600 mt-1">{getVehicleDisplay()} • VIN: {claim.vehicle.vin}</p>
+              <p className="text-gray-600 mt-1">{getVehicleDisplay()} • VIN: {claim.vehicle?.vin || 'N/A'}</p>
             </div>
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-3 print:mt-2 print:justify-start">
               <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${statusConfig[claim.status].color}`}>
                 <StatusIcon className="h-4 w-4 mr-1" />
                 {statusConfig[claim.status].label}
               </span>
+              <button
+                onClick={handlePrint}
+                className="inline-flex items-center px-3 py-1 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors print:hidden"
+                title="Print claim details"
+              >
+                <Printer className="h-4 w-4 mr-1" />
+                Print
+              </button>
               {canUpdateStatus && nextStatuses.length > 0 && (
-                <div className="flex space-x-2">
+                <div className="flex space-x-2 print:hidden">
                   {nextStatuses.map((status) => (
                     <button
                       key={status}
@@ -311,7 +344,7 @@ export default function ClaimDetailPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 print:grid-cols-1 print:gap-4">
           {/* Main Details */}
           <div className="lg:col-span-2 space-y-6">
             {/* Claim Information */}
@@ -579,16 +612,16 @@ export default function ClaimDetailPage() {
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Vehicle</h2>
               <div className="space-y-2">
                 <p className="text-sm font-medium text-gray-900">{getVehicleDisplay()}</p>
-                <p className="text-xs text-gray-500 font-mono">{claim.vehicle.vin}</p>
-                <p className="text-xs text-gray-500">Status: {claim.vehicle.status}</p>
+                <p className="text-xs text-gray-500 font-mono">{claim.vehicle?.vin || 'N/A'}</p>
+                <p className="text-xs text-gray-500">Status: {claim.vehicle?.status || 'N/A'}</p>
               </div>
             </div>
 
             {/* Organization */}
             <div className="bg-white shadow rounded-lg p-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Organization</h2>
-              <p className="text-sm text-gray-900">{claim.vehicle.org.name}</p>
-              <p className="text-xs text-gray-500 capitalize">{claim.vehicle.org.type}</p>
+              <p className="text-sm text-gray-900">{claim.vehicle?.org?.name || 'N/A'}</p>
+              <p className="text-xs text-gray-500 capitalize">{claim.vehicle?.org?.type || 'N/A'}</p>
             </div>
           </div>
         </div>

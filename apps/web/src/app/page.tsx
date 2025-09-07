@@ -14,21 +14,27 @@ export default function HomePage() {
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link 
-              href="/login"
+              href="/dashboard"
               className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
             >
-              Login
+              Dashboard
             </Link>
             <Link 
-              href="/dashboard"
+              href="/crm"
+              className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors"
+            >
+              CRM Module
+            </Link>
+            <Link 
+              href="/calculator"
               className="bg-white text-blue-600 px-6 py-3 rounded-lg border border-blue-600 hover:bg-blue-50 transition-colors"
             >
-              Dashboard
+              Calculator
             </Link>
           </div>
         </div>
 
-        <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="mt-16 grid grid-cols-1 md:grid-cols-4 gap-6">
           <div className="bg-white p-6 rounded-lg shadow-md">
             <h3 className="text-xl font-semibold mb-2">Vehicle Management</h3>
             <p className="text-gray-600">Track vehicles through every stage from auction to delivery</p>
@@ -42,6 +48,11 @@ export default function HomePage() {
           <div className="bg-white p-6 rounded-lg shadow-md">
             <h3 className="text-xl font-semibold mb-2">Invoice & Payments</h3>
             <p className="text-gray-600">Generate invoices and manage payment workflows</p>
+          </div>
+
+          <div className="bg-green-50 p-6 rounded-lg shadow-md border border-green-200">
+            <h3 className="text-xl font-semibold mb-2 text-green-800">CRM System</h3>
+            <p className="text-green-700">Manage organizations, contacts, leads, deals, and sales pipelines</p>
           </div>
         </div>
       </div>

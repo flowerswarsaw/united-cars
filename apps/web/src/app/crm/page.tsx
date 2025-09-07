@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useMemo } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { AppLayout } from '@/components/layout/app-layout';
@@ -17,7 +17,13 @@ import {
   ArrowRight
 } from 'lucide-react';
 import { Deal, Contact, Organisation, Lead, Pipeline } from '@united-cars/crm-core';
-import toast from 'react-hot-toast';
+import { 
+  useDeals, 
+  useContacts, 
+  useOrganisations, 
+  useLeads, 
+  usePipelines 
+} from '@/hooks/useCrmApi';
 
 interface CRMStats {
   totalDeals: number;
@@ -30,107 +36,39 @@ interface CRMStats {
 
 export default function CRMDashboard() {
   const { user, loading: sessionLoading } = useSession();
-  const [stats, setStats] = useState<CRMStats>({
-    totalDeals: 0,
-    activeDeals: 0,
-    totalContacts: 0,
-    totalOrganisations: 0,
-    totalLeads: 0,
-    totalPipelines: 0
-  });
-  const [recentDeals, setRecentDeals] = useState<Deal[]>([]);
-  const [recentContacts, setRecentContacts] = useState<Contact[]>([]);
-  const [loading, setLoading] = useState({
-    stats: true,
-    deals: true,
-    contacts: true
-  });
+  
+  // React Query hooks for data fetching
+  const { data: deals = [], isLoading: dealsLoading, error: dealsError } = useDeals();
+  const { data: contacts = [], isLoading: contactsLoading, error: contactsError } = useContacts();
+  const { data: organisations = [], isLoading: orgsLoading, error: orgsError } = useOrganisations();
+  const { data: leads = [], isLoading: leadsLoading, error: leadsError } = useLeads();
+  const { data: pipelines = [], isLoading: pipelinesLoading, error: pipelinesError } = usePipelines();
 
-  useEffect(() => {
-    loadDashboardData();
-  }, []);
+  // Calculate stats from fetched data
+  const stats = useMemo((): CRMStats => {
+    const activeDeals = deals.filter((deal: Deal) => 
+      deal.status !== 'WON' && deal.status !== 'LOST'
+    ).length;
 
-  const loadDashboardData = async () => {
-    // Load stats first (faster)
-    loadStats();
-    
-    // Then load recent data
-    loadRecentDeals();
-    loadRecentContacts();
-  };
+    return {
+      totalDeals: deals.length,
+      activeDeals,
+      totalContacts: contacts.length,
+      totalOrganisations: organisations.length,
+      totalLeads: leads.length,
+      totalPipelines: pipelines.length
+    };
+  }, [deals, contacts, organisations, leads, pipelines]);
 
-  const loadStats = async () => {
-    try {
-      const [
-        dealsResponse,
-        contactsResponse,
-        organisationsResponse,
-        leadsResponse,
-        pipelinesResponse
-      ] = await Promise.all([
-        fetch('/api/crm/deals'),
-        fetch('/api/crm/contacts'),
-        fetch('/api/crm/organisations'),
-        fetch('/api/crm/leads'),
-        fetch('/api/crm/pipelines')
-      ]);
+  // Get recent data (first 5 items)
+  const recentDeals = useMemo(() => deals.slice(0, 5), [deals]);
+  const recentContacts = useMemo(() => contacts.slice(0, 5), [contacts]);
 
-      const [deals, contacts, organisations, leads, pipelines] = await Promise.all([
-        dealsResponse.json(),
-        contactsResponse.json(),
-        organisationsResponse.json(),
-        leadsResponse.json(),
-        pipelinesResponse.json()
-      ]);
-
-      // Calculate stats
-      const activeDeals = deals.filter((deal: Deal) => 
-        deal.status !== 'WON' && deal.status !== 'LOST'
-      ).length;
-
-      setStats({
-        totalDeals: deals.length,
-        activeDeals,
-        totalContacts: contacts.length,
-        totalOrganisations: organisations.length,
-        totalLeads: leads.length,
-        totalPipelines: pipelines.length
-      });
-
-    } catch (error) {
-      console.error('Failed to load stats:', error);
-      toast.error('Failed to load statistics');
-    } finally {
-      setLoading(prev => ({ ...prev, stats: false }));
-    }
-  };
-
-  const loadRecentDeals = async () => {
-    try {
-      const response = await fetch('/api/crm/deals');
-      const deals = await response.json();
-      setRecentDeals(deals.slice(0, 5));
-    } catch (error) {
-      console.error('Failed to load recent deals:', error);
-    } finally {
-      setLoading(prev => ({ ...prev, deals: false }));
-    }
-  };
-
-  const loadRecentContacts = async () => {
-    try {
-      const response = await fetch('/api/crm/contacts');
-      const contacts = await response.json();
-      setRecentContacts(contacts.slice(0, 5));
-    } catch (error) {
-      console.error('Failed to load recent contacts:', error);
-    } finally {
-      setLoading(prev => ({ ...prev, contacts: false }));
-    }
-  };
-
-  // Show loading skeleton for initial load
-  const isInitialLoading = loading.stats && loading.deals && loading.contacts;
+  // Check if any data is loading
+  const isInitialLoading = dealsLoading || contactsLoading || orgsLoading || leadsLoading || pipelinesLoading;
+  
+  // Check for errors
+  const hasErrors = dealsError || contactsError || orgsError || leadsError || pipelinesError;
 
   const quickActions = [
     { title: 'New Deal', href: '/crm/deals?create=true', icon: TrendingUp, color: 'bg-green-500' },
@@ -187,6 +125,49 @@ export default function CRMDashboard() {
     return (
       <AppLayout user={user}>
         <LoadingState text="Loading CRM dashboard..." />
+      </AppLayout>
+    );
+  }
+
+  // Show error state if any queries failed
+  if (hasErrors) {
+    return (
+      <AppLayout user={user}>
+        <PageHeader 
+          title="CRM Dashboard"
+          description="Welcome to your Customer Relationship Management system"
+          breadcrumbs={[{ label: 'CRM' }, { label: 'Dashboard' }]}
+        />
+        <div className="px-4 sm:px-6 lg:px-8 py-6">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+            <h3 className="text-lg font-semibold text-red-800 mb-2">Error Loading Dashboard Data</h3>
+            <p className="text-red-600">
+              There was an issue loading your CRM data. Please try refreshing the page or contact support if the problem persists.
+            </p>
+            <Button 
+              className="mt-4" 
+              onClick={() => window.location.reload()}
+            >
+              Refresh Page
+            </Button>
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
+
+  // Show loading state if initial data is loading
+  if (isInitialLoading) {
+    return (
+      <AppLayout user={user}>
+        <PageHeader 
+          title="CRM Dashboard"
+          description="Welcome to your Customer Relationship Management system"
+          breadcrumbs={[{ label: 'CRM' }, { label: 'Dashboard' }]}
+        />
+        <div className="px-4 sm:px-6 lg:px-8 py-6">
+          <LoadingState text="Loading CRM data..." />
+        </div>
       </AppLayout>
     );
   }
@@ -248,7 +229,7 @@ export default function CRMDashboard() {
                         <ArrowRight className="h-4 w-4 text-gray-400" />
                       </div>
                       <div className="space-y-1">
-                        {loading.stats ? (
+                        {(dealsLoading || contactsLoading || orgsLoading || leadsLoading || pipelinesLoading) ? (
                           <div className="space-y-2">
                             <div className="h-6 bg-gray-200 rounded animate-pulse"></div>
                             <div className="h-4 bg-gray-200 rounded animate-pulse"></div>
@@ -283,7 +264,7 @@ export default function CRMDashboard() {
               </Link>
             </div>
             <div className="space-y-3">
-              {loading.deals ? (
+              {dealsLoading ? (
                 // Loading skeleton
                 [...Array(3)].map((_, i) => (
                   <div key={i} className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
@@ -326,7 +307,7 @@ export default function CRMDashboard() {
               </Link>
             </div>
             <div className="space-y-3">
-              {loading.contacts ? (
+              {contactsLoading ? (
                 // Loading skeleton
                 [...Array(3)].map((_, i) => (
                   <div key={i} className="flex items-center p-3 bg-gray-50 rounded-md">

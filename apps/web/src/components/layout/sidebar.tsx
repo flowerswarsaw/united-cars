@@ -18,10 +18,17 @@ import {
   Menu,
   X,
   ChevronRight,
+  ChevronLeft,
   Inbox,
-  DollarSign
+  DollarSign,
+  UserCheck,
+  Building2,
+  TrendingUp,
+  GitBranch,
+  CheckSquare
 } from 'lucide-react'
-import { useState } from 'react'
+import { ThemeToggleCompact } from '@/components/ui/theme-toggle'
+import { useState, useEffect, useRef } from 'react'
 
 interface NavItem {
   label: string
@@ -36,44 +43,78 @@ interface NavSection {
   roles?: string[]
 }
 
-const navigation: NavSection[] = [
-  {
-    title: 'Main',
-    items: [
-      { label: 'Dashboard', href: '/dashboard', icon: Home },
-      { label: 'Intake', href: '/intake', icon: Inbox },
-    ]
-  },
-  {
-    title: 'Operations',
-    items: [
-      { label: 'Vehicles', href: '/vehicles', icon: Car },
-      { label: 'Titles', href: '/titles', icon: FileText },
-      { label: 'Services', href: '/services', icon: Wrench },
-      { label: 'Claims', href: '/claims', icon: Shield },
-    ]
-  },
-  {
-    title: 'Finance',
-    items: [
-      { label: 'Invoices', href: '/invoices', icon: Receipt },
-      { label: 'Payments', href: '/payments', icon: CreditCard },
-      { label: 'Calculator', href: '/calculator', icon: Calculator },
-      { label: 'Balance', href: '/balance', icon: DollarSign },
-    ]
-  },
-  {
-    title: 'Admin',
-    roles: ['ADMIN', 'OPS'],
-    items: [
-      { label: 'Intake Review', href: '/admin/intake', icon: Inbox },
-      { label: 'Services', href: '/admin/services', icon: Wrench },
-      { label: 'Claims', href: '/admin/claims', icon: Shield },
-      { label: 'Pricing', href: '/admin/pricing', icon: Settings },
-      { label: 'Users', href: '/admin/users', icon: Users },
-    ]
-  }
-]
+// Function to get navigation based on user roles
+const getNavigation = (userRoles: string[] = []): NavSection[] => {
+  const isDealer = userRoles.includes('DEALER')
+  
+  const baseNavigation: NavSection[] = [
+    {
+      title: 'Main',
+      items: [
+        { label: 'Dashboard', href: '/dashboard', icon: Home },
+        { label: 'Intake', href: '/intake', icon: Inbox },
+      ]
+    },
+    {
+      title: 'Operations',
+      items: [
+        { label: 'Vehicles', href: '/vehicles', icon: Car },
+        { label: 'Titles', href: '/titles', icon: FileText },
+        { label: 'Services', href: '/services', icon: Wrench },
+        { label: 'Claims', href: '/claims', icon: Shield },
+      ]
+    },
+    {
+      title: 'Finance',
+      items: [
+        { label: 'Calculator', href: '/calculator', icon: Calculator },
+        { label: 'Invoice Generator', href: '/operations/invoice-generator', icon: Receipt },
+        { 
+          label: isDealer ? 'My Invoices' : 'Invoices', 
+          href: '/invoices', 
+          icon: Receipt 
+        },
+        { 
+          label: isDealer ? 'My Payments' : 'Payments', 
+          href: '/payments', 
+          icon: CreditCard 
+        },
+        { 
+          label: isDealer ? 'My Balance' : 'Balance', 
+          href: '/balance', 
+          icon: DollarSign 
+        },
+      ]
+    },
+    {
+      title: 'CRM',
+      roles: ['ADMIN', 'OPS', 'SALES'],
+      items: [
+        { label: 'Dashboard', href: '/crm', icon: Home },
+        { label: 'Deals', href: '/crm/deals', icon: TrendingUp },
+        { label: 'Tasks', href: '/crm/tasks', icon: CheckSquare },
+        { label: 'Contacts', href: '/crm/contacts', icon: UserCheck },
+        { label: 'Organisations', href: '/crm/organisations', icon: Building2 },
+        { label: 'Leads', href: '/crm/leads', icon: Users },
+        { label: 'Pipelines', href: '/crm/pipelines', icon: GitBranch },
+      ]
+    },
+    {
+      title: 'Admin',
+      roles: ['ADMIN', 'OPS'],
+      items: [
+        { label: 'Intake Review', href: '/admin/intake', icon: Inbox },
+        { label: 'Services', href: '/admin/services', icon: Wrench },
+        { label: 'Claims', href: '/admin/claims', icon: Shield },
+        { label: 'Titles', href: '/admin/titles', icon: FileText },
+        { label: 'Pricing', href: '/admin/pricing', icon: Settings },
+        { label: 'Users', href: '/admin/users', icon: Users },
+      ]
+    }
+  ]
+  
+  return baseNavigation
+}
 
 interface SidebarProps {
   user?: {
@@ -82,59 +123,168 @@ interface SidebarProps {
     roles?: string[]
     orgName?: string
   }
+  isCollapsed?: boolean
+  onToggleCollapse?: () => void
 }
 
-export function Sidebar({ user }: SidebarProps) {
+export function Sidebar({ user, isCollapsed = false, onToggleCollapse }: SidebarProps) {
   const pathname = usePathname()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [isClient, setIsClient] = useState(false)
+  const navRef = useRef<HTMLDivElement>(null)
+  const mobileNavRef = useRef<HTMLDivElement>(null)
   
   const userRoles = user?.roles || []
+  const navigation = getNavigation(userRoles)
   
   const filteredNavigation = navigation.filter(section => {
     if (!section.roles) return true
     return section.roles.some(role => userRoles.includes(role))
   })
 
+  // Initialize client-side and restore scroll position
+  useEffect(() => {
+    setIsClient(true)
+    
+    const restoreScrollPosition = () => {
+      if (navRef.current) {
+        const savedScrollPosition = localStorage.getItem('sidebar-scroll-position')
+        if (savedScrollPosition) {
+          navRef.current.scrollTop = parseInt(savedScrollPosition, 10)
+        }
+      }
+    }
+
+    // Restore scroll position after component mounts
+    setTimeout(restoreScrollPosition, 100)
+  }, [])
+
+  // Save scroll position when user scrolls
+  useEffect(() => {
+    const handleScroll = () => {
+      if (navRef.current) {
+        localStorage.setItem('sidebar-scroll-position', navRef.current.scrollTop.toString())
+      }
+    }
+
+    const navElement = navRef.current
+    if (navElement) {
+      navElement.addEventListener('scroll', handleScroll, { passive: true })
+      return () => navElement.removeEventListener('scroll', handleScroll)
+    }
+  }, [isClient])
+
+  // Restore scroll position after navigation
+  useEffect(() => {
+    if (isClient && navRef.current) {
+      const savedScrollPosition = localStorage.getItem('sidebar-scroll-position')
+      if (savedScrollPosition) {
+        navRef.current.scrollTop = parseInt(savedScrollPosition, 10)
+      }
+    }
+  }, [pathname, isClient])
+
   const isActiveRoute = (href: string) => {
+    // Exact match for root dashboard
     if (href === '/dashboard') {
       return pathname === '/' || pathname === '/dashboard'
     }
+    // Exact match for CRM dashboard - only active on exact /crm path
+    if (href === '/crm') {
+      return pathname === '/crm'
+    }
+    // For all other routes, use startsWith
     return pathname.startsWith(href)
   }
 
-  const NavContent = () => (
+  const NavContent = ({ collapsed = false, navRef }: { collapsed?: boolean, navRef?: React.RefObject<HTMLDivElement> }) => (
     <>
       {/* Logo */}
-      <div className="flex items-center h-16 px-6 border-b border-gray-200 bg-white">
-        <Link href="/dashboard" className="flex items-center space-x-3">
-          <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg flex items-center justify-center">
-            <Car className="w-5 h-5 text-white" />
+      <div className={clsx(
+        "flex items-center h-16 border-b border-border bg-background transition-all duration-200",
+        collapsed ? "px-3 justify-center" : "px-6"
+      )}>
+        <Link href="/dashboard" className={clsx(
+          "flex items-center transition-all duration-200",
+          collapsed ? "justify-center" : "space-x-3"
+        )}>
+          <div className={clsx(
+            "bg-gradient-to-br from-primary to-primary/90 rounded-lg flex items-center justify-center transition-all duration-200",
+            collapsed ? "w-10 h-10" : "w-8 h-8"
+          )}>
+            <Car className={clsx("text-primary-foreground transition-all duration-200", collapsed ? "w-6 h-6" : "w-5 h-5")} />
           </div>
-          <span className="text-xl font-bold text-gray-900">United Cars</span>
+          {!collapsed && (
+            <span className="text-xl font-bold text-foreground">United Cars</span>
+          )}
         </Link>
+        {/* Desktop collapse toggle */}
+        {!collapsed && onToggleCollapse && (
+          <button
+            onClick={onToggleCollapse}
+            className="hidden lg:flex items-center justify-center w-8 h-8 rounded-lg bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground transition-colors ml-auto"
+            title="Collapse sidebar"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+        )}
       </div>
 
       {/* User Info */}
       {user && (
-        <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
-          <div className="text-sm">
-            <p className="font-medium text-gray-900">{user.name || 'User'}</p>
-            <p className="text-gray-500">{user.email}</p>
-            {user.orgName && (
-              <p className="text-xs text-gray-400 mt-1">{user.orgName}</p>
-            )}
-          </div>
+        <div className={clsx(
+          "py-4 border-b border-border bg-muted/30 transition-all duration-200",
+          collapsed ? "px-3" : "px-6"
+        )}>
+          {collapsed ? (
+            <div className="flex justify-center">
+              <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                <span className="text-base font-medium text-primary">
+                  {(user.name || 'U').charAt(0).toUpperCase()}
+                </span>
+              </div>
+            </div>
+          ) : (
+            <div className="text-sm">
+              <p className="font-medium text-foreground">{user.name || 'User'}</p>
+              <p className="text-text-secondary">{user.email}</p>
+              {user.orgName && (
+                <p className="text-xs text-text-tertiary mt-1">{user.orgName}</p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Expand button when collapsed */}
+      {collapsed && onToggleCollapse && (
+        <div className="px-3 py-2 border-b border-border">
+          <button
+            onClick={onToggleCollapse}
+            className="w-full flex items-center justify-center py-2 text-text-secondary hover:text-foreground hover:bg-hover-overlay rounded-lg transition-colors group"
+            title="Expand sidebar"
+          >
+            <ChevronRight className="w-5 h-5 group-hover:scale-110 transition-transform" />
+          </button>
         </div>
       )}
 
       {/* Navigation */}
-      <nav className="flex-1 px-3 py-4 space-y-6 overflow-y-auto">
+      <nav 
+        {...(navRef ? { ref: navRef } : {})}
+        className={clsx(
+          "flex-1 overflow-y-auto transition-all duration-200 scroll-smooth",
+          collapsed ? "px-2 py-3 space-y-2" : "px-3 py-4 space-y-6"
+        )}
+      >
         {filteredNavigation.map((section) => (
           <div key={section.title}>
-            <h3 className="px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">
-              {section.title}
-            </h3>
-            <div className="mt-2 space-y-1">
+            {!collapsed && (
+              <h3 className="px-3 text-xs font-semibold text-text-tertiary uppercase tracking-wider">
+                {section.title}
+              </h3>
+            )}
+            <div className={clsx("space-y-1", !collapsed && "mt-2")}>
               {section.items.map((item) => {
                 const Icon = item.icon
                 const isActive = isActiveRoute(item.href)
@@ -143,30 +293,47 @@ export function Sidebar({ user }: SidebarProps) {
                   <Link
                     key={item.href}
                     href={item.href}
+                    prefetch={true}
                     className={clsx(
-                      'group flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors',
+                      'group flex items-center text-sm font-medium rounded-lg transition-colors duration-150 relative will-change-auto',
+                      collapsed 
+                        ? 'p-3 justify-center' 
+                        : 'px-3 py-2',
                       isActive
-                        ? 'bg-blue-50 text-blue-700'
-                        : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
+                        ? collapsed
+                          ? 'bg-primary/10 text-primary shadow-sm'
+                          : 'bg-primary/5 text-primary border-l-2 border-primary'
+                        : 'text-text-secondary hover:bg-hover-overlay hover:text-foreground'
                     )}
                     onClick={() => setIsMobileMenuOpen(false)}
+                    title={collapsed ? item.label : undefined}
                   >
                     <Icon 
                       className={clsx(
-                        'mr-3 h-5 w-5 transition-colors',
+                        'transition-colors duration-150 flex-shrink-0',
+                        collapsed 
+                          ? 'h-6 w-6' 
+                          : 'h-5 w-5 mr-3',
                         isActive
-                          ? 'text-blue-600'
-                          : 'text-gray-400 group-hover:text-gray-500'
+                          ? 'text-primary'
+                          : 'text-text-tertiary group-hover:text-foreground'
                       )}
                     />
-                    {item.label}
-                    {item.badge && (
-                      <span className="ml-auto bg-blue-100 text-blue-600 py-0.5 px-2 rounded-full text-xs font-medium">
-                        {item.badge}
-                      </span>
+                    {!collapsed && (
+                      <>
+                        {item.label}
+                        {item.badge && (
+                          <span className="ml-auto bg-primary/10 text-primary py-0.5 px-2 rounded-full text-xs font-medium">
+                            {item.badge}
+                          </span>
+                        )}
+                        {isActive && (
+                          <ChevronRight className="ml-auto h-4 w-4 text-primary flex-shrink-0" />
+                        )}
+                      </>
                     )}
-                    {isActive && (
-                      <ChevronRight className="ml-auto h-4 w-4 text-blue-600" />
+                    {collapsed && isActive && (
+                      <div className="absolute -right-1 top-1/2 transform -translate-y-1/2 w-1 h-8 bg-primary rounded-full" />
                     )}
                   </Link>
                 )
@@ -177,11 +344,27 @@ export function Sidebar({ user }: SidebarProps) {
       </nav>
 
       {/* Footer */}
-      <div className="border-t border-gray-200 p-4">
-        <div className="flex items-center justify-between text-xs text-gray-500">
-          <span>© 2024 United Cars</span>
-          <span>v1.0.0</span>
-        </div>
+      <div className={clsx(
+        "border-t border-border bg-muted/30",
+        collapsed ? "p-2" : "p-4"
+      )}>
+        {collapsed ? (
+          <div className="flex flex-col items-center space-y-3">
+            <ThemeToggleCompact className="hover:bg-muted" />
+            <span className="text-xs text-muted-foreground font-mono">UC</span>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">Theme</span>
+              <ThemeToggleCompact className="hover:bg-muted" />
+            </div>
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span>© 2024 United Cars</span>
+              <span>v1.0.0</span>
+            </div>
+          </div>
+        )}
       </div>
     </>
   )
@@ -212,18 +395,21 @@ export function Sidebar({ user }: SidebarProps) {
         <div className="fixed inset-0 bg-gray-600 bg-opacity-75" onClick={() => setIsMobileMenuOpen(false)} />
         <div
           className={clsx(
-            'relative flex-1 flex flex-col max-w-xs w-full bg-white transform transition-transform duration-300',
+            'relative flex-1 flex flex-col max-w-xs w-full bg-background transform transition-transform duration-300',
             isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
           )}
         >
-          <NavContent />
+          <NavContent collapsed={false} navRef={mobileNavRef} />
         </div>
       </div>
 
       {/* Desktop sidebar */}
-      <div className="hidden lg:flex lg:flex-shrink-0">
-        <div className="flex flex-col w-64 border-r border-gray-200 bg-white">
-          <NavContent />
+      <div className="hidden lg:flex lg:flex-shrink-0 h-screen w-full">
+        <div className={clsx(
+          "flex flex-col border-r border-border bg-background transition-all duration-200 h-full",
+          isCollapsed ? "w-20" : "w-64"
+        )}>
+          <NavContent collapsed={isCollapsed} navRef={navRef} />
         </div>
       </div>
     </>

@@ -4,7 +4,7 @@
  * and reduce payload sizes across all API endpoints
  */
 
-import { Prisma } from '@prisma/client'
+// Removed Prisma import as we're using mock data
 
 /**
  * Standardized select patterns for common entities

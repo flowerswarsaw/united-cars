@@ -470,15 +470,18 @@ export function getTypeSpecificFields(type: OrganizationType): TypeSpecificField
 }
 
 export function isPipelineApplicableToType(pipelineId: string, organizationType: OrganizationType): boolean {
+  // Client-safe fallback using static pipeline configurations
   const pipeline = TYPE_SPECIFIC_PIPELINES[pipelineId];
   return pipeline ? pipeline.applicableTypes.includes(organizationType) : false;
 }
 
 export function getAllPipelineIds(): string[] {
+  // Client-safe fallback using static pipeline configurations
   return Object.keys(TYPE_SPECIFIC_PIPELINES);
 }
 
 export function getPipelinesForType(type: OrganizationType): string[] {
+  // Client-safe fallback using static pipeline configurations
   return Object.entries(TYPE_SPECIFIC_PIPELINES)
     .filter(([_, pipeline]) => pipeline.applicableTypes.includes(type))
     .map(([id, _]) => id);

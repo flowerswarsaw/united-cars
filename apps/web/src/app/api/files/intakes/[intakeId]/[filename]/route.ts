@@ -8,9 +8,10 @@ import { promises as fs } from 'fs'
 // GET /api/files/intakes/:intakeId/:filename - Serve file with auth
 export async function GET(
   request: NextRequest,
-  { params }: { params: { intakeId: string; filename: string } }
+  { params }: { params: Promise<{ intakeId: string; filename: string }> }
 ) {
   try {
+    const { intakeId, filename } = await params
     const session = await getServerSession(authOptions)
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -18,11 +19,11 @@ export async function GET(
 
     // Find intake to verify access
     const intake = await prisma.vehicleIntake.findUnique({
-      where: { id: params.intakeId },
+      where: { id: intakeId },
       include: { 
         org: true,
         attachments: {
-          where: { filename: params.filename }
+          where: { filename: filename }
         }
       }
     })
@@ -32,7 +33,7 @@ export async function GET(
     }
 
     // Check if attachment exists
-    const attachment = intake.attachments.find(att => att.filename === params.filename)
+    const attachment = intake.attachments.find(att => att.filename === filename)
     if (!attachment) {
       return NextResponse.json({ error: 'File not found' }, { status: 404 })
     }
@@ -47,7 +48,7 @@ export async function GET(
     }
 
     // Check if file exists on disk
-    const relativePath = `intakes/${params.intakeId}/${attachment.filename}`
+    const relativePath = `intakes/${intakeId}/${attachment.filename}`
     const exists = await fileExists(relativePath)
     
     if (!exists) {

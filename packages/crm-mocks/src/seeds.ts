@@ -17,8 +17,6 @@ import {
   makeDealCurrentStage,
   makeDealStageHistory,
   ContactMethodType,
-  PhoneType,
-  EmailType,
   SocialPlatform,
   OrganisationRelationType
 } from '@united-cars/crm-core';
@@ -40,48 +38,39 @@ const organisations = [
     name: 'AutoMax Dealership',
     companyId: 'COMP-001',
     type: OrganizationType.DEALER,
-    // Legacy fields for backward compatibility
-    email: 'info@automax.com',
-    phone: '+1-555-0100',
-    // New multi-contact system
     contactMethods: [
       {
         id: 'cm_1_1',
-        type: ContactMethodType.EMAIL,
+        type: ContactMethodType.EMAIL_WORK,
         value: 'info@automax.com',
-        subtype: EmailType.WORK,
         isPrimary: true,
         label: 'Main Office'
       },
       {
         id: 'cm_1_2',
-        type: ContactMethodType.EMAIL,
+        type: ContactMethodType.EMAIL_WORK,
         value: 'sales@automax.com',
-        subtype: EmailType.WORK,
         isPrimary: false,
         label: 'Sales Department'
       },
       {
         id: 'cm_1_3',
-        type: ContactMethodType.PHONE,
+        type: ContactMethodType.PHONE_WORK,
         value: '+1-555-0100',
-        subtype: PhoneType.WORK,
         isPrimary: true,
         label: 'Main Office'
       },
       {
         id: 'cm_1_4',
-        type: ContactMethodType.PHONE,
+        type: ContactMethodType.PHONE_MOBILE,
         value: '+1-555-0199',
-        subtype: PhoneType.MOBILE,
         isPrimary: false,
         label: 'Emergency Line'
       },
       {
         id: 'cm_1_5',
-        type: ContactMethodType.PHONE,
+        type: ContactMethodType.PHONE_FAX,
         value: '+1-555-0101',
-        subtype: PhoneType.FAX,
         isPrimary: false,
         label: 'Fax'
       }
@@ -130,8 +119,7 @@ const organisations = [
     name: 'Premier Motors',
     companyId: 'COMP-002',
     type: OrganizationType.DEALER,
-    email: 'contact@premiermotors.com',
-    phone: '+1-555-0101',
+
     website: 'https://premiermotors.com',
     industry: 'Automotive',
     size: '100-500',
@@ -153,8 +141,7 @@ const organisations = [
     name: 'City Cars Direct',
     companyId: 'COMP-003',
     type: OrganizationType.DEALER,
-    email: 'sales@citycarsdirect.com',
-    phone: '+1-555-0102',
+
     industry: 'Automotive',
     size: '10-50',
     city: 'Chicago',
@@ -177,8 +164,7 @@ const organisations = [
     name: 'Global Auto Imports',
     companyId: 'COMP-004',
     type: OrganizationType.SHIPPER,
-    email: 'imports@globalauto.com',
-    phone: '+1-555-0103',
+
     website: 'https://globalauto.com',
     industry: 'Import/Export',
     size: '100-500',
@@ -206,8 +192,7 @@ const organisations = [
     name: 'Westside Auto Group',
     companyId: 'COMP-005',
     type: OrganizationType.TRANSPORTER,
-    email: 'info@westsideauto.com',
-    phone: '+1-555-0104',
+
     industry: 'Transportation',
     size: '20-50',
     city: 'Seattle',
@@ -229,8 +214,7 @@ const organisations = [
     name: 'John Smith',
     companyId: 'COMP-006',
     type: OrganizationType.RETAIL_CLIENT,
-    email: 'john.smith@email.com',
-    phone: '+1-555-0105',
+
     city: 'Denver',
     state: 'CO',
     country: 'USA',
@@ -250,8 +234,7 @@ const organisations = [
     name: 'Copart West Coast',
     companyId: 'COMP-007',
     type: OrganizationType.AUCTION,
-    email: 'westcoast@copart.com',
-    phone: '+1-555-0106',
+
     website: 'https://copart.com',
     industry: 'Vehicle Auctions',
     size: '500+',
@@ -273,8 +256,7 @@ const organisations = [
     name: 'Express Auto Logistics',
     companyId: 'COMP-008',
     type: OrganizationType.EXPEDITOR,
-    email: 'dispatch@expressauto.com',
-    phone: '+1-555-0107',
+
     website: 'https://expressauto.com',
     industry: 'Logistics',
     size: '50-100',
@@ -297,8 +279,7 @@ const organisations = [
     name: 'National Title Services',
     companyId: 'COMP-009',
     type: OrganizationType.PROCESSOR,
-    email: 'processing@nationaltitle.com',
-    phone: '+1-555-0108',
+
     website: 'https://nationaltitle.com',
     industry: 'Document Processing',
     size: '100-500',
@@ -414,40 +395,33 @@ const contacts = [
     id: 'contact_1',
     firstName: 'John',
     lastName: 'Smith',
-    // Legacy fields for backward compatibility
-    email: 'j.smith@automax.com',
-    phone: '+1-555-0200',
-    // New multi-contact system
+
     contactMethods: [
       {
         id: 'cc_1_1',
-        type: ContactMethodType.EMAIL,
+        type: ContactMethodType.EMAIL_WORK,
         value: 'j.smith@automax.com',
-        subtype: EmailType.WORK,
         isPrimary: true,
         label: 'Work Email'
       },
       {
         id: 'cc_1_2',
-        type: ContactMethodType.EMAIL,
+        type: ContactMethodType.EMAIL_PERSONAL,
         value: 'john.smith.personal@gmail.com',
-        subtype: EmailType.PERSONAL,
         isPrimary: false,
         label: 'Personal Email'
       },
       {
         id: 'cc_1_3',
-        type: ContactMethodType.PHONE,
+        type: ContactMethodType.PHONE_WORK,
         value: '+1-555-0200',
-        subtype: PhoneType.WORK,
         isPrimary: true,
         label: 'Office Direct'
       },
       {
         id: 'cc_1_4',
-        type: ContactMethodType.PHONE,
+        type: ContactMethodType.PHONE_MOBILE,
         value: '+1-555-0299',
-        subtype: PhoneType.MOBILE,
         isPrimary: false,
         label: 'Mobile'
       }
@@ -465,8 +439,7 @@ const contacts = [
     id: 'contact_2',
     firstName: 'Sarah',
     lastName: 'Johnson',
-    email: 's.johnson@automax.com',
-    phone: '+1-555-0201',
+
     title: 'Sales Director',
     organisationId: 'org_1',
     address: '456 Oak Avenue',
@@ -480,8 +453,7 @@ const contacts = [
     id: 'contact_3',
     firstName: 'Michael',
     lastName: 'Brown',
-    email: 'm.brown@premiermotors.com',
-    phone: '+1-555-0202',
+
     title: 'CEO',
     organisationId: 'org_2',
     address: '789 Business Plaza, Floor 15',
@@ -495,8 +467,7 @@ const contacts = [
     id: 'contact_4',
     firstName: 'Emily',
     lastName: 'Davis',
-    email: 'emily.davis@citycarsdirect.com',
-    phone: '+1-555-0203',
+
     title: 'Operations Manager',
     organisationId: 'org_3',
     address: '321 Industrial Way',
@@ -510,8 +481,7 @@ const contacts = [
     id: 'contact_5',
     firstName: 'Robert',
     lastName: 'Wilson',
-    email: 'r.wilson@globalauto.com',
-    phone: '+1-555-0204',
+
     title: 'Import Specialist',
     organisationId: 'org_4',
     address: '555 Harbor Boulevard',
@@ -525,8 +495,7 @@ const contacts = [
     id: 'contact_6',
     firstName: 'Lisa',
     lastName: 'Anderson',
-    email: 'lisa@independent.com',
-    phone: '+1-555-0205',
+
     title: 'Independent Dealer',
     address: '777 Maple Street',
     city: 'Austin',
@@ -539,8 +508,7 @@ const contacts = [
     id: 'contact_7',
     firstName: 'James',
     lastName: 'Taylor',
-    email: 'james.taylor@westsideauto.com',
-    phone: '+1-555-0206',
+
     title: 'Purchasing Manager',
     organisationId: 'org_5',
     address: '888 Sunset Drive',
@@ -554,8 +522,7 @@ const contacts = [
     id: 'contact_8',
     firstName: 'Patricia',
     lastName: 'Martinez',
-    email: 'patricia@solotrader.com',
-    phone: '+1-555-0207',
+
     title: 'Solo Trader',
     address: '999 Phoenix Plaza',
     city: 'Phoenix',

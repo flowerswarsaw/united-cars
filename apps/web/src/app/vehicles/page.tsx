@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { Plus, Filter, Search, Car, Download, Upload } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { Filter, Search, Car, Download, ChevronDown } from 'lucide-react'
+import * as XLSX from 'xlsx'
 import { AppLayout } from '@/components/layout/app-layout'
 import { PageHeader } from '@/components/layout/page-header'
 import { StatusBadge } from '@/components/ui/status-badge'
@@ -31,17 +32,42 @@ export default function VehiclesPage() {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [filter, setFilter] = useState('all')
+  const [showExportDropdown, setShowExportDropdown] = useState(false)
+  const exportDropdownRef = useRef<HTMLDivElement>(null)
   const [pagination, setPagination] = useState({
     page: 1,
     perPage: 25,
     total: 0,
     totalPages: 0
   })
+  const [statusCounts, setStatusCounts] = useState({
+    all: 0,
+    SOURCING: 0,
+    PICKUP: 0,
+    GROUND_TRANSPORT: 0,
+    PORT_PROCESSING: 0,
+    OCEAN_SHIPPING: 0,
+    DESTINATION_PORT: 0,
+    DELIVERED: 0
+  })
   const { user, loading: sessionLoading } = useSession()
 
   useEffect(() => {
     fetchVehicles()
   }, [filter, pagination.page, searchTerm])
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (exportDropdownRef.current && !exportDropdownRef.current.contains(event.target as Node)) {
+        setShowExportDropdown(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [])
 
   const fetchVehicles = async () => {
     try {
@@ -61,6 +87,9 @@ export default function VehiclesPage() {
         if (data.pagination) {
           setPagination(data.pagination)
         }
+        if (data.statusCounts) {
+          setStatusCounts(data.statusCounts)
+        }
       } else {
         toast.error(`Failed to fetch vehicles: ${data.error}`)
       }
@@ -79,16 +108,8 @@ export default function VehiclesPage() {
     return 'Unknown Vehicle'
   }
 
-  // Filter vehicles based on search term
-  const filteredVehicles = vehicles.filter(vehicle => {
-    if (!searchTerm) return true
-    const searchLower = searchTerm.toLowerCase()
-    return (
-      vehicle.vin.toLowerCase().includes(searchLower) ||
-      getVehicleDisplay(vehicle).toLowerCase().includes(searchLower) ||
-      vehicle.org.name.toLowerCase().includes(searchLower)
-    )
-  })
+  // No need for client-side filtering as API handles it
+  const filteredVehicles = vehicles
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return '-'
@@ -113,14 +134,116 @@ export default function VehiclesPage() {
     setPagination(prev => ({ ...prev, page: newPage }))
   }
 
+  const handleExport = async (format: 'csv' | 'excel') => {
+    try {
+      setShowExportDropdown(false)
+      
+      // Get all vehicles for export (remove pagination for export)
+      const params = new URLSearchParams({
+        perPage: '1000', // Large number to get all vehicles
+      })
+      
+      if (filter !== 'all') params.append('status', filter)
+      if (searchTerm) params.append('search', searchTerm)
+
+      const response = await fetch(`/api/vehicles?${params}`)
+      const data = await response.json()
+      
+      if (!response.ok) {
+        toast.error('Failed to export vehicles')
+        return
+      }
+
+      const exportVehicles = data.vehicles || []
+      
+      if (exportVehicles.length === 0) {
+        toast.error('No vehicles to export')
+        return
+      }
+
+      const timestamp = new Date().toISOString().split('T')[0]
+      
+      if (format === 'csv') {
+        // Convert to CSV
+        const headers = ['VIN', 'Vehicle', 'Status', 'Price (USD)', 'Organization', 'Created Date']
+        const csvRows = [
+          headers.join(','),
+          ...exportVehicles.map((vehicle: Vehicle) => [
+            vehicle.vin,
+            `"${getVehicleDisplay(vehicle)}"`,
+            vehicle.status,
+            vehicle.priceUSD || '',
+            `"${vehicle.org.name}"`,
+            formatDate(vehicle.createdAt)
+          ].join(','))
+        ]
+
+        // Create and download CSV file
+        const csvContent = csvRows.join('\n')
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+        const link = document.createElement('a')
+        const url = URL.createObjectURL(blob)
+        link.setAttribute('href', url)
+        
+        const filename = `vehicles-export-${timestamp}.csv`
+        link.setAttribute('download', filename)
+        link.style.visibility = 'hidden'
+        
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        
+        toast.success(`Exported ${exportVehicles.length} vehicles as CSV`)
+      } else {
+        // Convert to Excel
+        const worksheetData = [
+          ['VIN', 'Vehicle', 'Status', 'Price (USD)', 'Organization', 'Created Date'],
+          ...exportVehicles.map((vehicle: Vehicle) => [
+            vehicle.vin,
+            getVehicleDisplay(vehicle),
+            vehicle.status,
+            vehicle.priceUSD || '',
+            vehicle.org.name,
+            formatDate(vehicle.createdAt)
+          ])
+        ]
+
+        // Create workbook and worksheet
+        const wb = XLSX.utils.book_new()
+        const ws = XLSX.utils.aoa_to_sheet(worksheetData)
+        
+        // Auto-size columns
+        const colWidths = worksheetData[0].map((_, colIndex) => {
+          const maxLength = Math.max(
+            ...worksheetData.map(row => String(row[colIndex] || '').length)
+          )
+          return { wch: Math.min(Math.max(maxLength + 2, 10), 50) }
+        })
+        ws['!cols'] = colWidths
+
+        XLSX.utils.book_append_sheet(wb, ws, 'Vehicles')
+        
+        // Generate and download Excel file
+        const filename = `vehicles-export-${timestamp}.xlsx`
+        XLSX.writeFile(wb, filename)
+        
+        toast.success(`Exported ${exportVehicles.length} vehicles as Excel`)
+      }
+    } catch (error) {
+      console.error('Export error:', error)
+      toast.error('Failed to export vehicles')
+    }
+  }
+
   const filterOptions = [
-    { value: 'all', label: 'All Vehicles', count: pagination.total },
-    { value: 'SOURCING', label: 'Sourcing', count: vehicles.filter(v => v.status === 'SOURCING').length },
-    { value: 'PURCHASED', label: 'Purchased', count: vehicles.filter(v => v.status === 'PURCHASED').length },
-    { value: 'IN_TRANSIT', label: 'In Transit', count: vehicles.filter(v => v.status === 'IN_TRANSIT').length },
-    { value: 'AT_PORT', label: 'At Port', count: vehicles.filter(v => v.status === 'AT_PORT').length },
-    { value: 'SHIPPED', label: 'Shipped', count: vehicles.filter(v => v.status === 'SHIPPED').length },
-    { value: 'DELIVERED', label: 'Delivered', count: vehicles.filter(v => v.status === 'DELIVERED').length },
+    { value: 'all', label: 'All Vehicles', count: statusCounts.all },
+    { value: 'SOURCING', label: 'Sourcing', count: statusCounts.SOURCING },
+    { value: 'PICKUP', label: 'Pickup', count: statusCounts.PICKUP },
+    { value: 'GROUND_TRANSPORT', label: 'Ground Transport', count: statusCounts.GROUND_TRANSPORT },
+    { value: 'PORT_PROCESSING', label: 'Port Processing', count: statusCounts.PORT_PROCESSING },
+    { value: 'OCEAN_SHIPPING', label: 'Ocean Shipping', count: statusCounts.OCEAN_SHIPPING },
+    { value: 'DESTINATION_PORT', label: 'Destination Port', count: statusCounts.DESTINATION_PORT },
+    { value: 'DELIVERED', label: 'Delivered', count: statusCounts.DELIVERED },
   ]
 
   return (
@@ -169,17 +292,6 @@ export default function VehiclesPage() {
                     className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                   />
                 </div>
-                <button className="inline-flex items-center px-4 py-2 bg-gray-600 text-white text-sm font-medium rounded-lg hover:bg-gray-700 transition-colors">
-                  <Upload className="h-4 w-4 mr-2" />
-                  Import
-                </button>
-                <Link
-                  href="/intake/new"
-                  className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Vehicle
-                </Link>
               </div>
             </div>
           </div>
@@ -192,10 +304,35 @@ export default function VehiclesPage() {
               <h2 className="text-lg font-semibold text-gray-900">
                 Vehicles {filteredVehicles.length > 0 && `(${pagination.total})`}
               </h2>
-              <button className="inline-flex items-center px-3 py-1 text-sm text-gray-500 hover:text-gray-700">
-                <Download className="h-4 w-4 mr-1" />
-                Export
-              </button>
+              <div className="relative" ref={exportDropdownRef}>
+                <button 
+                  onClick={() => setShowExportDropdown(!showExportDropdown)}
+                  className="inline-flex items-center px-3 py-1 text-sm text-gray-500 hover:text-gray-700"
+                >
+                  <Download className="h-4 w-4 mr-1" />
+                  Export
+                  <ChevronDown className="h-3 w-3 ml-1" />
+                </button>
+                
+                {showExportDropdown && (
+                  <div className="absolute right-0 mt-2 w-32 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
+                    <div className="py-1">
+                      <button
+                        onClick={() => handleExport('csv')}
+                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        Export CSV
+                      </button>
+                      <button
+                        onClick={() => handleExport('excel')}
+                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        Export Excel
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 

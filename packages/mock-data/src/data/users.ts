@@ -5,6 +5,7 @@ import bcrypt from 'bcryptjs';
 const adminPasswordHash = bcrypt.hashSync('admin123', 10);
 const dealerPasswordHash = bcrypt.hashSync('dealer123', 10);
 const opsPasswordHash = bcrypt.hashSync('ops123', 10);
+const claimsPasswordHash = bcrypt.hashSync('claims123', 10);
 
 export const users: User[] = [
   {
@@ -14,8 +15,10 @@ export const users: User[] = [
     passwordHash: adminPasswordHash,
     orgId: 'org-admin',
     status: 'ACTIVE',
+    balance: 0,
     createdAt: new Date('2024-01-01'),
-    updatedAt: new Date('2024-01-01')
+    updatedAt: new Date('2024-01-01'),
+    version: 1
   },
   {
     id: 'user-dealer-1',
@@ -24,8 +27,10 @@ export const users: User[] = [
     passwordHash: dealerPasswordHash,
     orgId: 'org-dealer-1',
     status: 'ACTIVE',
+    balance: 15000, // Starting balance for testing
     createdAt: new Date('2024-01-15'),
-    updatedAt: new Date('2024-01-15')
+    updatedAt: new Date('2024-01-15'),
+    version: 1
   },
   {
     id: 'user-ops-1',
@@ -34,16 +39,34 @@ export const users: User[] = [
     passwordHash: opsPasswordHash,
     orgId: 'org-admin',
     status: 'ACTIVE',
+    balance: 0,
     createdAt: new Date('2024-01-10'),
-    updatedAt: new Date('2024-01-10')
+    updatedAt: new Date('2024-01-10'),
+    version: 1
+  },
+  {
+    id: 'user-claims-1',
+    email: 'claims@demo.com',
+    name: 'Claims Specialist',
+    passwordHash: claimsPasswordHash,
+    orgId: 'org-admin',
+    status: 'ACTIVE',
+    balance: 0,
+    createdAt: new Date('2024-01-05'),
+    updatedAt: new Date('2024-01-05'),
+    version: 1
   }
 ];
 
 export const roles: Role[] = [
   { id: 'role-admin', key: 'ADMIN' },
+  { id: 'role-accounting', key: 'ACCOUNTING' },
+  { id: 'role-claims', key: 'CLAIMS' },
+  { id: 'role-support', key: 'SUPPORT' },
   { id: 'role-dealer', key: 'DEALER' },
-  { id: 'role-ops', key: 'OPS' },
-  { id: 'role-accountant', key: 'ACCOUNTANT' }
+  { id: 'role-retail', key: 'RETAIL' },
+  { id: 'role-dispatch', key: 'DISPATCH' },
+  { id: 'role-ops', key: 'OPS' }
 ];
 
 export const userRoles: UserRole[] = [
@@ -54,11 +77,11 @@ export const userRoles: UserRole[] = [
     roleId: 'role-admin',
     orgId: 'org-admin'
   },
-  // Admin user also has accountant role
+  // Admin user also has accounting role
   {
     id: 'user-role-2',
     userId: 'user-admin-1',
-    roleId: 'role-accountant',
+    roleId: 'role-accounting',
     orgId: 'org-admin'
   },
   // Dealer user has dealer role
@@ -73,6 +96,13 @@ export const userRoles: UserRole[] = [
     id: 'user-role-4',
     userId: 'user-ops-1',
     roleId: 'role-ops',
+    orgId: 'org-admin'
+  },
+  // Claims user has claims role
+  {
+    id: 'user-role-5',
+    userId: 'user-claims-1',
+    roleId: 'role-claims',
     orgId: 'org-admin'
   }
 ];
