@@ -5,6 +5,7 @@ import { Toaster } from 'react-hot-toast'
 import { ReactNode, useState, useEffect } from 'react'
 import { RealTimeNotifications, RealTimeStatus } from '@/components/ui/real-time-notifications'
 import { useAuth } from '@/contexts/auth-context'
+import { systemHealthService } from '@/lib/system-health'
 
 interface User {
   id: string
@@ -35,6 +36,13 @@ export function AppLayout({ children, user }: AppLayoutProps) {
     const savedState = localStorage.getItem('sidebar-collapsed')
     if (savedState !== null) {
       setIsSidebarCollapsed(JSON.parse(savedState))
+    }
+
+    // Start system health monitoring
+    systemHealthService.startMonitoring()
+
+    return () => {
+      systemHealthService.stopMonitoring()
     }
   }, [])
 
