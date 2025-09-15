@@ -1,38 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { pipelineRepository, jsonPersistence } from '@united-cars/crm-mocks';
-import { createStageSchema } from '@united-cars/crm-core';
+import { PipelineService, hasPermission } from '@/lib/services/pipeline-service';
+import { getServerSessionFromRequest } from '@/lib/auth';
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await getServerSessionFromRequest(request);
+    const user = { 
+      id: session?.user?.id || 'anonymous', 
+      role: (session?.user as any)?.role || 'junior' as 'admin' | 'senior' | 'junior'
+    };
+
+    if (!hasPermission(user, 'pipeline:update')) {
+      return NextResponse.json(
+        { error: 'Insufficient permissions' },
+        { status: 403 }
+      );
+    }
+
     const { id } = await params;
     const body = await request.json();
-    const validated = createStageSchema.parse(body);
     
-    const stage = await pipelineRepository.createStage(id, validated);
-    await jsonPersistence.save();
+    const pipelineService = new PipelineService();
+    const stage = await pipelineService.addStage(user, id, body);
     
     return NextResponse.json(stage, { status: 201 });
   } catch (error: any) {
-    if (error.name === 'ZodError') {
-      return NextResponse.json(
-        { error: 'Invalid input', details: error.errors },
-        { status: 400 }
-      );
-    }
-    
-    if (error.message === 'Pipeline not found') {
-      return NextResponse.json(
-        { error: 'Pipeline not found' },
-        { status: 404 }
-      );
-    }
-    
+    console.error('Error creating stage:', error);
     return NextResponse.json(
-      { error: 'Failed to create stage' },
-      { status: 500 }
+      { error: error.message || 'Failed to create stage' },
+      { status: error.message?.includes('permissions') ? 403 : error.message?.includes('not found') ? 404 : 500 }
     );
   }
 }

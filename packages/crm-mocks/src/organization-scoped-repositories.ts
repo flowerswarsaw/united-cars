@@ -44,7 +44,7 @@ abstract class OrganizationScopedRepository<T> {
   constructor(protected context: OrganizationContext) {}
 
   protected hasAdminAccess(): boolean {
-    return this.context.roles.some(role => ['admin', 'super_admin'].includes(role))
+    return this.context.roles.some(role => ['admin', 'super_admin', 'ADMIN', 'SUPER_ADMIN'].includes(role))
   }
 
   protected canAccessAllOrganizations(): boolean {

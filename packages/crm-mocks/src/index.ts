@@ -1,19 +1,37 @@
 export * from './base-repository';
-export * from './repositories/organisation-repository';
-export * from './repositories/organisation-connection-repository';
-export * from './repositories/contact-repository';
-export * from './repositories/lead-repository';
-export * from './repositories/deal-repository';
-export * from './repositories/pipeline-repository';
-export * from './repositories/task-repository';
-export * from './repositories/custom-field-repository';
-export * from './repositories/activity-repository';
-export * from './repositories/change-log-repository';
 export * from './change-tracker';
 export * from './organization-scoped-repositories';
 export * from './services/activity-service';
-export * from './seeds';
 export * from './persistence';
+
+// Export repository classes (not instances)
+export { OrganisationRepository } from './repositories/organisation-repository';
+export { OrganisationConnectionRepository } from './repositories/organisation-connection-repository';
+export { ContactRepository } from './repositories/contact-repository';
+export { LeadRepository } from './repositories/lead-repository';
+export { DealRepository } from './repositories/deal-repository';
+export { PipelineRepository } from './repositories/pipeline-repository';
+export { TaskRepository } from './repositories/task-repository';
+export { CustomFieldRepository } from './repositories/custom-field-repository';
+export { ActivityRepository } from './repositories/activity-repository';
+
+// Export specific seeded repository instances and functions from seeds
+export {
+  organisationRepository,
+  organisationConnectionRepository,
+  contactRepository,
+  leadRepository,
+  dealRepository,
+  pipelineRepository,
+  taskRepository,
+  customFieldRepository,
+  activityRepository,
+  seedData,
+  resetSeeds
+} from './seeds';
+
+// Export enhanced seeds exports
+export * from './enhanced-seeds';
 
 // Initialize with seed data on first import
 import { seedData } from './seeds';

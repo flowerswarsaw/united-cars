@@ -99,4 +99,5 @@ class LeadRepositoryImpl extends BaseRepository<Lead> implements ILeadRepository
   }
 }
 
+export class LeadRepository extends LeadRepositoryImpl {}
 export const leadRepository = new LeadRepositoryImpl();

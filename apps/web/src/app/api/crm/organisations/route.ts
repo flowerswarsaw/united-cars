@@ -1,96 +1,36 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { organisationRepository, jsonPersistence } from '@united-cars/crm-mocks';
-import { createOrganisationSchema } from '@united-cars/crm-core';
-import { OrganizationScopedRepositoryFactory, createOrganizationContext } from '@united-cars/crm-mocks';
-import { getServerSessionFromRequest } from '@/lib/auth';
+import { organizationsStore } from '@/lib/organizations-store';
 
 export async function GET(request: NextRequest) {
   try {
-    // Get user session for organization-scoped access
-    const session = await getServerSessionFromRequest(request)
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    // Create organization context and scoped repository
-    const context = createOrganizationContext(session.user)
-    const factory = new OrganizationScopedRepositoryFactory(
-      {} as any, organisationRepository, {} as any, {} as any, 
-      {} as any, {} as any, {} as any, {} as any
-    )
-    const scopedOrgRepo = factory.createOrganisationRepository(context)
-
+    // Apply filtering if needed
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search');
     const type = searchParams.get('type');
-    const industry = searchParams.get('industry');
-    const size = searchParams.get('size');
-    const location = searchParams.get('location');
-    const hasEmail = searchParams.get('hasEmail') === 'true';
-    const hasPhone = searchParams.get('hasPhone') === 'true';
-    const hasWebsite = searchParams.get('hasWebsite') === 'true';
+    const country = searchParams.get('country');
     
-    // Start with organization-scoped organisations
-    let organisations = await scopedOrgRepo.findAll();
+    let filteredOrgs = organizationsStore.getAll();
     
-    // Apply search filter
     if (search) {
       const searchLower = search.toLowerCase();
-      organisations = organisations.filter(org => 
+      filteredOrgs = filteredOrgs.filter(org => 
         org.name.toLowerCase().includes(searchLower) ||
-        (org.companyId && org.companyId.toLowerCase().includes(searchLower)) ||
-        (org.industry && org.industry.toLowerCase().includes(searchLower)) ||
+        (org.description && org.description.toLowerCase().includes(searchLower)) ||
         (org.email && org.email.toLowerCase().includes(searchLower))
       );
     }
     
-    // Apply type filter
     if (type) {
-      organisations = organisations.filter(org => org.type === type);
+      filteredOrgs = filteredOrgs.filter(org => org.type === type);
     }
     
-    // Apply industry filter
-    if (industry) {
-      const industryLower = industry.toLowerCase();
-      organisations = organisations.filter(org => 
-        org.industry && org.industry.toLowerCase().includes(industryLower)
+    if (country) {
+      filteredOrgs = filteredOrgs.filter(org => 
+        org.country && org.country.toLowerCase().includes(country.toLowerCase())
       );
     }
     
-    // Apply size filter
-    if (size) {
-      const sizeLower = size.toLowerCase();
-      organisations = organisations.filter(org => 
-        org.size && org.size.toLowerCase().includes(sizeLower)
-      );
-    }
-    
-    // Apply location filter
-    if (location) {
-      const locationLower = location.toLowerCase();
-      organisations = organisations.filter(org => 
-        (org.city && org.city.toLowerCase().includes(locationLower)) ||
-        (org.state && org.state.toLowerCase().includes(locationLower)) ||
-        (org.country && org.country.toLowerCase().includes(locationLower))
-      );
-    }
-    
-    // Apply email filter
-    if (hasEmail) {
-      organisations = organisations.filter(org => org.email && org.email.trim().length > 0);
-    }
-    
-    // Apply phone filter
-    if (hasPhone) {
-      organisations = organisations.filter(org => org.phone && org.phone.trim().length > 0);
-    }
-    
-    // Apply website filter
-    if (hasWebsite) {
-      organisations = organisations.filter(org => org.website && org.website.trim().length > 0);
-    }
-    
-    return NextResponse.json(organisations);
+    return NextResponse.json(filteredOrgs);
   } catch (error) {
     return NextResponse.json(
       { error: 'Failed to fetch organisations' },
@@ -102,20 +42,44 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const validated = createOrganisationSchema.parse(body);
     
-    const organisation = await organisationRepository.create(validated);
-    await jsonPersistence.save();
+    // Create the new organization object
+    const orgData = {
+      name: body.name || '',
+      companyId: body.companyId || '',
+      type: body.type || 'RETAIL_CLIENT',
+      description: body.description || `${body.name} - ${body.type || 'Business'}`,
+      website: body.website || '',
+      address: body.address || '',
+      city: body.city || '',
+      state: body.state || '',
+      zipCode: body.zipCode || '',
+      country: body.country || '',
+      phone: body.phone || '',
+      email: body.email || '',
+      industry: body.industry || '',
+      size: body.size || '',
+      contactMethods: body.contactMethods || [
+        ...(body.email ? [{ id: `cm_${Date.now()}_1`, type: 'EMAIL_WORK', value: body.email, primary: true }] : []),
+        ...(body.phone ? [{ id: `cm_${Date.now()}_2`, type: 'PHONE_WORK', value: body.phone, primary: true }] : [])
+      ],
+      socialMediaLinks: body.socialMediaLinks || [],
+      customFields: body.customFields || {
+        ...(body.industry ? { industry: body.industry } : {}),
+        ...(body.size ? { size: body.size } : {})
+      },
+      verified: false
+    };
     
-    return NextResponse.json(organisation, { status: 201 });
+    // Add to the store
+    const newOrg = organizationsStore.create(orgData);
+    
+    console.log(`Created new organization: ${newOrg.name} (ID: ${newOrg.id})`);
+    console.log(`Total organizations in store: ${organizationsStore.getAll().length}`);
+    
+    return NextResponse.json(newOrg, { status: 201 });
   } catch (error: any) {
-    if (error.name === 'ZodError') {
-      return NextResponse.json(
-        { error: 'Invalid input', details: error.errors },
-        { status: 400 }
-      );
-    }
-    
+    console.error('Failed to create organisation:', error);
     return NextResponse.json(
       { error: 'Failed to create organisation' },
       { status: 500 }

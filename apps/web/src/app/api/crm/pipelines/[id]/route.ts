@@ -1,14 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { pipelineRepository, jsonPersistence } from '@united-cars/crm-mocks';
-import { updatePipelineSchema } from '@united-cars/crm-core';
+import { getPipelineById } from '@/lib/pipeline-data';
+import { PipelineService, hasPermission } from '@/lib/services/pipeline-service';
+import { getServerSessionFromRequest } from '@/lib/auth';
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await getServerSessionFromRequest(request);
+    const user = { 
+      id: session?.user?.id || 'anonymous', 
+      role: (session?.user as any)?.role || 'junior' as 'admin' | 'senior' | 'junior'
+    };
+
+    if (!hasPermission(user, 'pipeline:read')) {
+      return NextResponse.json(
+        { error: 'Insufficient permissions' },
+        { status: 403 }
+      );
+    }
+
     const { id } = await params;
-    const pipeline = await pipelineRepository.getWithStages(id);
+    const pipeline = getPipelineById(id);
     
     if (!pipeline) {
       return NextResponse.json(
@@ -19,6 +33,7 @@ export async function GET(
     
     return NextResponse.json(pipeline);
   } catch (error) {
+    console.error('Error fetching pipeline:', error);
     return NextResponse.json(
       { error: 'Failed to fetch pipeline' },
       { status: 500 }
@@ -31,32 +46,31 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await getServerSessionFromRequest(request);
+    const user = { 
+      id: session?.user?.id || 'anonymous', 
+      role: (session?.user as any)?.role || 'junior' as 'admin' | 'senior' | 'junior'
+    };
+
+    if (!hasPermission(user, 'pipeline:update')) {
+      return NextResponse.json(
+        { error: 'Insufficient permissions' },
+        { status: 403 }
+      );
+    }
+
     const { id } = await params;
     const body = await request.json();
-    const validated = updatePipelineSchema.parse(body);
     
-    const pipeline = await pipelineRepository.update(id, validated);
+    const pipelineService = new PipelineService();
+    const result = await pipelineService.updatePipeline(user, id, body);
     
-    if (!pipeline) {
-      return NextResponse.json(
-        { error: 'Pipeline not found' },
-        { status: 404 }
-      );
-    }
-    
-    await jsonPersistence.save();
-    return NextResponse.json(pipeline);
+    return NextResponse.json(result);
   } catch (error: any) {
-    if (error.name === 'ZodError') {
-      return NextResponse.json(
-        { error: 'Invalid input', details: error.errors },
-        { status: 400 }
-      );
-    }
-    
+    console.error('Error updating pipeline:', error);
     return NextResponse.json(
-      { error: 'Failed to update pipeline' },
-      { status: 500 }
+      { error: error.message || 'Failed to update pipeline' },
+      { status: error.message?.includes('permissions') ? 403 : 500 }
     );
   }
 }
@@ -66,22 +80,30 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params;
-    const deleted = await pipelineRepository.remove(id);
-    
-    if (!deleted) {
+    const session = await getServerSessionFromRequest(request);
+    const user = { 
+      id: session?.user?.id || 'anonymous', 
+      role: (session?.user as any)?.role || 'junior' as 'admin' | 'senior' | 'junior'
+    };
+
+    if (!hasPermission(user, 'pipeline:delete')) {
       return NextResponse.json(
-        { error: 'Pipeline not found' },
-        { status: 404 }
+        { error: 'Insufficient permissions' },
+        { status: 403 }
       );
     }
+
+    const { id } = await params;
+    const pipelineService = new PipelineService();
     
-    await jsonPersistence.save();
-    return NextResponse.json({ success: true });
-  } catch (error) {
+    const result = await pipelineService.deletePipeline(user, id);
+    
+    return NextResponse.json(result);
+  } catch (error: any) {
+    console.error('Error deleting pipeline:', error);
     return NextResponse.json(
-      { error: 'Failed to delete pipeline' },
-      { status: 500 }
+      { error: error.message || 'Failed to delete pipeline' },
+      { status: error.message?.includes('permissions') ? 403 : error.message?.includes('not found') ? 404 : 500 }
     );
   }
 }

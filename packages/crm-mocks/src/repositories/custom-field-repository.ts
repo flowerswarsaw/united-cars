@@ -133,4 +133,5 @@ class CustomFieldRepositoryImpl implements ICustomFieldRepository {
   }
 }
 
+export class CustomFieldRepository extends CustomFieldRepositoryImpl {}
 export const customFieldRepository = new CustomFieldRepositoryImpl();

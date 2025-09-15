@@ -78,6 +78,7 @@ class DealRepositoryImpl extends BaseRepository<Deal> implements IDealRepository
     input: { 
       pipelineId: string; 
       toStageId: string; 
+      targetIndex?: number;
       note?: string; 
       lossReason?: LossReason;
       movedBy?: string;
@@ -179,6 +180,11 @@ class DealRepositoryImpl extends BaseRepository<Deal> implements IDealRepository
       lossReason: input.lossReason || deal.lossReason
     }, input.movedBy);
 
+    // Handle reordering within the target stage if targetIndex is specified
+    if (updated && input.targetIndex !== undefined) {
+      await this.reorderDealsInStage(input.pipelineId, input.toStageId, dealId, input.targetIndex);
+    }
+
     // Log activity
     await activityRepository.log(
       makeActivity(
@@ -278,6 +284,49 @@ class DealRepositoryImpl extends BaseRepository<Deal> implements IDealRepository
       return true;
     });
   }
+
+  /**
+   * Reorder deals within a specific stage. This is a simple implementation
+   * that updates the updatedAt timestamp to simulate proper ordering.
+   * In a real database, you'd have an orderIndex field or use native ordering.
+   */
+  private async reorderDealsInStage(pipelineId: string, stageId: string, dealId: string, targetIndex: number): Promise<void> {
+    try {
+      // Get all deals in the target stage
+      const stageDeals = await this.getByPipelineAndStage(pipelineId, stageId);
+      
+      // Find the deal being moved
+      const dealToMove = stageDeals.find(d => d.id === dealId);
+      if (!dealToMove) return;
+      
+      // Remove the deal being moved from its current position
+      const otherDeals = stageDeals.filter(d => d.id !== dealId);
+      
+      // Insert the deal at the target position
+      const reorderedDeals = [...otherDeals];
+      const insertIndex = Math.min(targetIndex, reorderedDeals.length);
+      reorderedDeals.splice(insertIndex, 0, dealToMove);
+      
+      // Update timestamps to reflect new order
+      const baseTime = Date.now();
+      for (let i = 0; i < reorderedDeals.length; i++) {
+        const deal = reorderedDeals[i];
+        // Use timestamp with microsecond precision to maintain order
+        const newTimestamp = new Date(baseTime + i);
+        
+        // Directly update the timestamp in the items map
+        const existingDeal = this.items.get(deal.id);
+        if (existingDeal) {
+          existingDeal.updatedAt = newTimestamp;
+        }
+      }
+      
+      console.log(`Reordered ${reorderedDeals.length} deals in stage ${stageId}, moved deal ${dealId} to position ${insertIndex}`);
+    } catch (error) {
+      console.warn('Failed to reorder deals:', error);
+    }
+  }
 }
 
+export class DealRepository extends DealRepositoryImpl {}
 export const dealRepository = new DealRepositoryImpl();

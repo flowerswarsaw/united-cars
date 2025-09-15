@@ -14,4 +14,5 @@ class ContactRepositoryImpl extends BaseRepository<Contact> {
   }
 }
 
+export class ContactRepository extends ContactRepositoryImpl {}
 export const contactRepository = new ContactRepositoryImpl();

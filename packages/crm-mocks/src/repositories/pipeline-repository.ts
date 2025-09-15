@@ -281,4 +281,5 @@ class PipelineRepositoryImpl extends BaseRepository<Pipeline> implements IPipeli
   }
 }
 
+export class PipelineRepository extends PipelineRepositoryImpl {}
 export const pipelineRepository = new PipelineRepositoryImpl();

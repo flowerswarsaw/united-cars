@@ -1,18 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { pipelineRepository, jsonPersistence } from '@united-cars/crm-mocks';
-import { createPipelineSchema } from '@united-cars/crm-core';
+import { getAllPipelines } from '@/lib/pipeline-data';
+import { PipelineService, hasPermission } from '@/lib/services/pipeline-service';
+import { getServerSessionFromRequest } from '@/lib/auth';
 
 export async function GET(request: NextRequest) {
   try {
-    const pipelines = await pipelineRepository.list();
-    
-    // Include stages for each pipeline
-    const pipelinesWithStages = await Promise.all(
-      pipelines.map(p => pipelineRepository.getWithStages(p.id))
-    );
-    
-    return NextResponse.json(pipelinesWithStages);
+    const session = await getServerSessionFromRequest(request);
+    const user = { 
+      id: session?.user?.id || 'anonymous', 
+      role: (session?.user as any)?.role || 'junior' as 'admin' | 'senior' | 'junior'
+    };
+
+    if (!hasPermission(user, 'pipeline:read')) {
+      return NextResponse.json(
+        { error: 'Insufficient permissions' },
+        { status: 403 }
+      );
+    }
+
+    const pipelines = getAllPipelines();
+    return NextResponse.json(pipelines);
   } catch (error) {
+    console.error('Error fetching pipelines:', error);
     return NextResponse.json(
       { error: 'Failed to fetch pipelines' },
       { status: 500 }
@@ -22,24 +31,37 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const validated = createPipelineSchema.parse(body);
-    
-    const pipeline = await pipelineRepository.create(validated);
-    await jsonPersistence.save();
-    
-    return NextResponse.json(pipeline, { status: 201 });
-  } catch (error: any) {
-    if (error.name === 'ZodError') {
+    const session = await getServerSessionFromRequest(request);
+    const user = { 
+      id: session?.user?.id || 'anonymous', 
+      role: (session?.user as any)?.role || 'junior' as 'admin' | 'senior' | 'junior'
+    };
+
+    if (!hasPermission(user, 'pipeline:create')) {
       return NextResponse.json(
-        { error: 'Invalid input', details: error.errors },
-        { status: 400 }
+        { error: 'Insufficient permissions' },
+        { status: 403 }
       );
     }
+
+    const body = await request.json();
+    const pipelineService = new PipelineService();
     
+    const result = await pipelineService.createPipeline(user, {
+      name: body.name,
+      description: body.description,
+      isActive: body.isActive !== false,
+      isDefault: body.isDefault || false,
+      createdBy: user.id,
+      stages: body.stages || []
+    });
+
+    return NextResponse.json(result, { status: 201 });
+  } catch (error: any) {
+    console.error('Error creating pipeline:', error);
     return NextResponse.json(
-      { error: 'Failed to create pipeline' },
-      { status: 500 }
+      { error: error.message || 'Failed to create pipeline' },
+      { status: error.message?.includes('permissions') ? 403 : 500 }
     );
   }
 }

@@ -1,45 +1,40 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { pipelineRepository, jsonPersistence } from '@united-cars/crm-mocks';
-import { reorderStagesSchema } from '@united-cars/crm-core';
+import { PipelineService, hasPermission } from '@/lib/services/pipeline-service';
+import { getServerSessionFromRequest } from '@/lib/auth';
 
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params;
+    const session = await getServerSessionFromRequest(request);
+    const user = { 
+      id: session?.user?.id || 'anonymous', 
+      role: (session?.user as any)?.role || 'junior' as 'admin' | 'senior' | 'junior'
+    };
+
+    if (!hasPermission(user, 'stage:reorder')) {
+      return NextResponse.json(
+        { error: 'Insufficient permissions' },
+        { status: 403 }
+      );
+    }
+
+    const { id: pipelineId } = await params;
     const body = await request.json();
-    const validated = reorderStagesSchema.parse(body);
     
-    const success = await pipelineRepository.reorderStages(id, validated.stageIds);
+    const pipelineService = new PipelineService();
+    const result = await pipelineService.reorderStages(user, {
+      pipelineId,
+      items: body.items || body.stageIds?.map((stageId: string, index: number) => ({ stageId, order: index + 1 }))
+    });
     
-    if (!success) {
-      return NextResponse.json(
-        { error: 'Failed to reorder stages' },
-        { status: 400 }
-      );
-    }
-    
-    await jsonPersistence.save();
-    return NextResponse.json({ success: true });
+    return NextResponse.json(result);
   } catch (error: any) {
-    if (error.name === 'ZodError') {
-      return NextResponse.json(
-        { error: 'Invalid input', details: error.errors },
-        { status: 400 }
-      );
-    }
-    
-    if (error.message === 'Invalid stage IDs for pipeline') {
-      return NextResponse.json(
-        { error: 'Invalid stage IDs for pipeline' },
-        { status: 400 }
-      );
-    }
-    
+    console.error('Error reordering stages:', error);
     return NextResponse.json(
-      { error: 'Failed to reorder stages' },
-      { status: 500 }
+      { error: error.message || 'Failed to reorder stages' },
+      { status: error.message?.includes('permissions') ? 403 : error.message?.includes('not found') ? 404 : 500 }
     );
   }
 }

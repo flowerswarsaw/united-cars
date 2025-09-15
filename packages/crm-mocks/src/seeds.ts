@@ -1,4 +1,27 @@
 import {
+  EnhancedOrganisation,
+  EnhancedContact,
+  EnhancedLead,
+  EnhancedDeal,
+  EnhancedPipeline,
+  EnhancedStage,
+  EnhancedTask,
+  ContactMethod,
+  SocialMediaLink,
+  CustomField,
+  Activity,
+    DealStatus,
+  LeadStatus,
+  LeadSource,
+  TaskStatus,
+  TaskPriority,
+  ContactMethodType,
+  SocialPlatform,
+  ActivityType,
+  CustomFieldType,
+  UserRole,
+  OrganisationRelationType,
+  // Factory functions
   makeOrganisation,
   makeContact,
   makeLead,
@@ -6,29 +29,25 @@ import {
   makePipeline,
   makeStage,
   makeTask,
+  makeContactMethod,
+  makeActivity,
   makeCustomFieldDef,
   makeCustomFieldValue,
-  DealStatus,
-  TaskStatus,
-  TaskPriority,
-  OrganizationType,
-  EntityType,
-  CustomFieldType,
   makeDealCurrentStage,
   makeDealStageHistory,
-  ContactMethodType,
-  SocialPlatform,
-  OrganisationRelationType
+  EntityType
 } from '@united-cars/crm-core';
-import { organisationRepository } from './repositories/organisation-repository';
-import { organisationConnectionRepository } from './repositories/organisation-connection-repository';
-import { contactRepository } from './repositories/contact-repository';
-import { leadRepository } from './repositories/lead-repository';
-import { dealRepository } from './repositories/deal-repository';
-import { pipelineRepository } from './repositories/pipeline-repository';
-import { taskRepository } from './repositories/task-repository';
-import { customFieldRepository } from './repositories/custom-field-repository';
-import { activityRepository } from './repositories/activity-repository';
+import { 
+  EnhancedOrganisationRepository,
+  EnhancedContactRepository,
+  EnhancedLeadRepository,
+  EnhancedDealRepository,
+  EnhancedPipelineRepository,
+  EnhancedTaskRepository
+} from './repositories';
+import { EnhancedPersistenceManager } from './persistence/enhanced-persistence';
+import { UniquenessManager } from '@united-cars/crm-core/src/uniqueness';
+import { HistoryLogger } from '@united-cars/crm-core/src/history';
 
 // Seed data with organization types
 const organisations = [
@@ -37,7 +56,7 @@ const organisations = [
     id: 'org_1',
     name: 'AutoMax Dealership',
     companyId: 'COMP-001',
-    type: OrganizationType.DEALER,
+    type: 'DEALER' as any,
     contactMethods: [
       {
         id: 'cm_1_1',
@@ -118,7 +137,7 @@ const organisations = [
     id: 'org_2',
     name: 'Premier Motors',
     companyId: 'COMP-002',
-    type: OrganizationType.DEALER,
+    type: 'DEALER' as any,
 
     website: 'https://premiermotors.com',
     industry: 'Automotive',
@@ -140,7 +159,7 @@ const organisations = [
     id: 'org_3',
     name: 'City Cars Direct',
     companyId: 'COMP-003',
-    type: OrganizationType.DEALER,
+    type: 'DEALER' as any,
 
     industry: 'Automotive',
     size: '10-50',
@@ -163,7 +182,7 @@ const organisations = [
     id: 'org_4',
     name: 'Global Auto Imports',
     companyId: 'COMP-004',
-    type: OrganizationType.SHIPPER,
+    type: 'SHIPPER' as any,
 
     website: 'https://globalauto.com',
     industry: 'Import/Export',
@@ -191,7 +210,7 @@ const organisations = [
     id: 'org_5',
     name: 'Westside Auto Group',
     companyId: 'COMP-005',
-    type: OrganizationType.TRANSPORTER,
+    type: 'TRANSPORTER' as any,
 
     industry: 'Transportation',
     size: '20-50',
@@ -213,7 +232,7 @@ const organisations = [
     id: 'org_6',
     name: 'John Smith',
     companyId: 'COMP-006',
-    type: OrganizationType.RETAIL_CLIENT,
+    type: 'RETAIL_CLIENT' as any,
 
     city: 'Denver',
     state: 'CO',
@@ -233,7 +252,7 @@ const organisations = [
     id: 'org_7',
     name: 'Copart West Coast',
     companyId: 'COMP-007',
-    type: OrganizationType.AUCTION,
+    type: 'AUCTION' as any,
 
     website: 'https://copart.com',
     industry: 'Vehicle Auctions',
@@ -255,7 +274,7 @@ const organisations = [
     id: 'org_8',
     name: 'Express Auto Logistics',
     companyId: 'COMP-008',
-    type: OrganizationType.EXPEDITOR,
+    type: 'EXPEDITOR' as any,
 
     website: 'https://expressauto.com',
     industry: 'Logistics',
@@ -278,7 +297,7 @@ const organisations = [
     id: 'org_9',
     name: 'National Title Services',
     companyId: 'COMP-009',
-    type: OrganizationType.PROCESSOR,
+    type: 'PROCESSOR' as any,
 
     website: 'https://nationaltitle.com',
     industry: 'Document Processing',
@@ -546,7 +565,7 @@ const dealerAcquisitionPipeline = makePipeline({
   isDefault: true,
   order: 0,
   color: '#3B82F6',
-  applicableTypes: [OrganizationType.DEALER],
+  applicableTypes: ['DEALER' as any],
   isTypeSpecific: true
 });
 
@@ -627,7 +646,7 @@ const dealerIntegrationPipeline = makePipeline({
   description: 'Post-sale dealer integration pipeline',
   order: 1,
   color: '#10B981',
-  applicableTypes: [OrganizationType.DEALER],
+  applicableTypes: ['DEALER' as any],
   isTypeSpecific: true
 });
 
@@ -678,7 +697,7 @@ const retailSalesPipeline = makePipeline({
   description: 'Individual customer purchase pipeline',
   order: 2,
   color: '#8B5CF6',
-  applicableTypes: [OrganizationType.RETAIL_CLIENT],
+  applicableTypes: ['RETAIL_CLIENT' as any],
   isTypeSpecific: true
 });
 
@@ -748,7 +767,7 @@ const vendorOnboardingPipeline = makePipeline({
   description: 'New logistics partner acquisition',
   order: 3,
   color: '#F59E0B',
-  applicableTypes: [OrganizationType.EXPEDITOR, OrganizationType.SHIPPER, OrganizationType.TRANSPORTER],
+  applicableTypes: ['EXPEDITOR' as any, 'SHIPPER' as any, 'TRANSPORTER' as any],
   isTypeSpecific: true
 });
 
@@ -812,7 +831,7 @@ const auctionIntegrationPipeline = makePipeline({
   description: 'API partnerships with auction houses',
   order: 4,
   color: '#EC4899',
-  applicableTypes: [OrganizationType.AUCTION],
+  applicableTypes: ['AUCTION' as any],
   isTypeSpecific: true
 });
 
@@ -930,7 +949,9 @@ const deals = [
     organisationId: 'org_1',
     status: DealStatus.OPEN,
     probability: 60,
-    notes: 'Q1 target deal, multiple vehicle imports'
+    notes: 'Q1 target deal, multiple vehicle imports',
+    pipelineId: 'pipeline-dealer-acquisition',
+    currentStageId: 'stage-da-proposal'
   }),
   makeDeal({
     id: 'deal_2',
@@ -950,7 +971,9 @@ const deals = [
     organisationId: 'org_3',
     status: DealStatus.OPEN,
     probability: 40,
-    notes: 'Focus on compact and economy vehicles'
+    notes: 'Focus on compact and economy vehicles',
+    pipelineId: 'pipeline-dealer-acquisition',
+    currentStageId: 'stage-da-qualification'
   }),
   makeDeal({
     id: 'deal_4',
@@ -1147,59 +1170,36 @@ const customFieldValues = [
   makeCustomFieldValue('field_def_5', 'deal_2', ['Quality', 'Delivery Time', 'Service'])
 ];
 
-export function seedData() {
-  // Clear existing data
-  resetSeeds();
+// Repository instances for compatibility
+import { OrganisationRepository } from './repositories/organisation-repository';
+import { OrganisationConnectionRepository } from './repositories/organisation-connection-repository';
+import { ContactRepository } from './repositories/contact-repository';
+import { LeadRepository } from './repositories/lead-repository';
+import { DealRepository } from './repositories/deal-repository';
+import { PipelineRepository } from './repositories/pipeline-repository';
+import { TaskRepository } from './repositories/task-repository';
+import { CustomFieldRepository } from './repositories/custom-field-repository';
+import { ActivityRepository } from './repositories/activity-repository';
 
-  // Seed all repositories
-  organisationRepository.seed(organisations);
-  organisationConnectionRepository.seed(organisationConnections);
-  contactRepository.seed(contacts);
-  leadRepository.seed(leads);
-  
-  pipelineRepository.seed([
-    dealerAcquisitionPipeline, 
-    dealerIntegrationPipeline, 
-    retailSalesPipeline, 
-    vendorOnboardingPipeline, 
-    auctionIntegrationPipeline
-  ]);
-  pipelineRepository.seedStages([
-    ...dealerAcquisitionStages, 
-    ...dealerIntegrationStages, 
-    ...retailSalesStages, 
-    ...vendorOnboardingStages, 
-    ...auctionIntegrationStages
-  ]);
-  
-  dealRepository.seed(deals);
-  taskRepository.seed(tasks);
-  
-  customFieldRepository.seedFieldDefs(customFieldDefs);
-  customFieldRepository.seedFieldValues(customFieldValues);
+// Create repository instances
+export const organisationRepository = new OrganisationRepository();
+export const organisationConnectionRepository = new OrganisationConnectionRepository();
+export const contactRepository = new ContactRepository();
+export const leadRepository = new LeadRepository();
+export const dealRepository = new DealRepository();
+export const pipelineRepository = new PipelineRepository();
+export const taskRepository = new TaskRepository();
+export const customFieldRepository = new CustomFieldRepository();
+export const activityRepository = new ActivityRepository();
+
+// Legacy seed functions - deprecated in favor of enhanced system
+export function seedData() {
+  console.warn('Legacy seedData() is deprecated. Use enhanced seeding system instead.');
 }
 
 export function resetSeeds() {
-  organisationRepository.clear();
-  organisationConnectionRepository.clear();
-  contactRepository.clear();
-  leadRepository.clear();
-  dealRepository.clear();
-  pipelineRepository.clear();
-  pipelineRepository.clearStages();
-  taskRepository.clear();
-  customFieldRepository.clear();
-  activityRepository.clear();
+  console.warn('Legacy resetSeeds() is deprecated. Use enhanced seeding system instead.');
 }
 
-export {
-  organisationRepository,
-  organisationConnectionRepository,
-  contactRepository,
-  leadRepository,
-  dealRepository,
-  pipelineRepository,
-  taskRepository,
-  customFieldRepository,
-  activityRepository
-};
+// Export enhanced seed data for use by the enhanced system
+export * from './enhanced-seeds';

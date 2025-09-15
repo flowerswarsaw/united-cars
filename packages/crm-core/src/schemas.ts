@@ -319,6 +319,7 @@ export const convertLeadInputSchema = z.object({
 export const moveDealInputSchema = z.object({
   pipelineId: z.string(),
   toStageId: z.string(),
+  targetIndex: z.number().optional(),
   note: z.string().optional(),
   lossReason: z.nativeEnum(LossReason).optional(),
   movedBy: z.string().optional()

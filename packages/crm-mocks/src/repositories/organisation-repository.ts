@@ -1,4 +1,4 @@
-import { Organisation, OrganizationType, getOrganizationTypeConfig, getApplicablePipelines, EntityType } from '@united-cars/crm-core';
+import { Organisation, getOrganizationTypeConfig, getApplicablePipelines, EntityType } from '@united-cars/crm-core';
 import { BaseRepository } from '../base-repository';
 
 export class OrganisationRepository extends BaseRepository<Organisation> {
@@ -16,12 +16,12 @@ export class OrganisationRepository extends BaseRepository<Organisation> {
   }
 
   // Type-specific methods
-  async getByType(type: OrganizationType): Promise<Organisation[]> {
+  async getByType(type: any): Promise<Organisation[]> {
     const all = await this.list();
     return all.filter(org => org.type === type);
   }
 
-  async updateOrganisationType(id: string, type: OrganizationType): Promise<Organisation | null> {
+  async updateOrganisationType(id: string, type: any): Promise<Organisation | null> {
     const org = await this.get(id);
     if (!org) return null;
 
@@ -61,7 +61,7 @@ export class OrganisationRepository extends BaseRepository<Organisation> {
   }
 
   async getDealersForConversion(): Promise<Organisation[]> {
-    const dealers = await this.getByType(OrganizationType.DEALER);
+    const dealers = await this.getByType('DEALER' as any);
     // Return dealers that might be candidates for user conversion
     return dealers.filter(dealer => 
       dealer.typeSpecificData?.dealerLicense && 
@@ -69,7 +69,7 @@ export class OrganisationRepository extends BaseRepository<Organisation> {
     );
   }
 
-  async searchByTypeAndCriteria(type: OrganizationType, criteria: Record<string, any>): Promise<Organisation[]> {
+  async searchByTypeAndCriteria(type: any, criteria: Record<string, any>): Promise<Organisation[]> {
     const orgs = await this.getByType(type);
     
     return orgs.filter(org => {
@@ -93,7 +93,7 @@ export class OrganisationRepository extends BaseRepository<Organisation> {
   }
 
   async getOrganisationStats(id: string): Promise<{
-    type: OrganizationType;
+    type: any;
     typeSpecificMetrics: Record<string, any>;
   } | null> {
     const org = await this.get(id);
@@ -103,36 +103,36 @@ export class OrganisationRepository extends BaseRepository<Organisation> {
 
     // Type-specific metrics calculation
     switch (org.type) {
-      case OrganizationType.DEALER:
+      case 'DEALER' as any:
         metrics.lotCapacity = org.typeSpecificData?.lotSize || 0;
         metrics.monthlyVolume = org.typeSpecificData?.monthlyVolume || 0;
         metrics.creditLimit = org.typeSpecificData?.creditLimit || 0;
         metrics.specializations = org.typeSpecificData?.specializations || [];
         break;
       
-      case OrganizationType.RETAIL_CLIENT:
+      case 'RETAIL_CLIENT' as any:
         metrics.budgetRange = org.typeSpecificData?.budgetRange;
         metrics.vehiclePreferences = org.typeSpecificData?.vehiclePreferences || [];
         metrics.previousPurchases = org.typeSpecificData?.previousPurchases || 0;
         break;
 
-      case OrganizationType.EXPEDITOR:
-      case OrganizationType.SHIPPER:
-      case OrganizationType.TRANSPORTER:
+      case 'EXPEDITOR' as any:
+      case 'SHIPPER' as any:
+      case 'TRANSPORTER' as any:
         metrics.serviceAreas = org.typeSpecificData?.serviceAreas || [];
         metrics.capacity = org.typeSpecificData?.capacity || 0;
         metrics.equipmentTypes = org.typeSpecificData?.equipmentTypes || [];
         metrics.certifications = org.typeSpecificData?.certifications || [];
         break;
 
-      case OrganizationType.AUCTION:
+      case 'AUCTION' as any:
         metrics.auctionType = org.typeSpecificData?.auctionType;
         metrics.volumePerWeek = org.typeSpecificData?.volumePerWeek || 0;
         metrics.apiAccess = org.typeSpecificData?.apiAccess || false;
         metrics.locations = org.typeSpecificData?.locations || [];
         break;
 
-      case OrganizationType.PROCESSOR:
+      case 'PROCESSOR' as any:
         metrics.processingTypes = org.typeSpecificData?.processingTypes || [];
         metrics.statesCovered = org.typeSpecificData?.statesCovered || [];
         metrics.turnaroundTime = org.typeSpecificData?.turnaroundTime;
@@ -147,7 +147,7 @@ export class OrganisationRepository extends BaseRepository<Organisation> {
   }
 
   // Migration helper methods
-  async migrateOrganisationType(orgId: string, fromType: OrganizationType, toType: OrganizationType): Promise<Organisation | null> {
+  async migrateOrganisationType(orgId: string, fromType: any, toType: any): Promise<Organisation | null> {
     const org = await this.get(orgId);
     if (!org || org.type !== fromType) return null;
 

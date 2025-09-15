@@ -19,4 +19,5 @@ class ActivityRepositoryImpl extends BaseRepository<Activity> implements IActivi
   }
 }
 
+export class ActivityRepository extends ActivityRepositoryImpl {}
 export const activityRepository = new ActivityRepositoryImpl();

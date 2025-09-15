@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { organisationRepository, jsonPersistence } from '@united-cars/crm-mocks';
-import { updateOrganisationSchema } from '@united-cars/crm-core';
+import { organizationsStore } from '@/lib/organizations-store';
 
 export async function GET(
   request: NextRequest,
@@ -8,7 +7,9 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const organisation = await organisationRepository.get(id);
+    
+    // Find the specific organization
+    const organisation = organizationsStore.getById(id);
     
     if (!organisation) {
       return NextResponse.json(
@@ -17,8 +18,10 @@ export async function GET(
       );
     }
     
+    console.log(`Found organization: ${organisation.name} (ID: ${id})`);
     return NextResponse.json(organisation);
   } catch (error) {
+    console.error('Failed to fetch organisation:', error);
     return NextResponse.json(
       { error: 'Failed to fetch organisation' },
       { status: 500 }
@@ -32,28 +35,23 @@ export async function PATCH(
 ) {
   try {
     const body = await request.json();
-    const validated = updateOrganisationSchema.parse(body);
     const { id } = await params;
     
-    const organisation = await organisationRepository.update(id, validated);
+    // Update the organization using the store
+    const updatedOrg = organizationsStore.update(id, body);
     
-    if (!organisation) {
+    if (!updatedOrg) {
       return NextResponse.json(
         { error: 'Organisation not found' },
         { status: 404 }
       );
     }
     
-    await jsonPersistence.save();
-    return NextResponse.json(organisation);
-  } catch (error: any) {
-    if (error.name === 'ZodError') {
-      return NextResponse.json(
-        { error: 'Invalid input', details: error.errors },
-        { status: 400 }
-      );
-    }
+    console.log(`Updated organization: ${updatedOrg.name} (ID: ${id})`);
     
+    return NextResponse.json(updatedOrg);
+  } catch (error: any) {
+    console.error('Failed to update organisation:', error);
     return NextResponse.json(
       { error: 'Failed to update organisation' },
       { status: 500 }
@@ -67,17 +65,13 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    const deleted = await organisationRepository.remove(id);
     
-    if (!deleted) {
-      return NextResponse.json(
-        { error: 'Organisation not found' },
-        { status: 404 }
-      );
-    }
-    
-    await jsonPersistence.save();
-    return NextResponse.json({ success: true });
+    // For now, return a simple success response since we don't have delete functionality
+    // This would need to be implemented with the same storage system as the main endpoint
+    return NextResponse.json(
+      { message: 'Delete functionality not yet implemented with in-memory storage' },
+      { status: 501 }
+    );
   } catch (error) {
     return NextResponse.json(
       { error: 'Failed to delete organisation' },

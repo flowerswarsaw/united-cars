@@ -50,4 +50,5 @@ class TaskRepositoryImpl extends BaseRepository<Task> implements ITaskRepository
   }
 }
 
+export class TaskRepository extends TaskRepositoryImpl {}
 export const taskRepository = new TaskRepositoryImpl();
