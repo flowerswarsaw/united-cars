@@ -1,28 +1,9 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import {
-  DndContext,
-  DragEndEvent,
-  DragOverlay,
-  DragStartEvent,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  closestCenter,
-  rectIntersection,
-  MouseSensor,
-  TouchSensor,
-} from '@dnd-kit/core';
-import {
-  SortableContext,
-  useSortable,
-  verticalListSortingStrategy,
-} from '@dnd-kit/sortable';
-import { useDroppable } from '@dnd-kit/core';
-import { CSS } from '@dnd-kit/utilities';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+// Removed @dnd-kit imports - using native HTML5 drag and drop instead
 import {
   Dialog,
   DialogContent,
@@ -40,29 +21,41 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Building2, User, DollarSign, Clock, Calendar, Plus, CheckCircle2, Circle, ChevronLeft, ChevronRight, Minimize2, Maximize2, Trash2, History, CheckSquare, Square } from 'lucide-react';
-import { Deal, Pipeline, Stage, LossReason, DealStatus, Organisation, Contact, Task, TaskStatus, TaskPriority, EntityType } from '@united-cars/crm-core';
+import { Building2, User, DollarSign, Clock, Calendar, Plus, CheckCircle2, Circle, ChevronLeft, ChevronRight, Minimize2, Maximize2, Trash2, History, CheckSquare, Square, Trophy, X, AlertCircle, AlertTriangle } from 'lucide-react';
+import { LossReason, DealStatus, Organisation, Contact, Task, TaskStatus, TaskPriority, EntityType } from '@united-cars/crm-core';
+import { EnhancedDeal, Pipeline, Stage } from '@/lib/pipeline-data';
+import { calculateSlaBreachDays } from '@/lib/pipeline-utils';
+
+// Extend Window interface for native drag and drop
+declare global {
+  interface Window {
+    onDealMoved?: (dealId: string, stageId: string) => void;
+  }
+}
 
 interface KanbanBoardProps {
   pipeline: Pipeline;
-  deals: Deal[];
+  deals: EnhancedDeal[];
   organisations: Organisation[];
   contacts: Contact[];
   tasks?: Task[];
   onDealMoved: (dealId: string, toStageId: string, note?: string, lossReason?: LossReason) => void;
-  onDealUpdated?: (deal: Deal) => void;
+  onDealWon?: (dealId: string, note?: string) => void;
+  onDealLost?: (dealId: string, lossReason: LossReason, note?: string) => void;
+  onMoveStage?: (dealId: string, direction: 'left' | 'right') => void;
+  onDealUpdated?: (deal: EnhancedDeal) => void;
   onTaskCreated?: (task: Task) => void;
   onOrganisationClick?: (orgId: string) => void;
   onContactClick?: (contactId: string) => void;
   onQuickAddDeal?: (stageId: string) => void;
   isFiltered?: boolean;
   totalDeals?: number;
-  allDealsByStage?: Record<string, Deal[]>;
+  allDealsByStage?: Record<string, EnhancedDeal[]>;
   searchQuery?: string;
 }
 
 interface DealCard {
-  deal: Deal;
+  deal: EnhancedDeal;
   organisations: Organisation[];
   contacts: Contact[];
   tasks?: Task[];
@@ -72,43 +65,28 @@ interface DealCard {
   onTaskClick?: (dealId: string) => void;
   onDeleteClick?: (dealId: string) => void;
   onHistoryClick?: (dealId: string) => void;
+  onMarkWon?: (dealId: string) => void;
+  onMarkLost?: (dealId: string) => void;
+  canMarkWon?: boolean;
+  canMarkLost?: boolean;
   searchQuery?: string;
+  stages?: Stage[];
 }
 
-function DealCardComponent({ deal, organisations, contacts, tasks, onClick, onOrganisationClick, onContactClick, onTaskClick, onDeleteClick, onHistoryClick, searchQuery }: DealCard) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef: setSortableNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: deal.id });
+function DealCardComponent({ deal, organisations, contacts, tasks, onClick, onOrganisationClick, onContactClick, onTaskClick, onDeleteClick, onHistoryClick, onMarkWon, onMarkLost, canMarkWon, canMarkLost, searchQuery, stages }: DealCard) {
 
-  // Also make this card a drop target
-  const {
-    setNodeRef: setDroppableNodeRef,
-    isOver,
-    active
-  } = useDroppable({ 
-    id: deal.id,
-    disabled: isDragging // Don't allow dropping on itself while being dragged
-  });
+  // Native HTML5 drag and drop state
+  const [isDragging, setIsDragging] = useState(false);
 
-  // Combine both refs
-  const setNodeRef = (node: HTMLElement | null) => {
-    setSortableNodeRef(node);
-    setDroppableNodeRef(node);
+  const handleDragStart = (e: React.DragEvent) => {
+    setIsDragging(true);
+    e.dataTransfer.setData('application/json', JSON.stringify({ dealId: deal.id, type: 'deal' }));
+    e.dataTransfer.effectAllowed = 'move';
   };
 
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition: isDragging ? 'none' : transition,
-    opacity: isDragging ? 0.3 : 1,
+  const handleDragEnd = () => {
+    setIsDragging(false);
   };
-
-  const isDropTarget = isOver && active && active.id !== deal.id;
-  const canAcceptDrop = isDropTarget;
 
   const formatCurrency = (amount?: number) => {
     if (!amount) return '';
@@ -135,11 +113,33 @@ function DealCardComponent({ deal, organisations, contacts, tasks, onClick, onOr
     const now = new Date();
     const created = new Date(deal.createdAt);
     const diffInHours = Math.floor((now.getTime() - created.getTime()) / (1000 * 60 * 60));
-    
+
     if (diffInHours < 24) return `${diffInHours}h ago`;
     const diffInDays = Math.floor(diffInHours / 24);
     return `${diffInDays}d ago`;
   };
+
+  // Calculate SLA breach status
+  const getSlaStatus = () => {
+    if (!deal.currentStages || !stages) return null;
+
+    const currentStage = deal.currentStages.find(cs => stages.some(s => s.id === cs.stageId));
+    if (!currentStage) return null;
+
+    const stage = stages.find(s => s.id === currentStage.stageId);
+    if (!stage?.slaDays) return null;
+
+    const breachDays = calculateSlaBreachDays(currentStage.enteredAt, stage.slaDays);
+    if (breachDays === null || breachDays <= 0) return null;
+
+    return {
+      breachDays,
+      slaDays: stage.slaDays,
+      severity: breachDays > stage.slaDays * 0.5 ? 'critical' : 'warning'
+    };
+  };
+
+  const slaStatus = getSlaStatus();
 
   // Find associated organisation and contact
   const organisation = organisations.find(org => org.id === deal.organisationId);
@@ -168,58 +168,59 @@ function DealCardComponent({ deal, organisations, contacts, tasks, onClick, onOr
 
   return (
     <div
-      ref={setNodeRef}
-      style={style}
-      {...attributes}
-      {...listeners}
+      draggable
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
       onDoubleClick={(e) => {
         e.stopPropagation();
         onClick?.();
       }}
-      className={`group relative rounded-xl border transition-all duration-200 ease-out isolate w-full max-w-full overflow-hidden ${
-        isDragging 
-          ? 'bg-card shadow-2xl shadow-indigo-500/25 cursor-grabbing border-indigo-300 z-50 ring-2 ring-indigo-200/50'
-          : canAcceptDrop
-          ? 'bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/80 dark:to-indigo-950/80 border-2 border-dashed border-blue-400 shadow-xl shadow-blue-500/25 cursor-grab ring-4 ring-blue-200/30 scale-[1.03] z-40'
-          : 'bg-gradient-to-br from-card to-card/95 shadow-md shadow-slate-200/40 dark:shadow-slate-900/40 border-slate-200/60 dark:border-slate-700/60 cursor-grab hover:shadow-lg hover:shadow-indigo-500/10 hover:border-indigo-300/70 z-10 hover:z-20'
-      } p-4 mb-3`}
-      title="Double-click to view details, drag to move between stages"
+      className={`group relative rounded-xl border transition-all duration-200 ease-out isolate w-full max-w-full overflow-hidden bg-gradient-to-br from-card to-card/95 shadow-md shadow-slate-200/40 dark:shadow-slate-900/40 border-slate-200/60 dark:border-slate-700/60 hover:shadow-lg hover:shadow-indigo-500/10 hover:border-indigo-300/70 z-10 hover:z-20 p-2.5 mb-2 cursor-grab active:cursor-grabbing ${
+        isDragging ? 'opacity-60' : ''
+      }`}
+      title="Drag to move between stages, double-click to view details"
     >
-      {/* Drop target overlay */}
-      {canAcceptDrop && (
-        <div className="absolute inset-0 z-20 flex items-center justify-center bg-gradient-to-br from-blue-100/60 via-indigo-100/60 to-purple-100/60 dark:from-blue-900/60 dark:via-indigo-900/60 dark:to-purple-900/60 rounded-xl border-2 border-dashed border-blue-400/70">
-          <div className="text-blue-700 dark:text-blue-300 text-sm font-semibold flex items-center animate-bounce drop-shadow-sm">
-            <svg className="w-5 h-5 mr-2 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
-            Drop here
-          </div>
-        </div>
-      )}
       
-      <div className="space-y-3 relative">
-        {/* Header with title and time */}
+      <div className="space-y-2 relative">
+        {/* Header with title, time, and SLA status */}
         <div className="flex justify-between items-start gap-3">
-          <h4 className="font-semibold text-base text-foreground truncate flex-1 leading-tight tracking-tight">
-            {highlightText(deal.title || '', searchQuery)}
-          </h4>
+          <div className="flex-1 min-w-0">
+            <h4 className="font-medium text-sm text-foreground truncate leading-tight">
+              {highlightText(deal.title || '', searchQuery)}
+            </h4>
+            {/* SLA breach indicator */}
+            {slaStatus && (
+              <div className={`flex items-center text-xs mt-1 px-2 py-0.5 rounded-md font-medium ${
+                slaStatus.severity === 'critical'
+                  ? 'text-red-700 bg-red-100 dark:text-red-200 dark:bg-red-900/40'
+                  : 'text-orange-700 bg-orange-100 dark:text-orange-200 dark:bg-orange-900/40'
+              }`}>
+                {slaStatus.severity === 'critical' ? (
+                  <AlertCircle className="h-3 w-3 mr-1" />
+                ) : (
+                  <AlertTriangle className="h-3 w-3 mr-1" />
+                )}
+                <span>SLA breach: {slaStatus.breachDays}d over</span>
+              </div>
+            )}
+          </div>
           {deal.createdAt && (
-            <div className="flex items-center text-muted-foreground/80 text-xs bg-muted/30 px-2 py-1 rounded-full shrink-0">
-              <Clock className="h-3 w-3 mr-1.5" />
+            <div className="flex items-center text-muted-foreground/80 text-xs bg-muted/30 px-1.5 py-0.5 rounded-full shrink-0">
+              <Clock className="h-2.5 w-2.5 mr-1" />
               <span className="font-medium">{getTimeSinceCreation()}</span>
             </div>
           )}
         </div>
         
         {/* Amount and probability */}
-        {deal.amount && (
+        {deal.value && (
           <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center text-emerald-600 dark:text-emerald-400 text-lg font-semibold bg-emerald-50/50 dark:bg-emerald-950/30 px-3 py-1.5 rounded-lg">
-              <DollarSign className="h-4 w-4 mr-1.5" />
-              <span className="tracking-tight">{formatCurrency(deal.amount)}</span>
+            <div className="flex items-center text-emerald-600 dark:text-emerald-400 text-sm font-medium bg-emerald-50/50 dark:bg-emerald-950/30 px-2 py-1 rounded-md">
+              <DollarSign className="h-3.5 w-3.5 mr-1" />
+              <span className="tracking-tight">{formatCurrency(deal.value)}</span>
             </div>
             {deal.probability && (
-              <div className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white text-xs font-semibold px-2.5 py-1.5 rounded-lg shadow-sm">
+              <div className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white text-xs font-medium px-2 py-1 rounded-md shadow-sm">
                 {deal.probability}%
               </div>
             )}
@@ -227,7 +228,7 @@ function DealCardComponent({ deal, organisations, contacts, tasks, onClick, onOr
         )}
         
         {/* Organisation and Contact links */}
-        <div className="flex flex-col space-y-2">
+        <div className="flex flex-col space-y-1.5">
           {/* Organisation - clickable */}
           {organisation && (
             <button
@@ -235,9 +236,9 @@ function DealCardComponent({ deal, organisations, contacts, tasks, onClick, onOr
                 e.stopPropagation();
                 onOrganisationClick?.(organisation.id);
               }}
-              className="flex items-center text-blue-600 dark:text-blue-400 text-sm font-medium hover:text-blue-700 dark:hover:text-blue-300 hover:bg-blue-50/80 dark:hover:bg-blue-950/40 w-full text-left transition-all duration-200 px-2.5 py-1.5 rounded-lg group-hover:translate-x-0.5 z-20 isolate hover:shadow-sm border border-transparent hover:border-blue-200/50 dark:hover:border-blue-800/50"
+              className="flex items-center text-blue-600 dark:text-blue-400 text-sm font-medium hover:text-blue-700 dark:hover:text-blue-300 hover:bg-blue-50/80 dark:hover:bg-blue-950/40 w-full text-left transition-all duration-200 px-2 py-1 rounded-md z-20 isolate hover:shadow-sm border border-transparent hover:border-blue-200/50 dark:hover:border-blue-800/50"
             >
-              <Building2 className="h-4 w-4 mr-2 flex-shrink-0" />
+              <Building2 className="h-3.5 w-3.5 mr-1.5 flex-shrink-0" />
               <span className="truncate">{highlightText(organisation.name || '', searchQuery)}</span>
             </button>
           )}
@@ -249,9 +250,9 @@ function DealCardComponent({ deal, organisations, contacts, tasks, onClick, onOr
                 e.stopPropagation();
                 onContactClick?.(contact.id);
               }}
-              className="flex items-center text-purple-600 dark:text-purple-400 text-sm font-medium hover:text-purple-700 dark:hover:text-purple-300 hover:bg-purple-50/80 dark:hover:bg-purple-950/40 w-full text-left transition-all duration-200 px-2.5 py-1.5 rounded-lg group-hover:translate-x-0.5 z-20 isolate hover:shadow-sm border border-transparent hover:border-purple-200/50 dark:hover:border-purple-800/50"
+              className="flex items-center text-purple-600 dark:text-purple-400 text-sm font-medium hover:text-purple-700 dark:hover:text-purple-300 hover:bg-purple-50/80 dark:hover:bg-purple-950/40 w-full text-left transition-all duration-200 px-2 py-1 rounded-md z-20 isolate hover:shadow-sm border border-transparent hover:border-purple-200/50 dark:hover:border-purple-800/50"
             >
-              <User className="h-4 w-4 mr-2 flex-shrink-0" />
+              <User className="h-3.5 w-3.5 mr-1.5 flex-shrink-0" />
               <span className="truncate">
                 {highlightText(`${contact.firstName} ${contact.lastName}`, searchQuery)}
               </span>
@@ -261,10 +262,10 @@ function DealCardComponent({ deal, organisations, contacts, tasks, onClick, onOr
         
         {/* Tasks Section */}
         {taskCounts.total > 0 && (
-          <div className="mt-3 p-2.5 bg-slate-50/60 dark:bg-slate-800/40 rounded-lg border border-slate-200/50 dark:border-slate-700/50">
+          <div className="mt-2 p-2 bg-slate-50/60 dark:bg-slate-800/40 rounded-md border border-slate-200/50 dark:border-slate-700/50">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
-                <CheckSquare className="h-3.5 w-3.5 text-slate-600 dark:text-slate-400" />
+                <CheckSquare className="h-3 w-3 text-slate-600 dark:text-slate-400" />
                 <span className="text-xs font-medium text-slate-700 dark:text-slate-300">
                   {taskCounts.total} Task{taskCounts.total !== 1 ? 's' : ''}
                 </span>
@@ -308,8 +309,35 @@ function DealCardComponent({ deal, organisations, contacts, tasks, onClick, onOr
           </div>
         )}
         
-        {/* Bottom actions and info */}
-        <div className="flex items-center justify-between pt-3 border-t border-slate-200/60 dark:border-slate-700/60">
+        {/* Actions: Won/Lost and controls */}
+        <div className="flex items-center justify-end pt-2 mt-2 border-t border-slate-200/60 dark:border-slate-700/60">
+          {/* Won/Lost action buttons */}
+          <div className="flex items-center space-x-1">
+            {canMarkWon && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onMarkWon?.(deal.id);
+                }}
+                className="flex items-center justify-center w-8 h-8 text-muted-foreground hover:text-green-600 dark:hover:text-green-400 hover:bg-green-50/80 dark:hover:bg-green-950/40 transition-all duration-200 hover:scale-110 z-20 isolate rounded-lg hover:shadow-sm border border-transparent hover:border-green-200/50 dark:hover:border-green-800/50"
+                title="Mark as won"
+              >
+                <Trophy className="h-4 w-4" />
+              </button>
+            )}
+            {canMarkLost && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onMarkLost?.(deal.id);
+                }}
+                className="flex items-center justify-center w-8 h-8 text-muted-foreground hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50/80 dark:hover:bg-red-950/40 transition-all duration-200 hover:scale-110 z-20 isolate rounded-lg hover:shadow-sm border border-transparent hover:border-red-200/50 dark:hover:border-red-800/50"
+                title="Mark as lost"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
           <div className="flex items-center text-muted-foreground/70 text-xs bg-muted/20 px-2 py-1 rounded-md">
             <Calendar className="h-3.5 w-3.5 mr-1.5" />
             <span className="font-medium">{deal.createdAt && formatDate(deal.createdAt)}</span>
@@ -354,16 +382,19 @@ function DealCardComponent({ deal, organisations, contacts, tasks, onClick, onOr
 
 interface StageColumn {
   stage: Stage;
-  deals: Deal[];
+  deals: EnhancedDeal[];
   organisations: Organisation[];
   contacts: Contact[];
   tasks?: Task[];
-  onDealClick?: (deal: Deal) => void;
+  onDealClick?: (deal: EnhancedDeal) => void;
   onOrganisationClick?: (orgId: string) => void;
   onContactClick?: (contactId: string) => void;
   onTaskClick?: (dealId: string) => void;
   onDeleteClick?: (dealId: string) => void;
   onHistoryClick?: (dealId: string) => void;
+  onMarkWon?: (dealId: string) => void;
+  onMarkLost?: (dealId: string) => void;
+  stages: Stage[];
   onQuickAddDeal?: (stageId: string) => void;
   isFiltered?: boolean;
   totalDealsInStage?: number;
@@ -373,38 +404,67 @@ interface StageColumn {
   hideHeader?: boolean;
 }
 
-function StageColumn({ stage, deals, organisations, contacts, tasks, onDealClick, onOrganisationClick, onContactClick, onTaskClick, onDeleteClick, onHistoryClick, onQuickAddDeal, isFiltered, totalDealsInStage, searchQuery, isCollapsed = false, onToggleCollapse, hideHeader = false }: StageColumn) {
-  const {
-    setNodeRef,
-    isOver,
-    active
-  } = useDroppable({ id: stage.id });
+function StageColumn({ stage, deals, organisations, contacts, tasks, onDealClick, onOrganisationClick, onContactClick, onTaskClick, onDeleteClick, onHistoryClick, onMarkWon, onMarkLost, stages, onQuickAddDeal, isFiltered, totalDealsInStage, searchQuery, isCollapsed = false, onToggleCollapse, hideHeader = false }: StageColumn) {
+  // Native HTML5 drop handling
+  const [isOver, setIsOver] = useState(false);
 
-  const isHighlighted = isOver && active;
-  const canDrop = active && active.id !== stage.id; // Can't drop on same column
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setIsOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    // Only set isOver to false if we're actually leaving the drop zone
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX;
+    const y = e.clientY;
+
+    if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
+      setIsOver(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsOver(false);
+
+    try {
+      const data = JSON.parse(e.dataTransfer.getData('application/json'));
+      if (data.type === 'deal' && data.dealId) {
+        // Check if moving to a terminal stage (prevent direct drag to won/lost)
+        if (stage.isTerminal) {
+          console.log('Terminal stages require using Won/Lost buttons, not drag-and-drop');
+          return;
+        }
+
+        // Trigger the move via the parent callback
+        if (window.onDealMoved) {
+          window.onDealMoved(data.dealId, stage.id);
+        }
+      }
+    } catch (error) {
+      console.error('Error handling drop:', error);
+    }
+  };
+
+  // Won/Lost action availability
+  const canMarkWon = (dealId: string) => {
+    const deal = deals.find(d => d.id === dealId);
+    return deal?.status === 'ACTIVE' && !stage.isTerminal;
+  };
+
+  const canMarkLost = (dealId: string) => {
+    const deal = deals.find(d => d.id === dealId);
+    return deal?.status === 'ACTIVE' && !stage.isTerminal;
+  };
 
   // Collapsed view (simplified for new structure)
   if (isCollapsed) {
     return (
-      <div 
-        ref={setNodeRef}
-        className={`flex-none w-16 sm:w-20 md:w-24 h-full min-h-[400px] transition-all duration-300 ease-out will-change-transform relative ${
-          isHighlighted && canDrop
-            ? 'bg-gradient-to-br from-blue-50/90 to-indigo-50/90 dark:from-blue-950/90 dark:to-indigo-950/90 border-2 border-dashed border-blue-400 shadow-lg scale-105 ring-2 ring-blue-300/50 backdrop-blur-md'
-            : isHighlighted
-            ? 'bg-gradient-to-br from-amber-50/90 to-orange-50/90 dark:from-amber-950/90 dark:to-orange-950/90 border-2 border-dashed border-amber-300 scale-102 backdrop-blur-md'
-            : 'bg-gradient-to-b from-muted/30 via-muted/20 to-muted/40 hover:from-muted/50 hover:via-muted/30 hover:to-muted/60'
-        } rounded-b-2xl hover:shadow-md backdrop-blur-sm border border-slate-200/50 dark:border-slate-700/50 shadow-sm`}
+      <div
+        className="flex-none w-16 sm:w-20 md:w-24 h-full min-h-[400px] transition-all duration-300 ease-out will-change-transform relative bg-gradient-to-b from-muted/30 via-muted/20 to-muted/40 hover:from-muted/50 hover:via-muted/30 hover:to-muted/60 rounded-b-2xl hover:shadow-md backdrop-blur-sm border border-slate-200/50 dark:border-slate-700/50 shadow-sm"
       >
-        {/* Drop overlay for collapsed state */}
-        {isHighlighted && canDrop && (
-          <div className="absolute inset-0 z-50 flex items-center justify-center bg-blue-100/20 dark:bg-blue-900/20 rounded-lg backdrop-blur-sm border-2 border-blue-400 border-dashed">
-            <div className="text-blue-600 text-xs font-semibold text-center animate-bounce" style={{ writingMode: 'vertical-rl' }}>
-              Drop deal here
-            </div>
-          </div>
-        )}
-        
         {/* Default collapsed state display */}
         <div className="h-full flex items-center justify-center">
           <div className="text-muted-foreground text-xs text-center transition-all duration-300 hover:text-foreground/70 hover:font-medium" style={{ writingMode: 'vertical-rl' }}>
@@ -417,37 +477,22 @@ function StageColumn({ stage, deals, organisations, contacts, tasks, onDealClick
 
   // Expanded view (content only, no header)
   return (
-    <div 
-      ref={setNodeRef}
-      className={`w-full h-full max-w-full overflow-hidden transition-all duration-300 ease-out will-change-transform ${
-        isHighlighted && canDrop
-          ? 'bg-gradient-to-br from-blue-50/90 via-indigo-50/80 to-blue-50/90 dark:from-blue-950/90 dark:via-indigo-950/80 dark:to-blue-950/90 border-2 border-dashed border-blue-400/80 shadow-xl shadow-blue-500/20 scale-[1.02] ring-4 ring-blue-200/40 dark:ring-blue-800/40'
-          : isHighlighted
-          ? 'bg-gradient-to-br from-amber-50/90 to-orange-50/90 dark:from-amber-950/90 dark:to-orange-950/90 border-2 border-dashed border-amber-400/80 scale-[1.01] shadow-lg shadow-amber-500/20'
-          : 'bg-gradient-to-br from-card/80 via-card/90 to-muted/20 border border-slate-200/50 dark:border-slate-700/50 hover:from-card/90 hover:via-card hover:to-muted/30 hover:border-slate-300/60 dark:hover:border-slate-600/60 shadow-sm hover:shadow-md'
-      } rounded-2xl p-4 flex flex-col relative transition-shadow duration-300`}
-      style={{ height: '600px', minHeight: '600px' }}
+    <div
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      className={`w-full h-full max-w-full overflow-hidden transition-all duration-300 ease-out will-change-transform flex-1 flex flex-col bg-gradient-to-br from-card/80 via-card/90 to-muted/20 border border-slate-200/50 dark:border-slate-700/50 hover:from-card/90 hover:via-card hover:to-muted/30 hover:border-slate-300/60 dark:hover:border-slate-600/60 shadow-sm hover:shadow-md rounded-2xl p-3 relative transition-shadow duration-300 ${
+        isOver ? 'ring-2 ring-indigo-400 bg-indigo-50 dark:bg-indigo-950/50' : ''
+      }`}
     >
-      {/* Drop overlay for the entire column */}
-      {isHighlighted && canDrop && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-blue-100/20 dark:bg-blue-900/20 rounded-xl backdrop-blur-sm border-2 border-blue-400 border-dashed">
-          <div className="text-blue-600 text-lg font-semibold flex items-center animate-bounce">
-            <svg className="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-            </svg>
-            Drop deal anywhere in this column
-          </div>
-        </div>
-      )}
       
       {/* Scrollable deals container */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-border scrollbar-track-muted/20 hover:scrollbar-thumb-border/80 scroll-smooth" style={{ height: '480px' }}>
-        <SortableContext items={deals.map(d => d.id)} strategy={verticalListSortingStrategy}>
-          <div className="space-y-2 pb-4">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 scrollbar-thin scrollbar-thumb-border scrollbar-track-muted/20 hover:scrollbar-thumb-border/80 scroll-smooth">
+          <div className="space-y-1.5 pb-2">
             {deals.map((deal) => (
-              <DealCardComponent 
-                key={deal.id} 
-                deal={deal} 
+              <DealCardComponent
+                key={deal.id}
+                deal={deal}
                 organisations={organisations}
                 contacts={contacts}
                 tasks={tasks}
@@ -457,12 +502,17 @@ function StageColumn({ stage, deals, organisations, contacts, tasks, onDealClick
                 onTaskClick={onTaskClick}
                 onDeleteClick={onDeleteClick}
                 onHistoryClick={onHistoryClick}
+                onMarkWon={onMarkWon}
+                onMarkLost={onMarkLost}
+                canMarkWon={canMarkWon(deal.id)}
+                canMarkLost={canMarkLost(deal.id)}
                 searchQuery={searchQuery}
+                stages={stages}
               />
             ))}
             
             {/* Empty state when no deals */}
-            {deals.length === 0 && !isHighlighted && (
+            {deals.length === 0 && (
               <div className="flex items-center justify-center h-32 text-muted-foreground text-sm text-center">
                 {isFiltered && totalDealsInStage && totalDealsInStage > 0 ? (
                   <div>
@@ -475,14 +525,13 @@ function StageColumn({ stage, deals, organisations, contacts, tasks, onDealClick
               </div>
             )}
           </div>
-        </SortableContext>
       </div>
       
       {/* Fixed Add Deal button at bottom */}
-      <div className="flex-shrink-0 pt-3 border-t border-slate-200/50 dark:border-slate-700/50 w-full" style={{ height: '80px' }}>
+      <div className="flex-shrink-0 pt-2 border-t border-slate-200/50 dark:border-slate-700/50 w-full">
         <button
           onClick={() => onQuickAddDeal?.(stage.id)}
-          className="group w-full p-3 border-2 border-dashed border-slate-300/60 dark:border-slate-600/60 rounded-xl text-muted-foreground hover:border-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-gradient-to-r hover:from-indigo-50/80 hover:to-blue-50/80 dark:hover:from-indigo-950/80 dark:hover:to-blue-950/80 hover:shadow-lg hover:shadow-indigo-500/25 transition-all duration-200 ease-out text-sm font-medium flex items-center justify-center gap-2.5 active:scale-95 z-20 isolate relative overflow-hidden"
+          className="group w-full p-2 border-2 border-dashed border-slate-300/60 dark:border-slate-600/60 rounded-lg text-muted-foreground hover:border-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-gradient-to-r hover:from-indigo-50/80 hover:to-blue-50/80 dark:hover:from-indigo-950/80 dark:hover:to-blue-950/80 hover:shadow-lg hover:shadow-indigo-500/25 transition-all duration-200 ease-out text-sm font-medium flex items-center justify-center gap-2 active:scale-95 z-20 isolate relative overflow-hidden"
           title="Add new deal to this stage"
         >
           <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-500 ease-out"></div>
@@ -494,16 +543,19 @@ function StageColumn({ stage, deals, organisations, contacts, tasks, onDealClick
   );
 }
 
-export default function KanbanBoard({ pipeline, deals, organisations, contacts, tasks, onDealMoved, onDealUpdated, onTaskCreated, onOrganisationClick, onContactClick, onQuickAddDeal, isFiltered = false, totalDeals = 0, allDealsByStage, searchQuery }: KanbanBoardProps) {
-  const [activeId, setActiveId] = useState<string | null>(null);
+export default function KanbanBoard({ pipeline, deals, organisations, contacts, tasks, onDealMoved, onDealWon, onDealLost, onDealUpdated, onTaskCreated, onOrganisationClick, onContactClick, onQuickAddDeal, isFiltered = false, totalDeals = 0, allDealsByStage, searchQuery }: KanbanBoardProps) {
   const [showLossDialog, setShowLossDialog] = useState(false);
   const [showDealDialog, setShowDealDialog] = useState(false);
   const [showTaskDialog, setShowTaskDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showHistoryDialog, setShowHistoryDialog] = useState(false);
+  const [showWonDialog, setShowWonDialog] = useState(false);
   const [dealToDelete, setDealToDelete] = useState<string | null>(null);
   const [dealForHistory, setDealForHistory] = useState<string | null>(null);
-  const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);
+  const [dealToMarkWon, setDealToMarkWon] = useState<string | null>(null);
+  const [dealToMarkLost, setDealToMarkLost] = useState<string | null>(null);
+  const [wonNote, setWonNote] = useState('');
+  const [selectedDeal, setSelectedDeal] = useState<EnhancedDeal | null>(null);
   const [selectedDealForTask, setSelectedDealForTask] = useState<string | null>(null);
   const [collapsedStages, setCollapsedStages] = useState<Set<string>>(() => {
     // Initialize with saved collapsed stages from localStorage
@@ -548,6 +600,14 @@ export default function KanbanBoard({ pipeline, deals, organisations, contacts, 
     assignedTo: ''
   });
 
+  // Set up global callback for native drag and drop
+  useEffect(() => {
+    window.onDealMoved = onDealMoved;
+    return () => {
+      delete window.onDealMoved;
+    };
+  }, [onDealMoved]);
+
   // Save collapsed stages to localStorage whenever they change
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -560,19 +620,6 @@ export default function KanbanBoard({ pipeline, deals, organisations, contacts, 
     }
   }, [collapsedStages]);
 
-  const sensors = useSensors(
-    useSensor(MouseSensor, {
-      activationConstraint: {
-        distance: 3, // Minimal distance to prevent accidental drags
-      },
-    }),
-    useSensor(TouchSensor, {
-      activationConstraint: {
-        delay: 100, // Short delay for touch devices
-        tolerance: 5,
-      },
-    })
-  );
 
   const stages = pipeline.stages || [];
   
@@ -582,7 +629,7 @@ export default function KanbanBoard({ pipeline, deals, organisations, contacts, 
       return currentStage?.stageId === stage.id;
     });
     return acc;
-  }, {} as Record<string, Deal[]>);
+  }, {} as Record<string, EnhancedDeal[]>);
 
   // Get total deals by stage for filter display
   const totalDealsByStage = isFiltered && allDealsByStage ? 
@@ -591,55 +638,7 @@ export default function KanbanBoard({ pipeline, deals, organisations, contacts, 
       return acc;
     }, {} as Record<string, number>) : {};
 
-  function handleDragStart(event: DragStartEvent) {
-    setActiveId(event.active.id as string);
-  }
-
-  function handleDragEnd(event: DragEndEvent) {
-    const { active, over } = event;
-    setActiveId(null);
-
-    if (!over) return;
-
-    const dealId = active.id as string;
-    let toStageId = over.id as string;
-
-    // Check if we dropped on a card instead of a stage
-    const isDroppedOnCard = deals.some(deal => deal.id === toStageId);
-    
-    if (isDroppedOnCard) {
-      // Find the stage of the card we dropped on
-      const targetDeal = deals.find(deal => deal.id === toStageId);
-      if (targetDeal) {
-        const targetStage = targetDeal.currentStages?.find(cs => cs.pipelineId === pipeline.id);
-        if (targetStage) {
-          toStageId = targetStage.stageId;
-        }
-      }
-    }
-
-    // Find the target stage
-    const toStage = stages.find(s => s.id === toStageId);
-    if (!toStage) return;
-
-    // Don't allow dropping on the same stage if it's the same deal
-    const currentDeal = deals.find(d => d.id === dealId);
-    const currentStage = currentDeal?.currentStages?.find(cs => cs.pipelineId === pipeline.id);
-    if (currentStage?.stageId === toStageId && !isDroppedOnCard) {
-      return; // Same stage, no movement needed
-    }
-
-    // Check if moving to a lost stage
-    if (toStage.isLost) {
-      setPendingMove({ dealId, toStageId });
-      setShowLossDialog(true);
-      return;
-    }
-
-    // Move the deal
-    onDealMoved(dealId, toStageId, moveNote || undefined);
-    setMoveNote('');
-  }
+  // Native drag and drop doesn't need these handlers
 
   const handleLossConfirm = () => {
     if (pendingMove && lossReason) {
@@ -656,14 +655,55 @@ export default function KanbanBoard({ pipeline, deals, organisations, contacts, 
     }
   };
 
-  const handleDealClick = (deal: Deal) => {
+  // Won/Lost handlers
+  const handleMarkWon = (dealId: string) => {
+    setDealToMarkWon(dealId);
+    setShowWonDialog(true);
+  };
+
+  const handleMarkLost = (dealId: string) => {
+    setDealToMarkLost(dealId);
+    setShowLossDialog(true);
+  };
+
+  const handleWonConfirm = () => {
+    if (dealToMarkWon) {
+      onDealWon?.(dealToMarkWon, wonNote || undefined);
+      setShowWonDialog(false);
+      setDealToMarkWon(null);
+      setWonNote('');
+    }
+  };
+
+  const handleLostConfirm = () => {
+    if (dealToMarkLost && lossReason) {
+      onDealLost?.(dealToMarkLost, lossReason as LossReason, moveNote || undefined);
+      setShowLossDialog(false);
+      setDealToMarkLost(null);
+      setLossReason('');
+      setMoveNote('');
+    } else if (pendingMove && lossReason) {
+      onDealMoved(
+        pendingMove.dealId,
+        pendingMove.toStageId,
+        moveNote || undefined,
+        lossReason as LossReason
+      );
+      setShowLossDialog(false);
+      setPendingMove(null);
+      setLossReason('');
+      setMoveNote('');
+    }
+  };
+
+  const handleDealClick = (deal: EnhancedDeal) => {
     setSelectedDeal(deal);
     setDealFormData({
       title: deal.title || '',
-      amount: deal.amount?.toString() || '',
+      amount: deal.value?.toString() || '',
       currency: deal.currency || 'USD',
       probability: deal.probability?.toString() || '',
-      notes: deal.notes || '',
+      notes: deal.description || '',
       organisationId: deal.organisationId || '',
       contactId: deal.contactId || ''
     });
@@ -679,10 +719,10 @@ export default function KanbanBoard({ pipeline, deals, organisations, contacts, 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: dealFormData.title,
-          amount: dealFormData.amount ? parseFloat(dealFormData.amount) : undefined,
+          value: dealFormData.amount ? parseFloat(dealFormData.amount) : undefined,
           currency: dealFormData.currency,
           probability: dealFormData.probability ? parseFloat(dealFormData.probability) : undefined,
-          notes: dealFormData.notes,
+          description: dealFormData.notes,
           organisationId: dealFormData.organisationId || undefined,
           contactId: dealFormData.contactId || undefined
         })
@@ -795,27 +835,19 @@ export default function KanbanBoard({ pipeline, deals, organisations, contacts, 
     }
   };
 
-  const activeDeal = activeId ? deals.find(d => d.id === activeId) : null;
-
   return (
-    <div className="flex-1 flex flex-col min-h-0 p-3 sm:p-6 bg-gradient-to-br from-slate-50/80 via-slate-50/60 to-indigo-50/40 dark:from-slate-900/80 dark:via-slate-900/60 dark:to-indigo-950/40 isolate backdrop-blur-sm">
-      <DndContext
-        sensors={sensors}
-        collisionDetection={rectIntersection}
-        onDragStart={handleDragStart}
-        onDragEnd={handleDragEnd}
-      >
+      <div className="flex-1 flex flex-col min-h-0 h-full p-2 sm:p-4 bg-gradient-to-br from-slate-50/80 via-slate-50/60 to-indigo-50/40 dark:from-slate-900/80 dark:via-slate-900/60 dark:to-indigo-950/40 isolate backdrop-blur-sm">
         {/* Horizontally Scrollable Kanban Container */}
-        <div className="flex-1 overflow-x-auto overflow-y-hidden min-h-0 scroll-smooth scrollbar-thin scrollbar-thumb-slate-300/60 dark:scrollbar-thumb-slate-700/60 scrollbar-track-transparent hover:scrollbar-thumb-slate-400/80 dark:hover:scrollbar-thumb-slate-600/80 isolate">
-          <div className="flex gap-4 sm:gap-6 h-full min-w-max pb-6 px-2" style={{ height: '650px' }}>
+        <div className="flex-1 overflow-x-auto overflow-y-hidden min-h-0 h-full scroll-smooth scrollbar-thin scrollbar-thumb-slate-300/60 dark:scrollbar-thumb-slate-700/60 scrollbar-track-transparent hover:scrollbar-thumb-slate-400/80 dark:hover:scrollbar-thumb-slate-600/80 isolate">
+          <div className="flex gap-3 sm:gap-4 h-full min-w-max pb-4 px-2">
           {stages.map((stage, index) => (
             <div 
               key={stage.id}
-              className={`flex-none flex flex-col ${
+              className={`flex-none flex flex-col h-full ${
                 collapsedStages.has(stage.id) 
-                  ? 'w-16 sm:w-20 md:w-24' 
-                  : 'w-72 sm:w-80 md:w-84 lg:w-96'
-              } transition-all duration-500 ease-out min-h-full will-change-transform animate-in fade-in-0 slide-in-from-bottom-4`}
+                  ? 'w-14 sm:w-16 md:w-18' 
+                  : 'w-64 sm:w-68 md:w-72 lg:w-76'
+              } transition-all duration-500 ease-out will-change-transform animate-in fade-in-0 slide-in-from-bottom-4`}
               style={{ 
                 animationDelay: `${index * 150}ms`,
                 animationFillMode: 'both'
@@ -823,10 +855,10 @@ export default function KanbanBoard({ pipeline, deals, organisations, contacts, 
             >
               {/* Stage Header */}
               <div className="mb-2">
-                <div className={`bg-gradient-to-r from-card/90 via-card to-card/90 backdrop-blur-md rounded-xl shadow-md shadow-slate-200/40 dark:shadow-slate-900/40 border border-slate-200/70 dark:border-slate-700/70 z-30 isolate hover:shadow-lg transition-all duration-300 ${
+                <div className={`bg-gradient-to-r from-card/90 via-card to-card/90 backdrop-blur-md rounded-lg shadow-md shadow-slate-200/40 dark:shadow-slate-900/40 border border-slate-200/70 dark:border-slate-700/70 z-30 isolate hover:shadow-lg transition-all duration-300 ${
                   collapsedStages.has(stage.id) 
-                    ? 'p-3 relative' 
-                    : 'p-3.5 flex items-center justify-between min-h-[3rem]'
+                    ? 'p-2.5 relative' 
+                    : 'p-3 flex items-center justify-between min-h-[2.5rem]'
                 }`}>
                   {!collapsedStages.has(stage.id) ? (
                     <>
@@ -835,8 +867,8 @@ export default function KanbanBoard({ pipeline, deals, organisations, contacts, 
                           className="w-3.5 h-3.5 rounded-full shadow-sm flex-shrink-0 ring-2 ring-white/50 dark:ring-slate-900/50"
                           style={{ backgroundColor: stage.color || '#6B7280' }}
                         />
-                        <h3 className="font-bold text-foreground text-base truncate tracking-tight">{stage.name}</h3>
-                        <div className="bg-gradient-to-r from-slate-100 to-slate-50 dark:from-slate-800 dark:to-slate-700 text-slate-700 dark:text-slate-300 text-xs font-semibold px-2.5 py-1.5 rounded-lg shadow-sm border border-slate-200/50 dark:border-slate-600/50 flex-shrink-0">
+                        <h3 className="font-semibold text-foreground text-sm truncate">{stage.label}</h3>
+                        <div className="bg-gradient-to-r from-slate-100 to-slate-50 dark:from-slate-800 dark:to-slate-700 text-slate-700 dark:text-slate-300 text-xs font-medium px-2 py-1 rounded-md shadow-sm border border-slate-200/50 dark:border-slate-600/50 flex-shrink-0">
                           {isFiltered && totalDealsByStage[stage.id] !== undefined ? (
                             <span>
                               {(dealsByStage[stage.id] || []).length} / {totalDealsByStage[stage.id]}
@@ -869,7 +901,7 @@ export default function KanbanBoard({ pipeline, deals, organisations, contacts, 
                           style={{ backgroundColor: stage.color || '#6B7280' }}
                         />
                         <div className="text-xs font-medium text-foreground/80 mb-2 truncate w-full px-1 leading-tight">
-                          {stage.name}
+                          {stage.label}
                         </div>
                         <Badge variant="outline" className="text-xs px-1.5 py-0.5">
                           {isFiltered && totalDealsByStage[stage.id] !== undefined ? totalDealsByStage[stage.id] : (dealsByStage[stage.id] || []).length}
@@ -894,6 +926,9 @@ export default function KanbanBoard({ pipeline, deals, organisations, contacts, 
                   onTaskClick={handleTaskClick}
                   onDeleteClick={handleDeleteClick}
                   onHistoryClick={handleHistoryClick}
+                  onMarkWon={handleMarkWon}
+                  onMarkLost={handleMarkLost}
+                  stages={stages}
                   onQuickAddDeal={onQuickAddDeal}
                   isFiltered={isFiltered}
                   totalDealsInStage={totalDealsByStage[stage.id] || 0}
@@ -908,59 +943,6 @@ export default function KanbanBoard({ pipeline, deals, organisations, contacts, 
           </div>
         </div>
 
-        <DragOverlay 
-          dropAnimation={null}
-          adjustScale={false}
-          wrapperElement="div"
-          style={{ 
-            cursor: 'grabbing',
-            zIndex: 9999,
-          }}
-        >
-          {activeDeal ? (
-            <div 
-              className="bg-card rounded-xl border-2 border-indigo-400 p-4 shadow-2xl opacity-95 pointer-events-none w-72"
-            >
-              <div className="space-y-3">
-                <h4 className="font-semibold text-base text-foreground truncate">{activeDeal.title}</h4>
-                
-                {activeDeal.amount && (
-                  <div className="flex items-center text-emerald-600 text-lg font-semibold">
-                    <DollarSign className="h-4 w-4 mr-1" />
-                    {new Intl.NumberFormat('en-US', {
-                      style: 'currency',
-                      currency: activeDeal.currency || 'USD',
-                      minimumFractionDigits: 0
-                    }).format(activeDeal.amount)}
-                  </div>
-                )}
-                
-                <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  {activeDeal.organisationId && (
-                    <div className="flex items-center">
-                      <Building2 className="h-3 w-3 mr-1" />
-                      Organisation
-                    </div>
-                  )}
-                  
-                  {activeDeal.contactId && (
-                    <div className="flex items-center">
-                      <User className="h-3 w-3 mr-1" />
-                      Contact
-                    </div>
-                  )}
-                  
-                  {activeDeal.probability && (
-                    <div className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white text-xs font-semibold px-2 py-1 rounded">
-                      {activeDeal.probability}%
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          ) : null}
-        </DragOverlay>
-      </DndContext>
 
       <Dialog open={showLossDialog} onOpenChange={setShowLossDialog}>
         <DialogContent>
@@ -994,11 +976,55 @@ export default function KanbanBoard({ pipeline, deals, organisations, contacts, 
             </div>
             
             <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setShowLossDialog(false)}>
+              <Button variant="outline" onClick={() => {
+                setShowLossDialog(false);
+                if (dealToMarkLost) {
+                  setDealToMarkLost(null);
+                }
+                if (pendingMove) {
+                  setPendingMove(null);
+                }
+                setLossReason('');
+                setMoveNote('');
+              }}>
                 Cancel
               </Button>
-              <Button onClick={handleLossConfirm} disabled={!lossReason}>
+              <Button onClick={handleLostConfirm} disabled={!lossReason}>
                 Mark as Lost
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showWonDialog} onOpenChange={setShowWonDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Mark Deal as Won</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="wonNote">Celebration Note (Optional)</Label>
+              <Textarea
+                id="wonNote"
+                value={wonNote}
+                onChange={(e) => setWonNote(e.target.value)}
+                placeholder="Add a note about this successful deal..."
+                rows={3}
+              />
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => {
+                setShowWonDialog(false);
+                setDealToMarkWon(null);
+                setWonNote('');
+              }}>
+                Cancel
+              </Button>
+              <Button onClick={handleWonConfirm} className="bg-green-600 hover:bg-green-700">
+                <Trophy className="h-4 w-4 mr-2" />
+                Mark as Won
               </Button>
             </div>
           </div>
@@ -1358,6 +1384,7 @@ export default function KanbanBoard({ pipeline, deals, organisations, contacts, 
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+
+      </div>
   );
 }
