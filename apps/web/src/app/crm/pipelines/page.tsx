@@ -128,7 +128,7 @@ export default function PipelinesPage() {
     setSelectedPipeline(pipeline);
     setLocalStages([...(pipeline.stages || [])]);
     setManagePipelineData({
-      name: pipeline.name,
+      name: pipeline.name || '',
       description: pipeline.description || '',
       color: pipeline.color || '#3B82F6'
     });
@@ -148,7 +148,7 @@ export default function PipelinesPage() {
   };
 
   const saveStageOrder = async () => {
-    if (!selectedPipeline) return;
+    if (!selectedPipeline?.id) return;
 
     try {
       const stageIds = localStages.map(stage => stage.id);
@@ -161,7 +161,9 @@ export default function PipelinesPage() {
       if (response.ok) {
         // Reload pipeline data to get updated stages
         const updatedPipeline = await fetch(`/api/crm/pipelines/${selectedPipeline.id}`).then(r => r.json());
-        setSelectedPipeline(updatedPipeline);
+        if (updatedPipeline?.id) {
+          setSelectedPipeline(updatedPipeline);
+        }
         setPipelines(prev => prev.map(p => p.id === selectedPipeline.id ? updatedPipeline : p));
         setLocalStages([...updatedPipeline.stages]);
         toast.success('Stage order updated successfully');
@@ -214,7 +216,7 @@ export default function PipelinesPage() {
   };
 
   const handleUpdatePipeline = async () => {
-    if (!selectedPipeline || !managePipelineData.name) return;
+    if (!selectedPipeline?.id || !managePipelineData.name) return;
 
     try {
       const response = await fetch(`/api/crm/pipelines/${selectedPipeline.id}`, {
@@ -229,7 +231,9 @@ export default function PipelinesPage() {
 
       if (response.ok) {
         const updatedPipeline = await response.json();
-        setSelectedPipeline(updatedPipeline);
+        if (updatedPipeline?.id) {
+          setSelectedPipeline(updatedPipeline);
+        }
         setPipelines(prev => prev.map(p => p.id === updatedPipeline.id ? updatedPipeline : p));
         toast.success(`Pipeline Updated: ${updatedPipeline.name} has been updated successfully.`);
       } else {
@@ -287,7 +291,9 @@ export default function PipelinesPage() {
         const newStage = await response.json();
         // Reload pipeline data to get updated stages
         const updatedPipeline = await fetch(`/api/crm/pipelines/${pipelineId}`).then(r => r.json());
-        setSelectedPipeline(updatedPipeline);
+        if (updatedPipeline?.id) {
+          setSelectedPipeline(updatedPipeline);
+        }
         setLocalStages([...updatedPipeline.stages]);
         setPipelines(prev => prev.map(p => p.id === pipelineId ? updatedPipeline : p));
         setIsAddingStage(false);
@@ -325,8 +331,10 @@ export default function PipelinesPage() {
         // Reload pipeline data to get updated stages
         if (selectedPipeline) {
           const updatedPipeline = await fetch(`/api/crm/pipelines/${selectedPipeline.id}`).then(r => r.json());
-          setSelectedPipeline(updatedPipeline);
-          setAllPipelines(prev => prev.map(p => p.id === selectedPipeline.id ? updatedPipeline : p));
+          if (updatedPipeline?.id) {
+            setSelectedPipeline(updatedPipeline);
+          }
+          setPipelines(prev => prev.map(p => p.id === selectedPipeline.id ? updatedPipeline : p));
         }
         setEditingStageId(null);
         toast.success(`Stage Updated: ${updatedStage.name} has been updated.`);
@@ -341,7 +349,7 @@ export default function PipelinesPage() {
   };
 
   const handleDeleteStage = async (stage: Stage) => {
-    if (!confirm(`Are you sure you want to delete the "${stage.name}" stage? This action cannot be undone.`)) {
+    if (!confirm(`Are you sure you want to delete the "${stage.label}" stage? This action cannot be undone.`)) {
       return;
     }
 
@@ -356,10 +364,12 @@ export default function PipelinesPage() {
         // Reload pipeline data to get updated stages
         if (selectedPipeline) {
           const updatedPipeline = await fetch(`/api/crm/pipelines/${selectedPipeline.id}`).then(r => r.json());
-          setSelectedPipeline(updatedPipeline);
-          setAllPipelines(prev => prev.map(p => p.id === selectedPipeline.id ? updatedPipeline : p));
+          if (updatedPipeline?.id) {
+            setSelectedPipeline(updatedPipeline);
+          }
+          setPipelines(prev => prev.map(p => p.id === selectedPipeline.id ? updatedPipeline : p));
         }
-        toast.success(`Stage Deleted: ${stage.name} has been deleted.`);
+        toast.success(`Stage Deleted: ${stage.label} has been deleted.`);
       } else {
         const error = await response.json();
         toast.error(error.error || 'Failed to delete stage');
@@ -414,7 +424,7 @@ export default function PipelinesPage() {
           {editingStageId === stage.id ? (
             <div className="flex-1 flex items-center gap-2">
               <Input
-                defaultValue={stage.name}
+                defaultValue={stage.label}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     handleUpdateStage(stage, { name: e.currentTarget.value });
@@ -429,9 +439,9 @@ export default function PipelinesPage() {
                 size="sm"
                 variant="ghost"
                 onClick={() => {
-                  const input = document.querySelector(`input[defaultValue="${stage.name}"]`) as HTMLInputElement;
+                  const input = document.querySelector(`input[defaultValue="${stage.label}"]`) as HTMLInputElement;
                   if (input) {
-                    handleUpdateStage(stage, { name: input.value });
+                    handleUpdateStage(stage, { label: input.value });
                   }
                 }}
               >
@@ -447,7 +457,7 @@ export default function PipelinesPage() {
             </div>
           ) : (
             <div className="flex-1">
-              <div className="font-medium">{stage.name}</div>
+              <div className="font-medium">{stage.label}</div>
               <div className="text-sm text-gray-500 flex items-center gap-2">
                 {stage.isClosing && <Badge variant="secondary" className="text-xs">Closing</Badge>}
                 {stage.isLost && <Badge variant="destructive" className="text-xs">Lost</Badge>}
@@ -520,7 +530,7 @@ export default function PipelinesPage() {
       <div className="px-4 sm:px-6 lg:px-8 py-6">
         <div className="grid gap-6">
           {pipelines.map((pipeline) => (
-            <div key={pipeline.id} className="bg-card rounded-lg shadow-sm border border-border p-6">
+            <div key={`pipeline-${pipeline.id}`} className="bg-card rounded-lg shadow-sm border border-border p-6">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center">
                   <div 
@@ -555,12 +565,12 @@ export default function PipelinesPage() {
 
               <div className="flex flex-wrap gap-2">
                 {pipeline.stages?.map((stage, index) => (
-                  <div key={stage.id} className="flex items-center">
+                  <div key={`${pipeline.id}-stage-${stage.id}`} className="flex items-center">
                     <div 
                       className="px-3 py-1 rounded-full text-sm font-medium text-primary-foreground"
                       style={{ backgroundColor: stage.color || '#6B7280' }}
                     >
-                      {stage.name}
+                      {stage.label}
                     </div>
                     {index < (pipeline.stages?.length || 0) - 1 && (
                       <div className="w-4 h-px bg-surface-300 mx-1" />
@@ -693,7 +703,7 @@ export default function PipelinesPage() {
                   <div className="space-y-2">
                     {localStages.map((stage, index) => (
                       <SortableStage
-                        key={stage.id}
+                        key={`sortable-${stage.id}`}
                         stage={stage}
                         index={index}
                         onEdit={(stage) => setEditingStageId(stage.id)}
@@ -791,8 +801,8 @@ export default function PipelinesPage() {
                         Cancel
                       </Button>
                       <Button
-                        onClick={() => selectedPipeline && handleAddStage(selectedPipeline.id)}
-                        disabled={!stageFormData.name}
+                        onClick={() => selectedPipeline?.id && handleAddStage(selectedPipeline.id)}
+                        disabled={!stageFormData.name || !selectedPipeline?.id}
                       >
                         Add Stage
                       </Button>
