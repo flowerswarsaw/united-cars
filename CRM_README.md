@@ -16,11 +16,13 @@ A comprehensive Customer Relationship Management (CRM) system built with Next.js
 
 ### Business Logic
 - **Lead → Deal Conversion**: Only target leads can be converted to deals
-- **Dual Pipeline System**: 
+- **Dual Pipeline System**:
   - **Dealer Pipeline**: Main sales process with stages from investigation to close won
   - **Integration Pipeline**: Auto-spawned after dealer close won for onboarding
 - **Loss Management**: Requires loss reason when moving to lost stages
-- **Kanban Interface**: Drag-and-drop deal management with stage transitions
+- **Native Drag-and-Drop Kanban**: HTML5-native drag-and-drop with perfect positioning (no @dnd-kit dependencies)
+- **Enhanced Deal Persistence**: Global store synchronization with hot reload survival
+- **Terminal Stage Handling**: Robust Won/Lost functionality with pipeline fallback logic
 - **Custom Fields**: Fully typed custom fields (text, number, date, boolean, select, multiselect, json)
 - **Activity Tracking**: Automatic logging of entity changes and stage movements
 
@@ -105,9 +107,11 @@ The system automatically loads with sample data including:
 ### Kanban Deal Management
 1. Go to `/crm/deals`
 2. Switch between pipeline tabs (Dealer/Integration)
-3. Drag deals between stages
-4. Moving to "Close Won" auto-spawns Integration pipeline
-5. Moving to "Lost" requires selecting loss reason
+3. Drag deals between stages using native HTML5 drag-and-drop (smooth positioning)
+4. Use Won/Lost buttons for terminal stage transitions with proper stage movement
+5. Moving to "Close Won" auto-spawns Integration pipeline
+6. Moving to "Lost" requires selecting loss reason with pipeline fallback support
+7. All changes persist across page refreshes with enhanced data store
 
 ### Custom Fields
 1. Go to any entity detail page

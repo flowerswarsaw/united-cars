@@ -20,11 +20,11 @@ Internet → Caddy (HTTPS/TLS) → Next.js App → PostgreSQL 16
 ```
 
 **Tech Stack**:
-- **Frontend**: Next.js 15 with TypeScript, Tailwind CSS, React DnD
+- **Frontend**: Next.js 15 with TypeScript, Tailwind CSS, Native HTML5 Drag-and-Drop
 - **Backend**: Next.js API routes + REST APIs for CRM
 - **Database**: PostgreSQL 16 with Prisma ORM + Mock repositories
 - **Cache**: Redis for sessions and caching
-- **CRM Layer**: TypeScript + Zod validation + Repository pattern
+- **CRM Layer**: TypeScript + Zod validation + Repository pattern + Enhanced persistence
 - **Deployment**: Docker Compose with Caddy reverse proxy
 - **CI/CD**: GitHub Actions with staging auto-deploy, production manual approval
 
@@ -124,17 +124,18 @@ pnpm db:reset                    # Reset database
 
 ### ✅ COMPLETED FEATURES
 
-**Enterprise CRM System** (Current - Major Release):
+**Enterprise CRM System** (Current - Major Release + 2025 Enhancements):
 - **Organizations Management**: Full CRUD with company profiles, multiple contact methods, social media integration
 - **Advanced Contact System**: Individual contacts with organization relationships, multiple emails/phones per contact
 - **Business Relationships**: Smart organization connections (dealers ↔ shippers, auctions ↔ dealers) with automatic relationship inference
-- **Sales Pipeline Management**: Dual pipeline system (Dealer + Integration) with customizable stages and Kanban interface
+- **Sales Pipeline Management**: Dual pipeline system (Dealer + Integration) with customizable stages and native HTML5 Kanban interface
 - **Lead Management & Conversion**: Marketing prospect tracking with target-based conversion to deals
-- **Deal Workflow**: Drag-and-drop Kanban boards, stage progression, loss tracking with required reasons
+- **Enhanced Deal Workflow**: Native drag-and-drop Kanban boards with perfect positioning, robust Won/Lost functionality, and pipeline fallback logic
+- **Deal Persistence**: Global store synchronization with hot reload survival and enhanced data consistency
 - **Task Management**: Action items with assignments, due dates, and entity relationships
 - **Activity Logging**: Comprehensive audit trail for all entity changes and business events
 - **Custom Fields System**: Dynamic field definitions with full type support (text, number, date, boolean, select, JSON)
-- **Per-section Editing UI**: Improved UX with individual edit buttons for better user experience
+- **Administrative Interface**: Comprehensive pipeline management with stage reordering and safe operations
 - **Advanced Search & Filtering**: Multi-criteria search across organizations and contacts
 - **Mock Data Repository**: Realistic development data with business scenarios and relationships
 
