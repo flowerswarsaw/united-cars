@@ -1,14 +1,14 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
-import { useSession } from '@/hooks/useSession';
-import { Button } from '@/components/ui/button';
-import { User, Mail, Phone, Building2, Plus, Search, X } from 'lucide-react';
-import { Contact, Organisation } from '@united-cars/crm-core';
 import { AppLayout } from '@/components/layout/app-layout';
 import { PageHeader } from '@/components/layout/page-header';
 import { LoadingState } from '@/components/ui/loading-state';
+import { useSession } from '@/hooks/useSession';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 import {
   Table,
   TableBody,
@@ -32,22 +32,39 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
+import { 
+  Plus, 
+  Search, 
+  User, 
+  Mail, 
+  Phone, 
+  Building2, 
+  X
+} from 'lucide-react';
+import { Contact, Organisation } from '@united-cars/crm-core';
 import toast from 'react-hot-toast';
 
+interface ContactFilters {
+  organisationId: string;
+  country: string;
+}
+
+// Helper function to escape regex special characters
+const escapeRegex = (str: string) => {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+};
 
 export default function ContactsPage() {
   const { user, loading: sessionLoading } = useSession();
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [organisations, setOrganisations] = useState<Organisation[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filters, setFilters] = useState({
+  const [filters, setFilters] = useState<ContactFilters>({
     organisationId: '',
     country: ''
   });
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -61,15 +78,6 @@ export default function ContactsPage() {
   });
 
   useEffect(() => {
-    const loadOrganisations = async () => {
-      try {
-        const data = await fetch('/api/crm/organisations').then(r => r.json());
-        setOrganisations(data);
-      } catch (error) {
-        console.error('Failed to load organisations:', error);
-        toast.error('Failed to load organisations');
-      }
-    };
     loadOrganisations();
   }, []);
 
@@ -115,40 +123,25 @@ export default function ContactsPage() {
   }, [searchQuery, filters.organisationId, filters.country]);
 
   useEffect(() => {
+    // Auto-open creation dialog if create parameter is present
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('create') === 'true') {
       setIsCreateOpen(true);
+      // Remove the parameter from URL without refresh
       const newUrl = window.location.pathname;
       window.history.replaceState({}, '', newUrl);
     }
   }, []);
 
-  const getOrganisationName = (orgId?: string) => {
-    if (!orgId) return null;
-    const org = organisations.find(o => o.id === orgId);
-    return org?.name;
+  const loadOrganisations = async () => {
+    try {
+      const data = await fetch('/api/crm/organisations').then(r => r.json());
+      setOrganisations(data);
+    } catch (error) {
+      console.error('Failed to load organisations:', error);
+      toast.error('Failed to load organisations');
+    }
   };
-
-  const clearFilters = () => {
-    setSearchQuery('');
-    setFilters({
-      organisationId: '',
-      country: ''
-    });
-  };
-
-  const hasActiveFilters = Boolean(
-    searchQuery || 
-    (filters.organisationId && filters.organisationId !== 'all') ||
-    filters.country
-  );
-
-  // Helper function to escape regex special characters
-  const escapeRegex = (str: string) => {
-    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  };
-
-
 
   const handleCreate = async () => {
     try {
@@ -171,10 +164,6 @@ export default function ContactsPage() {
           state: '',
           country: ''
         });
-        const loadContacts = async () => {
-          const data = await fetch('/api/crm/contacts').then(r => r.json());
-          setContacts(data);
-        };
         loadContacts();
         toast.success(`Contact created: ${formData.firstName} ${formData.lastName}`);
       }
@@ -183,6 +172,27 @@ export default function ContactsPage() {
       toast.error('Failed to create contact');
     }
   };
+
+  const getOrganisationName = (orgId?: string) => {
+    if (!orgId) return null;
+    const org = organisations.find(o => o.id === orgId);
+    return org?.name;
+  };
+
+  const clearFilters = () => {
+    setSearchQuery('');
+    setFilters({
+      organisationId: '',
+      country: ''
+    });
+  };
+
+  const hasActiveFilters = Boolean(
+    searchQuery || 
+    (filters.organisationId && filters.organisationId !== 'all') ||
+    filters.country
+  );
+
 
   if (sessionLoading || !user || loading) {
     return (
@@ -205,102 +215,102 @@ export default function ContactsPage() {
           New Contact
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>Create New Contact</DialogTitle>
-        </DialogHeader>
-        <div className="grid gap-4 py-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="firstName">First Name *</Label>
-              <Input
-                id="firstName"
-                value={formData.firstName}
-                onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                placeholder="John"
-              />
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Create New Contact</DialogTitle>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="firstName">First Name *</Label>
+                  <Input
+                    id="firstName"
+                    value={formData.firstName}
+                    onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                    placeholder="John"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="lastName">Last Name *</Label>
+                  <Input
+                    id="lastName"
+                    value={formData.lastName}
+                    onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                    placeholder="Doe"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    placeholder="john.doe@company.com"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="phone">Phone</Label>
+                  <Input
+                    id="phone"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    placeholder="+1-555-0100"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="title">Job Title</Label>
+                  <Input
+                    id="title"
+                    value={formData.title}
+                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                    placeholder="Sales Manager"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="organisationId">Organisation</Label>
+                  <Select value={formData.organisationId || undefined} onValueChange={(value) => setFormData({ ...formData, organisationId: value || '' })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select organisation (optional)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {organisations.map(org => (
+                        <SelectItem key={org.id} value={org.id}>
+                          {org.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="city">City</Label>
+                  <Input
+                    id="city"
+                    value={formData.city}
+                    onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                    placeholder="New York"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="country">Country</Label>
+                  <Input
+                    id="country"
+                    value={formData.country}
+                    onChange={(e) => setFormData({ ...formData, country: e.target.value })}
+                    placeholder="United States"
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={handleCreate} disabled={!formData.firstName || !formData.lastName}>
+                  Create Contact
+                </Button>
+              </div>
             </div>
-            <div>
-              <Label htmlFor="lastName">Last Name *</Label>
-              <Input
-                id="lastName"
-                value={formData.lastName}
-                onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                placeholder="Doe"
-              />
-            </div>
-            <div>
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                placeholder="john.doe@company.com"
-              />
-            </div>
-            <div>
-              <Label htmlFor="phone">Phone</Label>
-              <Input
-                id="phone"
-                value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                placeholder="+1-555-0100"
-              />
-            </div>
-            <div>
-              <Label htmlFor="title">Job Title</Label>
-              <Input
-                id="title"
-                value={formData.title}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                placeholder="Sales Manager"
-              />
-            </div>
-            <div>
-              <Label htmlFor="organisationId">Organisation</Label>
-              <Select value={formData.organisationId || undefined} onValueChange={(value) => setFormData({ ...formData, organisationId: value || '' })}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select organisation (optional)" />
-                </SelectTrigger>
-                <SelectContent>
-                  {organisations.map(org => (
-                    <SelectItem key={org.id} value={org.id}>
-                      {org.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label htmlFor="city">City</Label>
-              <Input
-                id="city"
-                value={formData.city}
-                onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                placeholder="New York"
-              />
-            </div>
-            <div>
-              <Label htmlFor="country">Country</Label>
-              <Input
-                id="country"
-                value={formData.country}
-                onChange={(e) => setFormData({ ...formData, country: e.target.value })}
-                placeholder="United States"
-              />
-            </div>
-          </div>
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleCreate} disabled={!formData.firstName || !formData.lastName}>
-              Create Contact
-            </Button>
-          </div>
-        </div>
-      </DialogContent>
+          </DialogContent>
     </Dialog>
   );
 
@@ -379,9 +389,8 @@ export default function ContactsPage() {
         </div>
 
         {/* Main Content */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-          <div className="overflow-x-auto">
-            <Table>
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+        <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Name</TableHead>
@@ -459,8 +468,7 @@ export default function ContactsPage() {
               ))
             )}
           </TableBody>
-            </Table>
-          </div>
+        </Table>
         </div>
       </div>
     </AppLayout>

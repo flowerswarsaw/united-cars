@@ -51,31 +51,31 @@ import { Task, TaskStatus, TaskPriority, EntityType, Deal, Contact, Organisation
 import toast from 'react-hot-toast';
 
 const StatusIcons = {
-  [TaskStatus.TODO]: Circle,
-  [TaskStatus.IN_PROGRESS]: Clock,
-  [TaskStatus.DONE]: CheckCircle2,
-  [TaskStatus.CANCELLED]: XCircle,
+  'PENDING': Circle,
+  'IN_PROGRESS': Clock,
+  'COMPLETED': CheckCircle2,
+  'CANCELLED': XCircle,
 };
 
 const StatusColors = {
-  [TaskStatus.TODO]: 'text-slate-500 bg-slate-100 dark:bg-slate-800 dark:text-slate-300',
-  [TaskStatus.IN_PROGRESS]: 'text-blue-600 bg-blue-100 dark:bg-blue-900 dark:text-blue-300',
-  [TaskStatus.DONE]: 'text-emerald-600 bg-emerald-100 dark:bg-emerald-900 dark:text-emerald-300',
-  [TaskStatus.CANCELLED]: 'text-red-600 bg-red-100 dark:bg-red-900 dark:text-red-300',
+  'PENDING': 'text-slate-500 bg-slate-100 dark:bg-slate-800 dark:text-slate-300',
+  'IN_PROGRESS': 'text-blue-600 bg-blue-100 dark:bg-blue-900 dark:text-blue-300',
+  'COMPLETED': 'text-emerald-600 bg-emerald-100 dark:bg-emerald-900 dark:text-emerald-300',
+  'CANCELLED': 'text-red-600 bg-red-100 dark:bg-red-900 dark:text-red-300',
 };
 
 const PriorityColors = {
-  [TaskPriority.LOW]: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
-  [TaskPriority.MEDIUM]: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300',
-  [TaskPriority.HIGH]: 'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300',
-  [TaskPriority.URGENT]: 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300',
+  'LOW': 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
+  'MEDIUM': 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300',
+  'HIGH': 'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300',
+  'URGENT': 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300',
 };
 
 const TargetIcons = {
-  [EntityType.DEAL]: TrendingUp,
-  [EntityType.CONTACT]: User,
-  [EntityType.ORGANISATION]: Building2,
-  [EntityType.LEAD]: User,
+  'DEAL': TrendingUp,
+  'CONTACT': User,
+  'ORGANISATION': Building2,
+  'LEAD': User,
 };
 
 interface TaskFilters {

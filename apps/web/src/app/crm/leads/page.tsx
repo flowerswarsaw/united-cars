@@ -483,7 +483,6 @@ export default function LeadsPage() {
         title="Leads"
         description="Manage your sales prospects"
         breadcrumbs={[{ label: 'CRM' }, { label: 'Leads' }]}
-        actions={newLeadButton}
       />
       
       <div className="px-4 sm:px-6 lg:px-8 py-6">
@@ -548,6 +547,11 @@ export default function LeadsPage() {
                   Clear
                 </Button>
               )}
+              
+              {/* New Lead Button */}
+              <div className="flex-shrink-0">
+                {newLeadButton}
+              </div>
             </div>
             
             {/* Filters Panel */}
@@ -661,8 +665,9 @@ export default function LeadsPage() {
         </div>
 
         {/* Main Content */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-        <Table>
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+          <div className="overflow-x-auto">
+            <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Title</TableHead>
@@ -771,7 +776,8 @@ export default function LeadsPage() {
               ))
             )}
           </TableBody>
-        </Table>
+            </Table>
+          </div>
         </div>
 
       <Dialog open={convertDialogOpen} onOpenChange={setConvertDialogOpen}>

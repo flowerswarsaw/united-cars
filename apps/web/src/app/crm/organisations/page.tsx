@@ -72,46 +72,46 @@ export default function OrganisationsPage() {
     country: ''
   });
 
-  useEffect(() => {
-    const loadOrganisations = async () => {
-      try {
-        setLoading(true);
-        const params = new URLSearchParams();
-        
-        if (searchQuery.trim()) {
-          params.append('search', searchQuery.trim());
-        }
-        
-        if (filters.type && filters.type !== 'all') {
-          params.append('type', filters.type);
-        }
-        
-        if (filters.country.trim()) {
-          params.append('country', filters.country.trim());
-        }
-        
-        const url = params.toString() 
-          ? `/api/crm/organisations?${params.toString()}`
-          : '/api/crm/organisations';
-        
-        const response = await fetch(url);
-        const data = await response.json();
-        setOrganisations(data || []);
-      } catch (error) {
-        console.error('Failed to load organisations:', error);
-        toast.error('Failed to load organisations');
-        setOrganisations([]);
-      } finally {
-        setLoading(false);
+  const loadOrganisations = useCallback(async () => {
+    try {
+      setLoading(true);
+      const params = new URLSearchParams();
+      
+      if (searchQuery.trim()) {
+        params.append('search', searchQuery.trim());
       }
-    };
+      
+      if (filters.type && filters.type !== 'all') {
+        params.append('type', filters.type);
+      }
+      
+      if (filters.country.trim()) {
+        params.append('country', filters.country.trim());
+      }
+      
+      const url = params.toString() 
+        ? `/api/crm/organisations?${params.toString()}`
+        : '/api/crm/organisations';
+      
+      const response = await fetch(url);
+      const data = await response.json();
+      setOrganisations(data || []);
+    } catch (error) {
+      console.error('Failed to load organisations:', error);
+      toast.error('Failed to load organisations');
+      setOrganisations([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [searchQuery, filters.type, filters.country]);
 
+  useEffect(() => {
     const timeoutId = setTimeout(() => {
       loadOrganisations();
     }, 300);
 
     return () => clearTimeout(timeoutId);
-  }, [searchQuery, filters.type, filters.country]);
+  }, [loadOrganisations]);
 
   useEffect(() => {
     // Auto-open creation dialog if create parameter is present
@@ -330,7 +330,6 @@ export default function OrganisationsPage() {
         title="Organisations"
         description="Manage your companies and accounts"
         breadcrumbs={[{ label: 'CRM' }, { label: 'Organisations' }]}
-        actions={newOrgButton}
       />
       
       <div className="px-4 sm:px-6 lg:px-8 py-6">
@@ -392,13 +391,19 @@ export default function OrganisationsPage() {
                   Clear
                 </Button>
               )}
+              
+              {/* New Organisation Button */}
+              <div className="flex-shrink-0">
+                {newOrgButton}
+              </div>
             </div>
           </div>
         </div>
 
         {/* Main Content */}
-        <div className="bg-card rounded-lg shadow-sm border border-border">
-        <Table>
+        <div className="bg-card rounded-lg shadow-sm border border-border overflow-hidden">
+          <div className="overflow-x-auto">
+            <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Name</TableHead>
@@ -480,7 +485,8 @@ export default function OrganisationsPage() {
               ))
             )}
           </TableBody>
-        </Table>
+            </Table>
+          </div>
         </div>
       </div>
     </AppLayout>
