@@ -76,8 +76,12 @@ export class WebSocketService {
     } catch (error) {
       this.isConnecting = false
       this.notifyStatusListeners('error')
-      console.error('WebSocket connection failed:', error)
-      this.scheduleReconnect()
+      
+      // Don't attempt reconnection if WebSocket server is not implemented
+      this.shouldReconnect = false
+      
+      // Re-throw the error so calling code can handle it gracefully
+      throw error
     }
   }
 
@@ -212,9 +216,15 @@ export class WebSocketService {
   }
 
   private handleError(error: Event): void {
-    console.error('WebSocket error:', error)
+    // Only log WebSocket errors in development mode and when verbose logging is enabled
+    if (process.env.NODE_ENV === 'development' && process.env.WEBSOCKET_VERBOSE === 'true') {
+      console.warn('WebSocket connection unavailable - real-time features disabled:', error)
+    }
     this.isConnecting = false
     this.notifyStatusListeners('error')
+    
+    // Don't attempt reconnection if WebSocket server is not implemented
+    this.shouldReconnect = false
   }
 
   private processMessage(message: WebSocketMessage): void {

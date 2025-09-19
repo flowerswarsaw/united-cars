@@ -5,9 +5,9 @@
  */
 
 import { VehicleType, CalculationResult, TowingResult, ShippingResult, FeeResult } from '../types/pricing';
-import { calculateTowing } from './calculateTowing-stub';
-import { calculateShipping } from './calculateShipping-stub';
-import { calculateFees } from './calculateFees-stub';
+import { calculateTowing } from './calculateTowing';
+import { calculateShipping } from './calculateShipping';
+import { calculateFees } from './calculateFees';
 
 export interface TotalCalculationParams {
   vehicleType: VehicleType;
@@ -50,7 +50,7 @@ export function calculateTotal(params: TotalCalculationParams): CalculationResul
   // Calculate totals
   const towingTotal = towing.total;
   const shippingTotal = shipping.total;
-  const feesTotal = fees.reduce((sum, fee) => sum + fee.amount, 0);
+  const feesTotal = fees.reduce((sum: number, fee: FeeResult) => sum + fee.amount, 0);
   
   const subtotal = towingTotal + shippingTotal + feesTotal;
   const taxes = subtotal * 0.08; // 8% tax

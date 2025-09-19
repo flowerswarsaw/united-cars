@@ -41,6 +41,19 @@ export async function getServerSessionFromRequest(request: NextRequest): Promise
     const sessionCookie = request.cookies.get('session')
     
     if (!sessionCookie?.value) {
+      // In development mode, provide a mock admin user
+      if (process.env.NODE_ENV === 'development') {
+        const mockAdminUser: User = {
+          id: 'admin-dev-user',
+          email: 'admin@unitedcars.com',
+          name: 'Development Admin',
+          orgId: 'org-admin',
+          orgName: 'United Cars Admin',
+          orgType: 'ADMIN',
+          roles: ['ADMIN', 'SUPER_ADMIN', 'USER']
+        }
+        return { user: mockAdminUser }
+      }
       return null
     }
 

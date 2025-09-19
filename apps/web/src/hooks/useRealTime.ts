@@ -32,12 +32,20 @@ export function useRealTime(options: UseRealTimeOptions = {}): UseRealTimeResult
   const isConnected = status === 'connected'
 
   const connect = useCallback(async () => {
-    if (isAuthenticated && user) {
-      // In a real implementation, we would get a WebSocket token from the auth service
-      const token = `user_${user.id}_${Date.now()}`
-      await wsService.current.connect(token)
-    } else {
-      await wsService.current.connect()
+    try {
+      if (isAuthenticated && user) {
+        // In a real implementation, we would get a WebSocket token from the auth service
+        const token = `user_${user.id}_${Date.now()}`
+        await wsService.current.connect(token)
+      } else {
+        await wsService.current.connect()
+      }
+    } catch (error) {
+      // Silently handle connection failures when WebSocket server is not available
+      // Real-time features will be disabled but the app continues to function
+      if (process.env.NODE_ENV === 'development' && process.env.WEBSOCKET_VERBOSE === 'true') {
+        console.warn('WebSocket connection failed - real-time features disabled')
+      }
     }
   }, [isAuthenticated, user])
 

@@ -43,7 +43,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     orgId: 'org-admin',
     orgName: 'United Cars Admin',
     orgType: 'ADMIN',
-    roles: ['admin', 'super_admin', 'user']
+    roles: ['ADMIN', 'SUPER_ADMIN', 'USER']
   }
 
   useEffect(() => {
@@ -102,7 +102,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     return user?.orgId === orgId
   }
 
-  const canAccessAdmin = hasAnyRole(['admin', 'super_admin'])
+  const canAccessAdmin = hasAnyRole(['ADMIN', 'SUPER_ADMIN'])
 
   const contextValue: AuthContextType = {
     user,

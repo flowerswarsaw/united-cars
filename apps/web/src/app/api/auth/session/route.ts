@@ -6,6 +6,25 @@ export async function GET(request: NextRequest) {
     const session = await getServerSessionFromRequest(request)
     
     if (!session?.user) {
+      // In development mode, return a mock admin user if no session exists
+      if (process.env.NODE_ENV === 'development') {
+        const mockAdminUser = {
+          id: 'admin-dev-user',
+          email: 'admin@unitedcars.com',
+          name: 'Development Admin',
+          orgId: 'org-admin',
+          orgName: 'United Cars Admin',
+          orgType: 'ADMIN',
+          roles: ['ADMIN', 'SUPER_ADMIN', 'USER']
+        }
+        
+        return NextResponse.json({
+          success: true,
+          user: mockAdminUser,
+          isDevelopmentMode: true
+        })
+      }
+      
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
     }
 

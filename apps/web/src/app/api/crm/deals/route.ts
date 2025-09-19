@@ -1,53 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAllEnhancedDeals } from '@/lib/pipeline-data';
-import { hasPermission } from '@/lib/services/pipeline-service';
-import { getServerSessionFromRequest } from '@/lib/auth';
-import { ensureMigrationCompleted } from '@/lib/services/migration-service';
+import { dealRepository, jsonPersistence } from '@united-cars/crm-mocks';
 
 export async function GET(request: NextRequest) {
   try {
-    // Ensure migration is completed before serving requests
-    await ensureMigrationCompleted();
-
-    const session = await getServerSessionFromRequest(request);
-    const user = { 
-      id: session?.user?.id || 'anonymous', 
-      role: (session?.user as any)?.role || 'junior' as 'admin' | 'senior' | 'junior',
-      assignedDeals: (session?.user as any)?.assignedDeals || []
-    };
-
     const { searchParams } = new URL(request.url);
-    const pipeline = searchParams.get('pipeline');
-    const stage = searchParams.get('stage');
+    const pipelineId = searchParams.get('pipelineId');
+    const stageId = searchParams.get('stageId');
     const status = searchParams.get('status');
     const contactId = searchParams.get('contactId');
-    
-    const allDeals = getAllEnhancedDeals();
-    console.log(`Deals API: Found ${allDeals.length} total deals`);
-    console.log(`User: ${JSON.stringify(user, null, 2)}`);
-    
-    // Filter deals based on user permissions
-    let filteredDeals = allDeals.filter(deal => {
-      return hasPermission(user, 'deal:read', deal.id);
-    });
-    console.log(`After permission filtering: ${filteredDeals.length} deals`);
-    
-    // Apply enhanced filtering
-    if (pipeline) {
-      filteredDeals = filteredDeals.filter(deal => 
-        deal.pipelineId === pipeline && (!stage || deal.stageId === stage)
-      );
+
+    let deals = await dealRepository.list();
+
+    // Apply filtering
+    if (pipelineId) {
+      deals = deals.filter(deal => deal.pipelineId === pipelineId);
     }
-    
+
+    if (stageId) {
+      deals = deals.filter(deal => deal.stageId === stageId);
+    }
+
     if (status) {
-      filteredDeals = filteredDeals.filter(deal => deal.status === status);
+      deals = deals.filter(deal => deal.status === status);
     }
-    
+
     if (contactId) {
-      filteredDeals = filteredDeals.filter(deal => deal.contactId === contactId);
+      deals = deals.filter(deal => deal.contactId === contactId);
     }
-    
-    return NextResponse.json(filteredDeals);
+
+    return NextResponse.json(deals);
   } catch (error) {
     return NextResponse.json(
       { error: 'Failed to fetch deals' },
@@ -59,26 +40,37 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { pipelineId, stageId, ...dealData } = body;
-    
-    // Temporary fix: return created deal data
-    const newDeal = {
-      id: 'deal_new',
-      ...dealData,
-      status: 'ACTIVE',
-      currentStages: pipelineId ? [{
-        pipelineId,
-        stageId: stageId || 'stage-da-prospect',
-        enteredAt: new Date().toISOString()
-      }] : [],
-      customFields: {},
-      createdAt: new Date().toISOString()
+
+    console.log('Deal creation request received:', JSON.stringify(body, null, 2));
+
+    // Create deal data using the CRM repository
+    const dealData = {
+      title: body.title || '',
+      description: body.description || '',
+      value: body.value || 0,
+      currency: body.currency || 'USD',
+      status: body.status || 'OPEN',
+      pipelineId: body.pipelineId || '',
+      stageId: body.stageId || '',
+      contactId: body.contactId || null,
+      organisationId: body.organisationId || null,
+      assignedTo: body.assignedTo || null,
+      expectedCloseDate: body.expectedCloseDate ? new Date(body.expectedCloseDate) : null,
+      probability: body.probability || 0,
+      notes: body.notes || '',
+      customFields: body.customFields || {}
     };
-    
+
+    const newDeal = await dealRepository.create(dealData);
+    await jsonPersistence.save();
+
+    console.log(`Created new deal: ${newDeal.title} (ID: ${newDeal.id})`);
+
     return NextResponse.json(newDeal, { status: 201 });
   } catch (error: any) {
+    console.error('Failed to create deal:', error);
     return NextResponse.json(
-      { error: 'Failed to create deal' },
+      { error: 'Failed to create deal', details: error.message },
       { status: 500 }
     );
   }

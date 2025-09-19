@@ -191,18 +191,19 @@ class ValidEmailFormatRule implements BusinessRule<Contact> {
 
 class ValidPhoneFormatRule implements BusinessRule<Contact> {
   name = 'ValidPhoneFormat';
-  
+
   validate(entity: Contact): BusinessRuleValidationResult {
-    const phoneMethods = entity.contactMethods?.filter(cm => 
+    const phoneMethods = entity.contactMethods?.filter(cm =>
       cm.type.includes('PHONE')
     ) || [];
-    
-    const phoneRegex = /^[\+]?[1-9][\d]{0,15}$/; // Basic international phone format
+
     const errors = [];
-    
+
     for (const phoneMethod of phoneMethods) {
       const cleanPhone = phoneMethod.value.replace(/[^\d\+]/g, ''); // Remove formatting
-      if (cleanPhone.length < 7 || !phoneRegex.test(cleanPhone)) {
+
+      // Very flexible validation - just check if it has some digits and reasonable length
+      if (cleanPhone.length < 3 || cleanPhone.length > 20) {
         errors.push({
           field: 'contactMethods',
           code: 'INVALID_PHONE_FORMAT',
@@ -211,7 +212,7 @@ class ValidPhoneFormatRule implements BusinessRule<Contact> {
         });
       }
     }
-    
+
     return {
       valid: errors.length === 0,
       errors

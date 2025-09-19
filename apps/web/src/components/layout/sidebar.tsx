@@ -31,6 +31,7 @@ import {
   Activity
 } from 'lucide-react'
 import { ThemeToggleCompact } from '@/components/ui/theme-toggle'
+import { RealTimeStatus } from '@/components/ui/real-time-notifications'
 import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '@/contexts/auth-context'
 
@@ -95,11 +96,11 @@ const getNavigation = (userRoles: string[] = []): NavSection[] => {
       roles: ['ADMIN', 'OPS', 'SALES'],
       items: [
         { label: 'Dashboard', href: '/crm', icon: Home },
-        { label: 'Deals', href: '/crm/deals', icon: TrendingUp },
-        { label: 'Tasks', href: '/crm/tasks', icon: CheckSquare },
-        { label: 'Contacts', href: '/crm/contacts', icon: UserCheck },
         { label: 'Organisations', href: '/crm/organisations', icon: Building2 },
+        { label: 'Contacts', href: '/crm/contacts', icon: UserCheck },
+        { label: 'Deals', href: '/crm/deals', icon: TrendingUp },
         { label: 'Leads', href: '/crm/leads', icon: Users },
+        { label: 'Tasks', href: '/crm/tasks', icon: CheckSquare },
         { label: 'Pipelines', href: '/crm/pipelines', icon: GitBranch },
       ]
     },
@@ -220,27 +221,24 @@ export function Sidebar({ user: userProp, isCollapsed = false, onToggleCollapse 
       {/* Logo */}
       <div className={clsx(
         "flex items-center h-16 border-b border-border bg-background transition-all duration-200",
-        collapsed ? "px-3 justify-center" : "px-6"
+        collapsed ? "px-3 justify-center" : "px-3"
       )}>
         <Link href="/dashboard" className={clsx(
           "flex items-center transition-all duration-200",
           collapsed ? "justify-center" : "space-x-3"
         )}>
-          <div className={clsx(
-            "bg-gradient-to-br from-primary to-primary/90 rounded-lg flex items-center justify-center transition-all duration-200",
-            collapsed ? "w-10 h-10" : "w-8 h-8"
-          )}>
-            <Car className={clsx("text-primary-foreground transition-all duration-200", collapsed ? "w-6 h-6" : "w-5 h-5")} />
+          <div className="bg-gradient-to-br from-primary to-primary/90 rounded-lg flex items-center justify-center transition-all duration-200 w-8 h-8">
+            <Car className="text-primary-foreground transition-all duration-200 w-5 h-5" />
           </div>
           {!collapsed && (
-            <span className="text-xl font-bold text-foreground">United Cars</span>
+            <span className="text-lg font-bold text-foreground truncate">United Cars</span>
           )}
         </Link>
         {/* Desktop collapse toggle */}
         {!collapsed && onToggleCollapse && (
           <button
             onClick={onToggleCollapse}
-            className="hidden lg:flex items-center justify-center w-8 h-8 rounded-lg bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground transition-colors ml-auto"
+            className="hidden lg:flex items-center justify-center w-7 h-7 rounded-lg bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground transition-colors ml-auto mr-1"
             title="Collapse sidebar"
           >
             <ChevronLeft className="w-4 h-4" />
@@ -248,31 +246,6 @@ export function Sidebar({ user: userProp, isCollapsed = false, onToggleCollapse 
         )}
       </div>
 
-      {/* User Info */}
-      {user && (
-        <div className={clsx(
-          "py-4 border-b border-border bg-muted/30 transition-all duration-200",
-          collapsed ? "px-3" : "px-6"
-        )}>
-          {collapsed ? (
-            <div className="flex justify-center">
-              <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
-                <span className="text-base font-medium text-primary">
-                  {(user.name || 'U').charAt(0).toUpperCase()}
-                </span>
-              </div>
-            </div>
-          ) : (
-            <div className="text-sm">
-              <p className="font-medium text-foreground">{user.name || 'User'}</p>
-              <p className="text-text-secondary">{user.email}</p>
-              {user.orgName && (
-                <p className="text-xs text-text-tertiary mt-1">{user.orgName}</p>
-              )}
-            </div>
-          )}
-        </div>
-      )}
 
       {/* Expand button when collapsed */}
       {collapsed && onToggleCollapse && (
@@ -282,7 +255,7 @@ export function Sidebar({ user: userProp, isCollapsed = false, onToggleCollapse 
             className="w-full flex items-center justify-center py-2 text-text-secondary hover:text-foreground hover:bg-hover-overlay rounded-lg transition-colors group"
             title="Expand sidebar"
           >
-            <ChevronRight className="w-5 h-5 group-hover:scale-110 transition-transform" />
+            <ChevronRight className="w-4 h-4 group-hover:scale-110 transition-transform" />
           </button>
         </div>
       )}
@@ -295,12 +268,15 @@ export function Sidebar({ user: userProp, isCollapsed = false, onToggleCollapse 
           collapsed ? "px-2 py-3 space-y-2" : "px-3 py-4 space-y-6"
         )}
       >
-        {filteredNavigation.map((section) => (
+        {filteredNavigation.map((section, sectionIndex) => (
           <div key={section.title}>
             {!collapsed && (
               <h3 className="px-3 text-xs font-semibold text-text-tertiary uppercase tracking-wider">
                 {section.title}
               </h3>
+            )}
+            {collapsed && sectionIndex > 0 && (
+              <div className="mx-3 mb-2 border-t border-border/50" />
             )}
             <div className={clsx("space-y-1", !collapsed && "mt-2")}>
               {section.items.map((item) => {
@@ -328,10 +304,8 @@ export function Sidebar({ user: userProp, isCollapsed = false, onToggleCollapse 
                   >
                     <Icon 
                       className={clsx(
-                        'transition-colors duration-150 flex-shrink-0',
-                        collapsed 
-                          ? 'h-6 w-6' 
-                          : 'h-5 w-5 mr-3',
+                        'h-5 w-5 transition-colors duration-150 flex-shrink-0',
+                        !collapsed && 'mr-3',
                         isActive
                           ? 'text-primary'
                           : 'text-text-tertiary group-hover:text-foreground'
@@ -367,49 +341,48 @@ export function Sidebar({ user: userProp, isCollapsed = false, onToggleCollapse 
         collapsed ? "p-2" : "p-4"
       )}>
         {collapsed ? (
-          <div className="flex flex-col items-center space-y-3">
-            {isAuthenticated && user && (
-              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary font-medium text-sm">
-                {user.name ? user.name.charAt(0).toUpperCase() : user.email?.charAt(0).toUpperCase()}
+          <div className="flex flex-col items-center space-y-2">
+            {user && (
+              <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
+                <span className="text-xs font-medium text-primary">
+                  {(user.name || 'U').charAt(0).toUpperCase()}
+                </span>
               </div>
             )}
+            <div title="Connection Status">
+              <RealTimeStatus />
+            </div>
             <ThemeToggleCompact className="hover:bg-muted" />
             <span className="text-xs text-muted-foreground font-mono">UC</span>
           </div>
         ) : (
-          <div className="space-y-3">
-            {isAuthenticated && user && (
-              <div className="border-b border-border pb-3 mb-3">
-                <div className="flex items-center space-x-3">
-                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary font-medium text-sm">
-                    {user.name ? user.name.charAt(0).toUpperCase() : user.email?.charAt(0).toUpperCase()}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground truncate">
-                      {user.name || 'User'}
-                    </p>
-                    <p className="text-xs text-text-secondary truncate">
-                      {user.orgName || user.email}
-                    </p>
-                  </div>
+          <div className="space-y-2">
+            {user && (
+              <div className="flex items-center space-x-2 p-2 bg-muted/50 rounded-lg">
+                <div className="w-6 h-6 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
+                  <span className="text-xs font-medium text-primary">
+                    {(user.name || 'U').charAt(0).toUpperCase()}
+                  </span>
                 </div>
-                {user.roles && user.roles.length > 0 && (
-                  <div className="mt-2 flex flex-wrap gap-1">
-                    {user.roles.slice(0, 2).map(role => (
-                      <span 
-                        key={role}
-                        className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-secondary text-secondary-foreground"
-                      >
-                        {role}
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium text-foreground truncate">
+                    {user.name || 'User'}
+                  </p>
+                  <div className="flex items-center space-x-1">
+                    {user.roles && user.roles.length > 0 && (
+                      <span className="text-xs text-text-secondary">
+                        {user.roles[0]}
+                        {user.roles.length > 1 && ` +${user.roles.length - 1}`}
                       </span>
-                    ))}
-                    {user.roles.length > 2 && (
-                      <span className="text-xs text-text-secondary">+{user.roles.length - 2} more</span>
                     )}
                   </div>
-                )}
+                </div>
               </div>
             )}
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">Connection</span>
+              <RealTimeStatus />
+            </div>
             <div className="flex items-center justify-between">
               <span className="text-xs text-muted-foreground">Theme</span>
               <ThemeToggleCompact className="hover:bg-muted" />
@@ -462,7 +435,7 @@ export function Sidebar({ user: userProp, isCollapsed = false, onToggleCollapse 
       <div className="hidden lg:flex lg:flex-shrink-0 h-screen w-full">
         <div className={clsx(
           "flex flex-col border-r border-border bg-background transition-all duration-200 h-full",
-          isCollapsed ? "w-20" : "w-64"
+          isCollapsed ? "w-16" : "w-56"
         )}>
           <NavContent collapsed={isCollapsed} navRef={navRef} />
         </div>

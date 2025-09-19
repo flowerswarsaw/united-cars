@@ -106,7 +106,7 @@ export async function middleware(request: NextRequest) {
 
         // Check admin routes
         if (adminOnlyRoutes.some(route => pathname.startsWith(route))) {
-          const isAdmin = user.roles.includes('admin') || user.roles.includes('super_admin')
+          const isAdmin = user.roles.includes('ADMIN') || user.roles.includes('SUPER_ADMIN')
           if (!isAdmin) {
             return NextResponse.redirect(new URL('/unauthorized', request.url))
           }
@@ -115,7 +115,7 @@ export async function middleware(request: NextRequest) {
         // Check CRM routes
         if (crmRoutes.some(route => pathname.startsWith(route))) {
           const canAccessCrm = user.roles.some(role => 
-            ['admin', 'super_admin', 'crm_user', 'sales_manager', 'sales_rep'].includes(role)
+            ['ADMIN', 'SUPER_ADMIN', 'CRM_USER', 'SALES_MANAGER', 'SALES_REP'].includes(role)
           )
           if (!canAccessCrm) {
             return NextResponse.redirect(new URL('/unauthorized', request.url))

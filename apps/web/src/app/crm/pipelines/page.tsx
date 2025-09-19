@@ -349,7 +349,7 @@ export default function PipelinesPage() {
   };
 
   const handleDeleteStage = async (stage: Stage) => {
-    if (!confirm(`Are you sure you want to delete the "${stage.label}" stage? This action cannot be undone.`)) {
+    if (!confirm(`Are you sure you want to delete the "${stage.name}" stage? This action cannot be undone.`)) {
       return;
     }
 
@@ -369,7 +369,7 @@ export default function PipelinesPage() {
           }
           setPipelines(prev => prev.map(p => p.id === selectedPipeline.id ? updatedPipeline : p));
         }
-        toast.success(`Stage Deleted: ${stage.label} has been deleted.`);
+        toast.success(`Stage Deleted: ${stage.name} has been deleted.`);
       } else {
         const error = await response.json();
         toast.error(error.error || 'Failed to delete stage');
@@ -424,7 +424,7 @@ export default function PipelinesPage() {
           {editingStageId === stage.id ? (
             <div className="flex-1 flex items-center gap-2">
               <Input
-                defaultValue={stage.label}
+                defaultValue={stage.name}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     handleUpdateStage(stage, { name: e.currentTarget.value });
@@ -439,9 +439,9 @@ export default function PipelinesPage() {
                 size="sm"
                 variant="ghost"
                 onClick={() => {
-                  const input = document.querySelector(`input[defaultValue="${stage.label}"]`) as HTMLInputElement;
+                  const input = document.querySelector(`input[defaultValue="${stage.name}"]`) as HTMLInputElement;
                   if (input) {
-                    handleUpdateStage(stage, { label: input.value });
+                    handleUpdateStage(stage, { name: input.value });
                   }
                 }}
               >
@@ -457,7 +457,7 @@ export default function PipelinesPage() {
             </div>
           ) : (
             <div className="flex-1">
-              <div className="font-medium">{stage.label}</div>
+              <div className="font-medium">{stage.name}</div>
               <div className="text-sm text-gray-500 flex items-center gap-2">
                 {stage.isClosing && <Badge variant="secondary" className="text-xs">Closing</Badge>}
                 {stage.isLost && <Badge variant="destructive" className="text-xs">Lost</Badge>}
@@ -570,7 +570,7 @@ export default function PipelinesPage() {
                       className="px-3 py-1 rounded-full text-sm font-medium text-primary-foreground"
                       style={{ backgroundColor: stage.color || '#6B7280' }}
                     >
-                      {stage.label}
+                      {stage.name}
                     </div>
                     {index < (pipeline.stages?.length || 0) - 1 && (
                       <div className="w-4 h-px bg-surface-300 mx-1" />

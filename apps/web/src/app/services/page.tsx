@@ -129,13 +129,13 @@ export default function ServicesPage() {
   }
 
   const exportToCSV = () => {
-    if (services.length === 0) {
+    if (serviceRequests.length === 0) {
       toast.error('No data to export')
       return
     }
 
     const headers = ['Service', 'Vehicle', 'VIN', 'Status', 'Price', 'Organization', 'Created Date']
-    const rows = services.map(service => [
+    const rows = serviceRequests.map(service => [
       getServiceTypeLabel(service.type),
       getVehicleDisplay(service.vehicle),
       service.vehicle.vin,

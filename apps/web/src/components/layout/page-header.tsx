@@ -17,7 +17,7 @@ interface PageHeaderProps {
 export function PageHeader({ title, description, breadcrumbs, actions }: PageHeaderProps) {
   return (
     <div className="bg-white shadow-sm border-b border-gray-200">
-      <div className="px-4 sm:px-6 lg:px-8 py-4">
+      <div className="px-4 sm:px-6 lg:px-8" style={{ paddingTop: '11px', paddingBottom: '11px' }}>
         {/* Breadcrumbs */}
         {breadcrumbs && breadcrumbs.length > 0 && (
           <nav className="flex mb-3" aria-label="Breadcrumb">

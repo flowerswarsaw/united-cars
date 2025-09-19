@@ -10,57 +10,25 @@ import {
 // Type-specific field definitions
 export const DEALER_FIELDS: TypeSpecificFieldDef[] = [
   {
-    key: 'dealerLicense',
-    name: 'Dealer License #',
-    type: CustomFieldType.TEXT,
-    required: true,
+    key: 'baseConsolidation',
+    name: 'Base Consolidation',
+    type: CustomFieldType.SELECT,
+    options: ['1/4', '1/3'],
     order: 1
   },
   {
-    key: 'dealerType',
-    name: 'Dealer Type',
+    key: 'monthlyVolume',
+    name: 'Monthly Volume',
     type: CustomFieldType.SELECT,
-    options: ['New Car', 'Used Car', 'Both', 'Wholesale Only'],
-    required: true,
+    options: ['1-5', '5-10', '10-20', '20-50', '50-100', '100+', '200+', '300+', '500+'],
     order: 2
   },
   {
-    key: 'lotSize',
-    name: 'Lot Capacity',
-    type: CustomFieldType.NUMBER,
-    order: 3
-  },
-  {
-    key: 'monthlyVolume',
-    name: 'Monthly Sales Volume',
-    type: CustomFieldType.NUMBER,
-    order: 4
-  },
-  {
-    key: 'creditLimit',
-    name: 'Credit Limit',
-    type: CustomFieldType.NUMBER,
-    order: 5
-  },
-  {
-    key: 'wholesaleLicense',
-    name: 'Wholesale License',
-    type: CustomFieldType.TEXT,
-    order: 6
-  },
-  {
-    key: 'specializations',
-    name: 'Vehicle Specializations',
+    key: 'auctionsUsed',
+    name: 'Auctions They Use',
     type: CustomFieldType.MULTISELECT,
-    options: ['Luxury', 'Commercial', 'Classic', 'Import', 'Domestic'],
-    order: 7
-  },
-  {
-    key: 'paymentTerms',
-    name: 'Preferred Payment Terms',
-    type: CustomFieldType.SELECT,
-    options: ['Net 15', 'Net 30', 'COD', 'Wire Transfer'],
-    order: 8
+    options: ['Copart', 'IAA', 'Manheim', 'NPA'],
+    order: 3
   }
 ];
 
@@ -104,6 +72,57 @@ export const RETAIL_CLIENT_FIELDS: TypeSpecificFieldDef[] = [
     name: 'Previous Purchases',
     type: CustomFieldType.NUMBER,
     order: 6
+  }
+];
+
+export const SHIPPER_FIELDS: TypeSpecificFieldDef[] = [
+  {
+    key: 'shippingPorts',
+    name: 'Shipping Ports',
+    type: CustomFieldType.MULTISELECT,
+    options: [
+      'CA',
+      'NJ',
+      'TX',
+      'GA',
+      'IL',
+      'WA',
+      'FL',
+      'MD',
+      'SC',
+      'VA'
+    ],
+    required: true,
+    order: 1
+  },
+  {
+    key: 'destinationPorts',
+    name: 'Destination Ports',
+    type: CustomFieldType.MULTISELECT,
+    options: [
+      'Klaipeda, LT',
+      'Poti, GE',
+      'Bremerhaven, DE',
+      'Rotterdam, NL',
+      'Jebel Ali, AE',
+      'Lagos, NG'
+    ],
+    required: true,
+    order: 2
+  },
+  {
+    key: 'serviceTypes',
+    name: 'Service Types',
+    type: CustomFieldType.MULTISELECT,
+    options: ['Container Shipping', 'RoRo Service', 'Breakbulk', 'Project Cargo'],
+    required: true,
+    order: 3
+  },
+  {
+    key: 'transitTime',
+    name: 'Average Transit Time (Days)',
+    type: CustomFieldType.NUMBER,
+    order: 4
   }
 ];
 
@@ -257,6 +276,14 @@ export const ORGANIZATION_TYPE_CONFIGS: Record<OrganizationType, OrganizationTyp
     customFields: DEALER_FIELDS,
     features: DEALER_FEATURES
   },
+  [OrganizationType.BROKER]: {
+    type: OrganizationType.BROKER,
+    displayName: 'Broker',
+    description: 'Vehicle brokers and intermediaries',
+    defaultPipelines: ['dealer-acquisition', 'dealer-integration'],
+    customFields: DEALER_FIELDS,
+    features: DEALER_FEATURES
+  },
   [OrganizationType.RETAIL_CLIENT]: {
     type: OrganizationType.RETAIL_CLIENT,
     displayName: 'Retail Client',
@@ -278,7 +305,7 @@ export const ORGANIZATION_TYPE_CONFIGS: Record<OrganizationType, OrganizationTyp
     displayName: 'Shipping Company',
     description: 'Ocean and air shipping companies',
     defaultPipelines: ['shipping-partner', 'active-shipper'],
-    customFields: LOGISTICS_FIELDS,
+    customFields: SHIPPER_FIELDS,
     features: LOGISTICS_FEATURES
   },
   [OrganizationType.TRANSPORTER]: {
@@ -313,7 +340,7 @@ export const TYPE_SPECIFIC_PIPELINES = {
   'dealer-acquisition': {
     name: 'Dealer Acquisition',
     description: 'Main dealer acquisition pipeline',
-    applicableTypes: [OrganizationType.DEALER],
+    applicableTypes: [OrganizationType.DEALER, OrganizationType.BROKER],
     stages: [
       { name: 'Investigation', order: 0, color: '#94A3B8' },
       { name: 'Contact Established', order: 1, color: '#64748B' },
@@ -331,7 +358,7 @@ export const TYPE_SPECIFIC_PIPELINES = {
   'dealer-integration': {
     name: 'Dealer Integration',
     description: 'Post-sale dealer integration pipeline',
-    applicableTypes: [OrganizationType.DEALER],
+    applicableTypes: [OrganizationType.DEALER, OrganizationType.BROKER],
     stages: [
       { name: 'Integration', order: 0, color: '#94A3B8' },
       { name: 'Support Created', order: 1, color: '#64748B' },

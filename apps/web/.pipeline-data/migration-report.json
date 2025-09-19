@@ -1,0 +1,25 @@
+{
+  "totalDeals": 10,
+  "migratedDeals": 10,
+  "unmappedStages": [
+    {
+      "dealId": "deal_1",
+      "dealTitle": "AutoMax Luxury Partnership",
+      "originalStage": "stage-meeting-set",
+      "assignedStage": "stage-investigation"
+    },
+    {
+      "dealId": "deal_3",
+      "dealTitle": "City Cars Direct Onboarding",
+      "originalStage": "stage-contact-established",
+      "assignedStage": "stage-investigation"
+    },
+    {
+      "dealId": "deal_6",
+      "dealTitle": "Pacific Shipping Portal",
+      "originalStage": "stage-meeting-set",
+      "assignedStage": "stage-investigation"
+    }
+  ],
+  "timestamp": "2025-09-17T13:49:08.687Z"
+}

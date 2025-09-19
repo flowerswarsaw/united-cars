@@ -1,0 +1,354 @@
+[
+  {
+    "id": "deal_1",
+    "title": "AutoMax Luxury Partnership",
+    "description": "Partnership agreement for premium vehicle auction services",
+    "value": 2500000,
+    "currency": "USD",
+    "status": "ACTIVE",
+    "contactId": "contact_1",
+    "organisationId": "org_1",
+    "pipelineId": "pipeline-default",
+    "stageId": "stage-investigation",
+    "enteredStageAt": "2025-09-15T16:48:14.138Z",
+    "outcome": null,
+    "isFrozen": false,
+    "currentStages": [
+      {
+        "pipelineId": "pipeline-default",
+        "stageId": "stage-investigation",
+        "enteredAt": "2025-09-15T16:48:14.138Z"
+      }
+    ],
+    "expectedCloseDate": "2024-10-15T00:00:00Z",
+    "lastActivityDate": "2024-09-12T16:45:00Z",
+    "customFields": {
+      "contract_type": "Exclusive Partnership",
+      "service_level": "Premium",
+      "estimated_monthly_volume": 150,
+      "decision_makers": [
+        "Marcus Rodriguez",
+        "Jennifer Chen"
+      ]
+    },
+    "createdAt": "2024-08-15T10:00:00Z",
+    "updatedAt": "2025-09-15T16:48:14.138Z"
+  },
+  {
+    "id": "deal_2",
+    "title": "Premier Motors Integration",
+    "description": "Full service integration for East Coast operations",
+    "value": 1800000,
+    "currency": "USD",
+    "status": "ACTIVE",
+    "contactId": "contact_3",
+    "organisationId": "org_2",
+    "pipelineId": "pipeline-default",
+    "stageId": "stage-closed-won",
+    "enteredStageAt": "2024-09-05T12:00:00Z",
+    "outcome": null,
+    "isFrozen": false,
+    "currentStages": [
+      {
+        "pipelineId": "pipeline-default",
+        "stageId": "stage-closed-won",
+        "enteredAt": "2024-09-05T12:00:00Z"
+      }
+    ],
+    "expectedCloseDate": "2024-09-20T00:00:00Z",
+    "lastActivityDate": "2024-09-14T09:30:00Z",
+    "customFields": {
+      "contract_type": "Standard Agreement",
+      "service_level": "Standard",
+      "estimated_monthly_volume": 200,
+      "signed_date": "2024-09-05T12:00:00Z"
+    },
+    "createdAt": "2024-07-20T14:30:00Z",
+    "updatedAt": "2024-09-14T09:30:00Z"
+  },
+  {
+    "id": "deal_3",
+    "title": "City Cars Direct Onboarding",
+    "description": "New dealer onboarding for Chicago market",
+    "value": 850000,
+    "currency": "USD",
+    "status": "WON",
+    "contactId": "contact_5",
+    "organisationId": "org_3",
+    "pipelineId": "pipeline-default",
+    "stageId": "stage-closed-won",
+    "enteredStageAt": "2025-09-15T18:28:11.897Z",
+    "outcome": "won",
+    "wonAt": "2025-09-15T18:28:11.897Z",
+    "isFrozen": true,
+    "currentStages": [
+      {
+        "pipelineId": "pipeline-default",
+        "stageId": "stage-closed-won",
+        "enteredAt": "2025-09-15T18:28:11.897Z"
+      }
+    ],
+    "expectedCloseDate": "2024-11-01T00:00:00Z",
+    "lastActivityDate": "2024-09-13T14:20:00Z",
+    "customFields": {
+      "contract_type": "Trial Agreement",
+      "service_level": "Basic",
+      "estimated_monthly_volume": 50,
+      "trial_period_months": 6
+    },
+    "createdAt": "2024-09-01T09:00:00Z",
+    "updatedAt": "2025-09-15T18:28:11.897Z"
+  },
+  {
+    "id": "deal_4",
+    "title": "Copart Sacramento Expansion",
+    "description": "Expanded services for salvage vehicle processing",
+    "value": 3200000,
+    "currency": "USD",
+    "status": "ACTIVE",
+    "contactId": "contact_6",
+    "organisationId": "org_4",
+    "pipelineId": "pipeline-default",
+    "stageId": "stage-contract-sent",
+    "enteredStageAt": "2024-08-25T11:00:00Z",
+    "outcome": null,
+    "isFrozen": false,
+    "currentStages": [
+      {
+        "pipelineId": "pipeline-default",
+        "stageId": "stage-contract-sent",
+        "enteredAt": "2024-08-25T11:00:00Z"
+      }
+    ],
+    "expectedCloseDate": "2024-10-30T00:00:00Z",
+    "lastActivityDate": "2024-09-11T15:45:00Z",
+    "customFields": {
+      "contract_type": "Volume Agreement",
+      "service_level": "Enterprise",
+      "estimated_monthly_volume": 500,
+      "specializes_in": "Salvage Vehicles"
+    },
+    "createdAt": "2024-08-10T08:00:00Z",
+    "updatedAt": "2024-09-11T15:45:00Z"
+  },
+  {
+    "id": "deal_5",
+    "title": "Express Transport API Integration",
+    "description": "Real-time shipping integration and tracking system",
+    "value": 450000,
+    "currency": "USD",
+    "status": "ACTIVE",
+    "contactId": "contact_8",
+    "organisationId": "org_6",
+    "pipelineId": "pipeline-default",
+    "stageId": "stage-contract-signed",
+    "enteredStageAt": "2024-08-30T13:00:00Z",
+    "outcome": null,
+    "isFrozen": false,
+    "currentStages": [
+      {
+        "pipelineId": "pipeline-default",
+        "stageId": "stage-contract-signed",
+        "enteredAt": "2024-08-30T13:00:00Z"
+      }
+    ],
+    "expectedCloseDate": "2024-10-15T00:00:00Z",
+    "lastActivityDate": "2024-09-13T11:30:00Z",
+    "customFields": {
+      "integration_type": "API",
+      "development_phase": "Testing",
+      "go_live_date": "2024-10-01",
+      "features": [
+        "Real-time Tracking",
+        "Automated Dispatch",
+        "Route Optimization"
+      ]
+    },
+    "createdAt": "2024-08-15T16:00:00Z",
+    "updatedAt": "2024-09-13T11:30:00Z"
+  },
+  {
+    "id": "deal_6",
+    "title": "Pacific Shipping Portal",
+    "description": "International shipping management portal",
+    "value": 680000,
+    "currency": "USD",
+    "status": "ACTIVE",
+    "contactId": "contact_10",
+    "organisationId": "org_7",
+    "pipelineId": "pipeline-default",
+    "stageId": "stage-investigation",
+    "enteredStageAt": "2025-09-15T16:47:17.298Z",
+    "outcome": null,
+    "isFrozen": false,
+    "currentStages": [
+      {
+        "pipelineId": "pipeline-default",
+        "stageId": "stage-investigation",
+        "enteredAt": "2025-09-15T16:47:17.298Z"
+      }
+    ],
+    "expectedCloseDate": "2024-12-01T00:00:00Z",
+    "lastActivityDate": "2024-09-14T10:00:00Z",
+    "customFields": {
+      "integration_type": "Web Portal",
+      "development_phase": "Requirements Gathering",
+      "features": [
+        "Multi-language Support",
+        "Container Tracking",
+        "Customs Integration"
+      ],
+      "target_ports": [
+        "Long Beach",
+        "Los Angeles",
+        "Oakland"
+      ]
+    },
+    "createdAt": "2024-09-01T11:30:00Z",
+    "updatedAt": "2025-09-15T16:47:17.298Z"
+  },
+  {
+    "id": "deal_7",
+    "title": "Elite Collectors Premium Service",
+    "description": "High-end classic car auction and transport services",
+    "value": 1250000,
+    "currency": "USD",
+    "status": "WON",
+    "contactId": "contact_14",
+    "organisationId": "org_10",
+    "pipelineId": "pipeline-default",
+    "stageId": "stage-closed-won",
+    "enteredStageAt": "2024-08-20T16:30:00Z",
+    "outcome": "won",
+    "wonAt": "2024-08-22T14:45:00Z",
+    "isFrozen": true,
+    "currentStages": [
+      {
+        "pipelineId": "pipeline-default",
+        "stageId": "stage-closed-won",
+        "enteredAt": "2024-08-20T16:30:00Z"
+      }
+    ],
+    "expectedCloseDate": "2024-08-25T00:00:00Z",
+    "lastActivityDate": "2024-08-22T14:45:00Z",
+    "customFields": {
+      "contract_type": "Premium Service Agreement",
+      "service_level": "Concierge",
+      "estimated_monthly_volume": 25,
+      "specializes_in": "Classic Collector Vehicles",
+      "signed_date": "2024-08-22T14:45:00Z",
+      "contract_duration_months": 24
+    },
+    "createdAt": "2024-07-10T10:15:00Z",
+    "updatedAt": "2024-08-22T14:45:00Z"
+  },
+  {
+    "id": "deal_8",
+    "title": "Johnson Family Auto Basic Package",
+    "description": "Small dealer basic service package",
+    "value": 180000,
+    "currency": "USD",
+    "status": "WON",
+    "contactId": "contact_13",
+    "organisationId": "org_9",
+    "pipelineId": "pipeline-default",
+    "stageId": "stage-closed-won",
+    "enteredStageAt": "2024-09-01T11:00:00Z",
+    "outcome": "won",
+    "wonAt": "2024-09-03T15:20:00Z",
+    "isFrozen": true,
+    "currentStages": [
+      {
+        "pipelineId": "pipeline-default",
+        "stageId": "stage-closed-won",
+        "enteredAt": "2024-09-01T11:00:00Z"
+      }
+    ],
+    "expectedCloseDate": "2024-09-10T00:00:00Z",
+    "lastActivityDate": "2024-09-03T15:20:00Z",
+    "customFields": {
+      "contract_type": "Basic Service Agreement",
+      "service_level": "Basic",
+      "estimated_monthly_volume": 15,
+      "family_business": true,
+      "payment_terms": "Net 30"
+    },
+    "createdAt": "2024-08-15T13:00:00Z",
+    "updatedAt": "2024-09-03T15:20:00Z"
+  },
+  {
+    "id": "deal_9",
+    "title": "Midwest Auto Group Partnership",
+    "description": "Regional partnership opportunity - lost to competitor",
+    "value": 950000,
+    "currency": "USD",
+    "status": "LOST",
+    "contactId": "contact_3",
+    "organisationId": "org_2",
+    "pipelineId": "pipeline-default",
+    "stageId": null,
+    "enteredStageAt": "2024-07-15T14:00:00Z",
+    "outcome": "lost",
+    "lostNote": "Lost to competitor - pricing",
+    "lostAt": "2024-08-28T10:30:00Z",
+    "isFrozen": false,
+    "currentStages": [],
+    "expectedCloseDate": "2024-08-30T00:00:00Z",
+    "lastActivityDate": "2024-08-28T10:30:00Z",
+    "customFields": {
+      "contract_type": "Regional Partnership",
+      "competitor": "AutoTrader Solutions",
+      "lost_reason_details": "Competitor offered 15% lower pricing",
+      "decision_factors": [
+        "Price",
+        "Local Support",
+        "Integration Timeline"
+      ]
+    },
+    "createdAt": "2024-06-01T09:00:00Z",
+    "updatedAt": "2024-08-28T10:30:00Z"
+  },
+  {
+    "id": "deal_10",
+    "title": "Manheim Enterprise Integration",
+    "description": "National wholesale auction platform integration",
+    "value": 4500000,
+    "currency": "USD",
+    "status": "ACTIVE",
+    "contactId": "contact_7",
+    "organisationId": "org_5",
+    "pipelineId": "pipeline-default",
+    "stageId": "stage-contract-signed",
+    "enteredStageAt": "2024-07-01T08:00:00Z",
+    "outcome": null,
+    "isFrozen": false,
+    "currentStages": [
+      {
+        "pipelineId": "pipeline-default",
+        "stageId": "stage-contract-signed",
+        "enteredAt": "2024-07-01T08:00:00Z"
+      }
+    ],
+    "expectedCloseDate": "2024-12-15T00:00:00Z",
+    "lastActivityDate": "2024-09-14T16:00:00Z",
+    "customFields": {
+      "contract_type": "Enterprise License Agreement",
+      "service_level": "Enterprise",
+      "estimated_monthly_volume": 2000,
+      "integration_complexity": "High",
+      "stakeholders": [
+        "Michael O'Brien",
+        "Regional Directors",
+        "IT Team"
+      ],
+      "phases": [
+        "Phase 1: Core Integration",
+        "Phase 2: Advanced Features",
+        "Phase 3: Analytics"
+      ],
+      "current_phase": "Phase 1"
+    },
+    "createdAt": "2024-06-15T12:00:00Z",
+    "updatedAt": "2024-09-14T16:00:00Z"
+  }
+]

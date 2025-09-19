@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { updateDealSchema } from '@united-cars/crm-core';
-import { getServerSessionFromRequest } from '@/lib/auth';
-import { getEnhancedDealById, getAllEnhancedDeals, saveEnhancedDeals } from '@/lib/pipeline-data';
+import { dealRepository, jsonPersistence } from '@united-cars/crm-mocks';
 
 export async function GET(
   request: NextRequest,
@@ -9,7 +8,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const deal = getEnhancedDealById(id);
+    const deal = await dealRepository.get(id);
 
     if (!deal) {
       return NextResponse.json(
@@ -33,46 +32,24 @@ export async function PATCH(
 ) {
   try {
     const { id } = await params;
-    const session = await getServerSessionFromRequest(request);
-    const userId = session?.user?.id;
-
     const body = await request.json();
 
-    // Get current deal
-    const currentDeal = getEnhancedDealById(id);
-    if (!currentDeal) {
+    console.log(`Updating deal ${id} with:`, body);
+
+    // Update the deal using CRM repository
+    const updatedDeal = await dealRepository.update(id, body);
+
+    if (!updatedDeal) {
       return NextResponse.json(
         { error: 'Deal not found' },
         { status: 404 }
       );
     }
 
-    // Update deal with new data
-    const updatedDeal = {
-      ...currentDeal,
-      ...body,
-      updatedAt: new Date().toISOString()
-    };
+    // Save to persistent storage
+    await jsonPersistence.save();
 
-    // Get all deals and update the specific one
-    const allDeals = getAllEnhancedDeals();
-    const dealIndex = allDeals.findIndex(d => d.id === id);
-
-    if (dealIndex === -1) {
-      return NextResponse.json(
-        { error: 'Deal not found in store' },
-        { status: 404 }
-      );
-    }
-
-    // Update the deal in the array
-    allDeals[dealIndex] = updatedDeal;
-
-    // Save the updated deals array
-    const dealsMap = new Map(allDeals.map(deal => [deal.id, deal]));
-    saveEnhancedDeals(dealsMap);
-
-    console.log(`✅ Deal ${id} updated successfully with:`, body);
+    console.log(`✅ Deal ${id} updated successfully`);
     return NextResponse.json(updatedDeal);
   } catch (error: any) {
     console.error('❌ Failed to update deal:', error);
@@ -98,7 +75,7 @@ export async function DELETE(
     const { id } = await params;
 
     // Check if deal exists
-    const currentDeal = getEnhancedDealById(id);
+    const currentDeal = await dealRepository.get(id);
     if (!currentDeal) {
       return NextResponse.json(
         { error: 'Deal not found' },
@@ -106,13 +83,18 @@ export async function DELETE(
       );
     }
 
-    // Get all deals and remove the specific one
-    const allDeals = getAllEnhancedDeals();
-    const filteredDeals = allDeals.filter(deal => deal.id !== id);
+    // Delete the deal using repository
+    const success = await dealRepository.remove(id);
 
-    // Save the updated deals array
-    const dealsMap = new Map(filteredDeals.map(deal => [deal.id, deal]));
-    saveEnhancedDeals(dealsMap);
+    if (!success) {
+      return NextResponse.json(
+        { error: 'Failed to delete deal' },
+        { status: 500 }
+      );
+    }
+
+    // Save to persistent storage
+    await jsonPersistence.save();
 
     console.log(`✅ Deal ${id} deleted successfully`);
     return NextResponse.json({ success: true });

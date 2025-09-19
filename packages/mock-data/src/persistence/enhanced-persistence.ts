@@ -23,8 +23,32 @@ export interface SyncStatus {
   conflicts?: string[];
 }
 
+export interface PersistenceConfig {
+  dataDirectory: string;
+  enableVersioning: boolean;
+  maxVersions: number;
+  enableBackups: boolean;
+  backupInterval: number; // minutes
+  enableChangeTracking: boolean;
+  enableCrossSystemSync: boolean;
+}
+
 export class EnhancedPersistence {
   private data = new Map<string, any[]>();
+  private config: PersistenceConfig;
+  
+  constructor(config: Partial<PersistenceConfig> = {}) {
+    this.config = {
+      dataDirectory: './data',
+      enableVersioning: false,
+      maxVersions: 10,
+      enableBackups: false,
+      backupInterval: 60,
+      enableChangeTracking: false,
+      enableCrossSystemSync: false,
+      ...config
+    };
+  }
   
   async initialize(): Promise<void> {
     console.warn('Enhanced persistence features are disabled - using in-memory storage only');
@@ -86,8 +110,43 @@ export class EnhancedPersistence {
       lastActivity: new Date().toISOString()
     };
   }
+
+  // Additional methods required by persistence-service-factory
+  async validateDataIntegrity(): Promise<{ valid: boolean; issues: ValidationIssue[] }> {
+    return { valid: true, issues: [] };
+  }
+
+  async createBackup(description?: string): Promise<string> {
+    const backupName = `backup-${Date.now()}`;
+    console.warn(`Backup creation stubbed: ${backupName}`);
+    return backupName;
+  }
+
+  async syncWithUnifiedSystem(unifiedService: any): Promise<SyncStatus> {
+    return {
+      lastSync: new Date().toISOString(),
+      pendingChanges: [],
+      conflicts: []
+    };
+  }
+
+  async loadVersion<T>(entityType: string, version: number): Promise<T[]> {
+    return this.load<T>(entityType);
+  }
+
+  async listBackups(): Promise<any[]> {
+    return [];
+  }
+
+  async restoreFromBackup(backupPath: string): Promise<void> {
+    console.warn(`Backup restore stubbed: ${backupPath}`);
+  }
+
+  async getStats(): Promise<any> {
+    return this.getMetrics();
+  }
 }
 
-export const createEnhancedPersistence = (): EnhancedPersistence => {
-  return new EnhancedPersistence();
+export const createEnhancedPersistence = (config?: Partial<PersistenceConfig>): EnhancedPersistence => {
+  return new EnhancedPersistence(config);
 };

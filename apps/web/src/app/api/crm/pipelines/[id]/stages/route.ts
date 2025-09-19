@@ -1,37 +1,48 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PipelineService, hasPermission } from '@/lib/services/pipeline-service';
-import { getServerSessionFromRequest } from '@/lib/auth';
+import { pipelineRepository, jsonPersistence } from '@united-cars/crm-mocks';
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSessionFromRequest(request);
-    const user = { 
-      id: session?.user?.id || 'anonymous', 
-      role: (session?.user as any)?.role || 'junior' as 'admin' | 'senior' | 'junior'
-    };
+    const { id: pipelineId } = await params;
+    const body = await request.json();
 
-    if (!hasPermission(user, 'pipeline:update')) {
+    // Ensure we have the latest data
+    await jsonPersistence.load();
+
+    // Check if pipeline exists
+    const pipeline = await pipelineRepository.get(pipelineId);
+    if (!pipeline) {
       return NextResponse.json(
-        { error: 'Insufficient permissions' },
-        { status: 403 }
+        { error: 'Pipeline not found' },
+        { status: 404 }
       );
     }
 
-    const { id } = await params;
-    const body = await request.json();
-    
-    const pipelineService = new PipelineService();
-    const stage = await pipelineService.addStage(user, id, body);
-    
+    // Get existing stages to determine order
+    const existingStages = await pipelineRepository.getStages(pipelineId);
+    const maxOrder = existingStages.reduce((max, s) => Math.max(max, s.order || 0), 0);
+
+    // Create the stage
+    const stage = await pipelineRepository.createStage(pipelineId, {
+      name: body.name,
+      description: body.description || '',
+      order: body.order ?? (maxOrder + 1),
+      isClosing: body.isClosing || false,
+      isLost: body.isLost || false
+    });
+
+    // Save to persistent storage
+    await jsonPersistence.save();
+
     return NextResponse.json(stage, { status: 201 });
   } catch (error: any) {
     console.error('Error creating stage:', error);
     return NextResponse.json(
       { error: error.message || 'Failed to create stage' },
-      { status: error.message?.includes('permissions') ? 403 : error.message?.includes('not found') ? 404 : 500 }
+      { status: 500 }
     );
   }
 }

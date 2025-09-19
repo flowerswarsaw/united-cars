@@ -91,8 +91,3 @@ export const API_ENDPOINTS = {
     REJECT: (id: string) => `/api/payments/${id}/reject`
   }
 } as const
-
-// File upload constants
-export const MAX_FILES_PER_REQUEST = 10
-export const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'] as const
-export const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB

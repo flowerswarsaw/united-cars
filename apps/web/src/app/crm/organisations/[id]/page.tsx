@@ -3,19 +3,21 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Edit2, Save, X, Building2, MapPin, Globe, Mail, Phone, Users, DollarSign, FileText, ExternalLink, Facebook, Instagram, Twitter, Plus, Trash2, Star, Link2 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/app-layout';
 import { PageHeader } from '@/components/layout/page-header';
 import { LoadingState } from '@/components/ui/loading-state';
 import { useSession } from '@/hooks/useSession';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Edit2, Save, X, Building2, MapPin, Globe, Mail, Phone, Users, DollarSign, FileText, ExternalLink, Facebook, Instagram, Twitter, Plus, Trash2, Star } from 'lucide-react';
-import { Organisation, Contact, Deal, OrganizationType, ContactMethod, ContactMethodType, SocialMediaLink, SocialPlatform, OrganisationConnection } from '@united-cars/crm-core';
+import { Organisation, Contact, Deal, OrganizationType, ContactMethod, ContactMethodType, SocialMediaLink, SocialPlatform, OrganisationConnection, TypeSpecificFieldDef, CustomFieldType, getTypeSpecificFields, ContactType } from '@united-cars/crm-core';
+import { COUNTRIES_REGIONS, getRegionsByCountryCode, hasRegions, getRegionDisplayName, getCitiesByRegion, hasCities } from '@/lib/countries-regions';
 import toast from 'react-hot-toast';
 
 export default function OrganisationDetailPage() {
@@ -23,68 +25,193 @@ export default function OrganisationDetailPage() {
   const router = useRouter();
   const { user, loading: sessionLoading } = useSession();
   const orgId = params.id as string;
-  
+
   const [organisation, setOrganisation] = useState<Organisation | null>(null);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [deals, setDeals] = useState<Deal[]>([]);
   const [connections, setConnections] = useState<OrganisationConnection[]>([]);
   const [connectedOrgs, setConnectedOrgs] = useState<Organisation[]>([]);
+  const [allContacts, setAllContacts] = useState<Contact[]>([]);
+  const [availableOrgs, setAvailableOrgs] = useState<Organisation[]>([]);
   const [loading, setLoading] = useState(true);
-  
-  // Section-specific edit states
-  const [editingSections, setEditingSections] = useState<{
-    basicInfo: boolean;
-    contactInfo: boolean;
-    businessRelationships: boolean;
-    address: boolean;
-    notes: boolean;
-  }>({
+
+  // Connection dialog state
+  const [isConnectionDialogOpen, setIsConnectionDialogOpen] = useState(false);
+  const [newConnection, setNewConnection] = useState({
+    toOrganisationId: ''
+  });
+
+  // Contact creation dialog state
+  const [isContactCreateOpen, setIsContactCreateOpen] = useState(false);
+  const [contactFormData, setContactFormData] = useState({
+    firstName: '',
+    lastName: '',
+    type: ContactType.SALES,
+    phone: '',
+    email: '',
+    organisationId: orgId,
+    country: '',
+    state: '',
+    city: ''
+  });
+  const [showCustomCityOrg, setShowCustomCityOrg] = useState(false);
+  const [showCustomCityContact, setShowCustomCityContact] = useState(false);
+  const [partnerFilter, setPartnerFilter] = useState<string>('all');
+
+  // Deal creation dialog state
+  const [isDealCreateOpen, setIsDealCreateOpen] = useState(false);
+  const [dealFormData, setDealFormData] = useState({
+    title: '',
+    description: '',
+    value: '',
+    stage: '',
+    contactId: '',
+    pipeline: 'DEALER'
+  });
+
+  // Section-specific editing states (matching contact page pattern)
+  const [editingSections, setEditingSections] = useState({
     basicInfo: false,
     contactInfo: false,
-    businessRelationships: false,
     address: false,
+    socialMedia: false,
+    typeSpecific: false,
     notes: false
   });
-  
+
   // Section-specific form data
-  const [formData, setFormData] = useState<Partial<Organisation>>({});
-  const [availableOrgs, setAvailableOrgs] = useState<Organisation[]>([]);
+  const [basicInfoData, setBasicInfoData] = useState({
+    name: '',
+    type: OrganizationType.DEALER,
+    size: ''
+  });
+
+  const [contactInfoData, setContactInfoData] = useState({
+    contactMethods: [] as ContactMethod[]
+  });
+
+  const [addressData, setAddressData] = useState({
+    address: '',
+    city: '',
+    state: '',
+    country: '',
+    postalCode: ''
+  });
+
+  const [socialMediaData, setSocialMediaData] = useState({
+    socialMedia: [] as SocialMediaLink[]
+  });
+
+  const [typeSpecificData, setTypeSpecificData] = useState({
+    customFields: {} as Record<string, any>
+  });
+
+  const [notesData, setNotesData] = useState({
+    notes: ''
+  });
 
   useEffect(() => {
-    loadOrganisation();
-    loadRelatedData();
+    if (orgId) {
+      fetchOrganisation();
+      fetchRelatedData();
+    }
   }, [orgId]);
 
-  const loadOrganisation = async () => {
+  const fetchOrganisation = async () => {
     try {
       const response = await fetch(`/api/crm/organisations/${orgId}`);
-      if (!response.ok) {
-        throw new Error('Organisation not found');
-      }
       const data = await response.json();
-      setOrganisation(data);
-      
-      // Initialize form data
-      setFormData(data);
-      
-      // Load all organisations for connection selection
-      const allOrgsResponse = await fetch('/api/crm/organisations');
-      const allOrgs = await allOrgsResponse.json();
-      setAvailableOrgs(allOrgs.filter((org: Organisation) => org.id !== orgId));
+
+      if (response.ok) {
+        setOrganisation(data);
+
+        // Initialize section-specific data
+        setBasicInfoData({
+          name: data.name || '',
+          type: data.type || OrganizationType.DEALER,
+          size: data.size || ''
+        });
+
+        setContactInfoData({
+          contactMethods: data.contactMethods || []
+        });
+
+        setAddressData({
+          address: data.address || '',
+          city: data.city || '',
+          state: data.state || '',
+          country: data.country || '',
+          postalCode: data.postalCode || ''
+        });
+
+        setSocialMediaData({
+          socialMedia: data.socialMedia || []
+        });
+
+        setTypeSpecificData({
+          customFields: data.customFields || {}
+        });
+
+        setNotesData({
+          notes: data.notes || ''
+        });
+      } else {
+        toast.error(`Failed to fetch organisation: ${data.error}`);
+        router.push('/crm/organisations');
+      }
     } catch (error) {
-      console.error('Failed to load organisation:', error);
-      toast.error('Failed to load organisation');
+      toast.error('Error fetching organisation details');
+      console.error('Error:', error);
       router.push('/crm/organisations');
     } finally {
       setLoading(false);
     }
   };
 
+  const fetchRelatedData = async () => {
+    try {
+      // Load all organisations for connection selection
+      const allOrgsResponse = await fetch('/api/crm/organisations');
+      const allOrgs = await allOrgsResponse.json();
+      setAvailableOrgs(allOrgs.filter((org: Organisation) => org.id !== orgId));
+
+      // Load all contacts
+      const contactsResponse = await fetch('/api/crm/contacts');
+      const contactsData = await contactsResponse.json();
+      setAllContacts(contactsData);
+
+      // Filter contacts for this organisation
+      const orgContacts = contactsData.filter((c: Contact) => c.organisationId === orgId);
+      setContacts(orgContacts);
+
+      // Load deals for this organisation
+      const dealsResponse = await fetch('/api/crm/deals');
+      const allDeals = await dealsResponse.json();
+      const orgDeals = allDeals.filter((d: Deal) => d.organisationId === orgId);
+      setDeals(orgDeals);
+
+      // Load organisation connections
+      const connectionsResponse = await fetch(`/api/crm/organisation-connections?orgId=${orgId}`);
+      const orgConnections = await connectionsResponse.json();
+      setConnections(orgConnections);
+
+      // Load connected organisation details
+      if (orgConnections.length > 0) {
+        const connectedOrgIds = new Set([
+          ...orgConnections.map((c: OrganisationConnection) => c.fromOrganisationId),
+          ...orgConnections.map((c: OrganisationConnection) => c.toOrganisationId)
+        ].filter(id => id !== orgId));
+        const connected = allOrgs.filter((org: Organisation) => connectedOrgIds.has(org.id));
+        setConnectedOrgs(connected);
+      }
+    } catch (error) {
+      console.error('Failed to fetch related data:', error);
+    }
+  };
+
   const loadRelatedData = async () => {
     try {
-      // Load contacts for this organisation
-      const contactsResponse = await fetch('/api/crm/contacts');
-      const allContacts = await contactsResponse.json();
+      // Filter contacts for this organisation
       const orgContacts = allContacts.filter((c: Contact) => c.organisationId === orgId);
       setContacts(orgContacts);
 
@@ -98,12 +225,6 @@ export default function OrganisationDetailPage() {
       const connectionsResponse = await fetch(`/api/crm/organisation-connections?orgId=${orgId}`);
       const orgConnections = await connectionsResponse.json();
       setConnections(orgConnections);
-      
-      // Update form data with connections
-      setFormData(prev => ({
-        ...prev,
-        connections: orgConnections
-      }));
 
       // Load connected organisation details
       if (orgConnections.length > 0) {
@@ -121,164 +242,303 @@ export default function OrganisationDetailPage() {
     }
   };
 
-
-
-  // Section editing helpers
-  const startEditing = (section: keyof typeof editingSections) => {
-    setEditingSections(prev => ({ ...prev, [section]: true }));
-  };
-
-  const cancelEditing = (section: keyof typeof editingSections) => {
-    // Reset form data to original organization data
-    if (organisation) {
-      setFormData(organisation);
-    }
-    setEditingSections(prev => ({ ...prev, [section]: false }));
-  };
-
-  const saveSection = async (section: keyof typeof editingSections) => {
+  // Section-specific save handlers (matching contact page pattern)
+  const saveSection = async (section: string, data: any) => {
     if (!organisation) return;
+
+    // Validation for basic info section
+    if (section === 'basicInfo') {
+      if (!data.name?.trim()) {
+        toast.error('Organisation name is required');
+        return;
+      }
+      if (!data.type) {
+        toast.error('Organisation type is required');
+        return;
+      }
+    }
+
+    // Validation for address section
+    if (section === 'address') {
+      if (!data.country?.trim()) {
+        toast.error('Country is required');
+        return;
+      }
+    }
 
     try {
       const response = await fetch(`/api/crm/organisations/${orgId}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+      });
+
+      const responseData = await response.json();
+
+      if (response.ok) {
+        setOrganisation(responseData);
+        setEditingSections(prev => ({ ...prev, [section]: false }));
+        toast.success('Organisation updated successfully');
+        await fetchOrganisation(); // Reload to get updated data
+      } else {
+        toast.error(`Failed to update organisation: ${responseData.error}`);
+      }
+    } catch (error) {
+      toast.error('Error updating organisation');
+      console.error('Error:', error);
+    }
+  };
+
+  // Section edit buttons component (matching contact page pattern)
+  const SectionEditButtons = ({ section, onSave }: { section: keyof typeof editingSections, onSave: () => void }) => {
+    const isEditing = editingSections[section];
+
+    if (isEditing) {
+      return (
+        <div className="flex gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setEditingSections(prev => ({ ...prev, [section]: false }))}
+          >
+            <X className="h-4 w-4 mr-1" />
+            Cancel
+          </Button>
+          <Button size="sm" onClick={onSave}>
+            <Save className="h-4 w-4 mr-1" />
+            Save
+          </Button>
+        </div>
+      );
+    }
+
+    return (
+      <Button
+        size="sm"
+        variant="outline"
+        onClick={() => setEditingSections(prev => ({ ...prev, [section]: true }))}
+      >
+        <Edit2 className="h-4 w-4 mr-1" />
+        Edit
+      </Button>
+    );
+  };
+
+  const addContactMethod = () => {
+    const newMethod: ContactMethod = {
+      id: Date.now().toString(),
+      type: ContactMethodType.EMAIL_BUSINESS,
+      value: '',
+      label: ''
+    };
+    setContactInfoData(prev => ({
+      ...prev,
+      contactMethods: [...prev.contactMethods, newMethod]
+    }));
+  };
+
+  const updateContactMethod = (index: number, field: keyof ContactMethod, value: string) => {
+    setContactInfoData(prev => ({
+      ...prev,
+      contactMethods: prev.contactMethods.map((method, i) =>
+        i === index ? { ...method, [field]: value } : method
+      )
+    }));
+  };
+
+  const removeContactMethod = (index: number) => {
+    setContactInfoData(prev => ({
+      ...prev,
+      contactMethods: prev.contactMethods.filter((_, i) => i !== index)
+    }));
+  };
+
+  const addSocialMediaLink = () => {
+    const newLink: SocialMediaLink = {
+      id: Date.now().toString(),
+      platform: SocialPlatform.FACEBOOK,
+      url: '',
+      username: ''
+    };
+    setSocialMediaData(prev => ({
+      ...prev,
+      socialMedia: [...prev.socialMedia, newLink]
+    }));
+  };
+
+  const updateSocialMediaLink = (index: number, field: keyof SocialMediaLink, value: string) => {
+    setSocialMediaData(prev => ({
+      ...prev,
+      socialMedia: prev.socialMedia.map((link, i) =>
+        i === index ? { ...link, [field]: value } : link
+      )
+    }));
+  };
+
+  const removeSocialMediaLink = (index: number) => {
+    setSocialMediaData(prev => ({
+      ...prev,
+      socialMedia: prev.socialMedia.filter((_, i) => i !== index)
+    }));
+  };
+
+  const handleAddConnection = async () => {
+    if (!newConnection.toOrganisationId) {
+      toast.error('Please select an organisation');
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/crm/organisation-connections', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          fromOrganisationId: orgId,
+          toOrganisationId: newConnection.toOrganisationId,
+          type: 'PARTNER' // Default type, will be inferred by backend based on org types
+        })
       });
 
       if (response.ok) {
-        const updated = await response.json();
-        setOrganisation(updated);
-        setFormData(updated);
-        setEditingSections(prev => ({ ...prev, [section]: false }));
-        toast.success('Changes saved successfully');
+        toast.success('Connection added successfully');
+        setIsConnectionDialogOpen(false);
+        setNewConnection({ toOrganisationId: '' });
+        await fetchRelatedData(); // Reload connections
       } else {
-        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-        throw new Error(errorData.error || 'Failed to update');
+        const error = await response.json();
+        toast.error(error.message || 'Failed to add connection');
       }
-    } catch (error: any) {
-      console.error('Failed to update organisation:', error);
-      toast.error(error.message || 'Failed to save changes');
+    } catch (error) {
+      console.error('Error adding connection:', error);
+      toast.error('Error adding connection');
     }
   };
 
-  // Update form field
-  const updateField = (field: string, value: any) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+  const handleCreateDeal = async () => {
+    if (!dealFormData.title || !dealFormData.stage) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/crm/deals', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          title: dealFormData.title,
+          description: dealFormData.description,
+          value: dealFormData.value ? parseFloat(dealFormData.value) : undefined,
+          organisationId: orgId,
+          contactId: dealFormData.contactId || undefined,
+          pipeline: dealFormData.pipeline,
+          stage: dealFormData.stage,
+          status: 'ACTIVE'
+        })
+      });
+
+      if (response.ok) {
+        toast.success('Deal created successfully');
+        setIsDealCreateOpen(false);
+        setDealFormData({
+          title: '',
+          description: '',
+          value: '',
+          stage: '',
+          contactId: '',
+          pipeline: 'DEALER'
+        });
+        await fetchRelatedData(); // Reload deals
+      } else {
+        const error = await response.json();
+        toast.error(error.message || 'Failed to create deal');
+      }
+    } catch (error) {
+      console.error('Error creating deal:', error);
+      toast.error('Error creating deal');
+    }
   };
 
-  // Contact method helpers
-  const getContactMethodsForEditing = (type: 'email' | 'phone') => {
-    const methods = formData.contactMethods || [];
-    const prefix = type === 'email' ? 'EMAIL' : 'PHONE';
-    return methods.filter(m => m.type.startsWith(prefix));
+  const handleDeleteConnection = async (connectionId: string) => {
+    if (!confirm('Are you sure you want to remove this connection?')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/crm/organisation-connections/${connectionId}`, {
+        method: 'DELETE'
+      });
+
+      if (response.ok) {
+        toast.success('Connection removed successfully');
+        await fetchRelatedData(); // Reload connections
+      } else {
+        toast.error('Failed to remove connection');
+      }
+    } catch (error) {
+      console.error('Error removing connection:', error);
+      toast.error('Error removing connection');
+    }
   };
 
-  const addContactMethod = (type: 'email' | 'phone') => {
-    const newMethod = {
-      id: `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      type: type === 'email' ? ContactMethodType.EMAIL_WORK : ContactMethodType.PHONE_WORK,
-      value: '',
-      isPrimary: false
-    };
-    
-    setFormData(prev => ({
-      ...prev,
-      contactMethods: [...(prev.contactMethods || []), newMethod]
-    }));
+  const handleCreateContact = async () => {
+    // Validate required fields
+    if (!contactFormData.firstName || !contactFormData.lastName || !contactFormData.type || !contactFormData.phone || !contactFormData.country) {
+      alert('Please fill in all required fields: First Name, Last Name, Type, Phone, and Country');
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/crm/contacts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...contactFormData, organisationId: orgId })
+      });
+
+      if (response.ok) {
+        setIsContactCreateOpen(false);
+        setContactFormData({
+          firstName: '',
+          lastName: '',
+          type: ContactType.SALES,
+          phone: '',
+          email: '',
+          organisationId: orgId,
+          country: '',
+          state: '',
+          city: ''
+        });
+        setShowCustomCityContact(false);
+        await fetchRelatedData(); // Reload contacts
+        toast.success(`Contact created: ${contactFormData.firstName} ${contactFormData.lastName}`);
+      } else {
+        const errorData = await response.json();
+        toast.error(`Failed to create contact: ${errorData.error}`);
+      }
+    } catch (error) {
+      console.error('Failed to create contact:', error);
+      toast.error('Failed to create contact');
+    }
   };
 
-  const updateContactMethod = (id: string, field: string, value: any) => {
-    setFormData(prev => ({
-      ...prev,
-      contactMethods: (prev.contactMethods || []).map(method =>
-        method.id === id ? { ...method, [field]: value } : method
-      )
-    }));
-  };
-
-  const removeContactMethod = (id: string) => {
-    setFormData(prev => ({
-      ...prev,
-      contactMethods: (prev.contactMethods || []).filter(method => method.id !== id)
-    }));
-  };
-
-  // Business relationship helpers
-  const getBusinessRelationshipsForEditing = () => {
-    return formData.connections || [];
-  };
-
-  const addBusinessRelationship = () => {
-    const newConnection = {
-      id: `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      fromOrganisationId: orgId,
-      toOrganisationId: '',
-      type: 'PARTNER',
-      createdAt: new Date().toISOString()
-    };
-    
-    setFormData(prev => ({
-      ...prev,
-      connections: [...(prev.connections || []), newConnection]
-    }));
-  };
-
-  const updateBusinessRelationship = (id: string, field: string, value: any) => {
-    setFormData(prev => ({
-      ...prev,
-      connections: (prev.connections || []).map(connection =>
-        connection.id === id ? { ...connection, [field]: value } : connection
-      )
-    }));
-  };
-
-  const removeBusinessRelationship = (id: string) => {
-    setFormData(prev => ({
-      ...prev,
-      connections: (prev.connections || []).filter(connection => connection.id !== id)
-    }));
-  };
-
-  const formatCurrency = (amount: number) => {
+  const formatCurrency = (amount: number): string => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
-      minimumFractionDigits: 0
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
     }).format(amount);
   };
 
-  const getSocialIcon = (platform: SocialPlatform) => {
-    switch (platform) {
-      case SocialPlatform.FACEBOOK:
-        return <Facebook className="h-3 w-3" />;
-      case SocialPlatform.INSTAGRAM:
-        return <Instagram className="h-3 w-3" />;
-      case SocialPlatform.TWITTER:
-        return <Twitter className="h-3 w-3" />;
-      default:
-        return <ExternalLink className="h-3 w-3" />;
-    }
-  };
-
-
-  const getRelationshipDescription = (fromType: string, toType: string) => {
-    // Infer relationship from organization types
-    if (fromType === 'DEALER' && toType === 'SHIPPER') return 'Shipping partner';
-    if (fromType === 'SHIPPER' && toType === 'DEALER') return 'Dealer client';
-    if (fromType === 'AUCTION' && toType === 'DEALER') return 'Buyer';
-    if (fromType === 'DEALER' && toType === 'AUCTION') return 'Auction partner';
-    if (fromType === 'EXPEDITOR' && toType === 'SHIPPER') return 'Service provider';
-    if (fromType === 'SHIPPER' && toType === 'EXPEDITOR') return 'Expedition partner';
-    return 'Business partner';
-  };
-
-  if (loading || sessionLoading) {
+  if (sessionLoading || !user || loading) {
     return (
       <AppLayout user={user}>
-        <div className="flex items-center justify-center min-h-96">
-          <LoadingState text="Loading organisation details..." />
-        </div>
+        <LoadingState />
       </AppLayout>
     );
   }
@@ -286,778 +546,1337 @@ export default function OrganisationDetailPage() {
   if (!organisation) {
     return (
       <AppLayout user={user}>
-        <div className="px-4 sm:px-6 lg:px-8 py-6">
-          <div className="text-center">
-            <h2 className="text-2xl font-semibold text-gray-900">Organisation not found</h2>
-            <Button 
-              variant="outline" 
-              onClick={() => router.push('/crm/organisations')}
-              className="mt-4"
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Organisations
-            </Button>
-          </div>
+        <PageHeader
+          title="Organisation Not Found"
+          description="The requested organisation could not be found"
+          breadcrumbs={[{ label: 'CRM' }, { label: 'Organisations', href: '/crm/organisations' }, { label: 'Not Found' }]}
+        />
+        <div className="p-6 text-center">
+          <p className="text-muted-foreground">The organisation you're looking for doesn't exist or has been deleted.</p>
+          <Button className="mt-4" onClick={() => router.push('/crm/organisations')}>
+            Back to Organisations
+          </Button>
         </div>
       </AppLayout>
     );
   }
 
-  const totalDealsValue = deals.reduce((sum, deal) => sum + (deal.amount || 0), 0);
+  const totalDealsValue = deals.reduce((sum, deal) => sum + (deal.value || 0), 0);
   const activeDeals = deals.filter(d => d.status === 'OPEN').length;
-  const wonDeals = deals.filter(d => d.status === 'WON').length;
 
+  // Delete organization function
+  const deleteOrganisation = async () => {
+    if (!organisation) return;
 
-  const orgTypeLabel = organisation.type.toLowerCase().replace('_', ' ');
-  const orgDescription = `${orgTypeLabel}${organisation.industry ? ' • ' + organisation.industry : ''} • ${contacts.length} contacts • ${activeDeals} active deals • ${formatCurrency(totalDealsValue)} total value`;
+    if (!confirm(`Are you sure you want to delete the organization "${organisation.name}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/crm/organisations/${orgId}`, {
+        method: 'DELETE'
+      });
+
+      if (response.ok) {
+        toast.success('Organization deleted successfully');
+        router.push('/crm/organisations');
+      } else {
+        const errorData = await response.json();
+        toast.error(`Failed to delete organization: ${errorData.error}`);
+      }
+    } catch (error) {
+      toast.error('Error deleting organization');
+      console.error('Error:', error);
+    }
+  };
+
+  // Helper function to format organization type display
+  const formatOrgType = (type: OrganizationType) => {
+    return type.toLowerCase().replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+  };
+
+  const orgTypeLabel = formatOrgType(organisation.type);
+
 
   return (
     <AppLayout user={user}>
       <PageHeader
         title={organisation.name}
-        description={orgDescription}
+        description={`${orgTypeLabel} • ${contacts.length} contacts • ${activeDeals} active deals`}
         breadcrumbs={[
           { label: 'CRM', href: '/crm' },
           { label: 'Organisations', href: '/crm/organisations' },
           { label: organisation.name }
         ]}
+        actions={null}
       />
-      
-      <div className="flex-1 overflow-y-auto">
-        <div className="px-4 sm:px-6 lg:px-8 py-4 space-y-4">
 
-          {/* Main Information Card */}
-          <Card>
-            <CardHeader className="pb-4">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-lg">Organisation Details</CardTitle>
-                <div className="flex gap-2">
-                  {editingSections.basicInfo ? (
-                    <>
-                      <Button onClick={() => saveSection('basicInfo')} size="sm">
-                        <Save className="h-4 w-4 mr-1" />
-                        Save
-                      </Button>
-                      <Button variant="outline" onClick={() => cancelEditing('basicInfo')} size="sm">
-                        <X className="h-4 w-4 mr-1" />
-                        Cancel
-                      </Button>
-                    </>
-                  ) : (
-                    <Button 
-                      variant="outline" 
-                      onClick={() => startEditing('basicInfo')} 
-                      size="sm"
-                    >
-                      <Edit2 className="h-4 w-4 mr-1" />
-                      Edit
-                    </Button>
-                  )}
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <Label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Organisation Name</Label>
-                  {editingSections.basicInfo ? (
-                    <Input
-                      value={formData.name || ''}
-                      onChange={(e) => updateField('name', e.target.value)}
-                      className="mt-1"
-                    />
-                  ) : (
-                    <p className="text-sm font-medium mt-1">{organisation.name}</p>
-                  )}
-                </div>
+      <div className="px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+        <Tabs defaultValue="details" className="space-y-6">
+          <div className="flex items-center justify-between">
+            <TabsList>
+              <TabsTrigger value="details" className="flex items-center gap-2">
+                <Building2 className="h-4 w-4" />
+                Details
+              </TabsTrigger>
+              <TabsTrigger value="contacts" className="flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                Contacts ({contacts.length})
+              </TabsTrigger>
+              <TabsTrigger value="partners" className="flex items-center gap-2">
+                <Link2 className="h-4 w-4" />
+                Partners ({connections.length})
+              </TabsTrigger>
+              <TabsTrigger value="deals" className="flex items-center gap-2">
+                <DollarSign className="h-4 w-4" />
+                Deals ({deals.length})
+              </TabsTrigger>
+              <TabsTrigger value="activity" className="flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                Activity Log
+              </TabsTrigger>
+            </TabsList>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={deleteOrganisation}
+              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
 
-                <div>
-                  <Label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Company ID</Label>
-                  {editingSections.basicInfo ? (
-                    <Input
-                      value={formData.companyId || ''}
-                      onChange={(e) => updateField('companyId', e.target.value)}
-                      placeholder="COMP-001"
-                      className="mt-1"
-                    />
-                  ) : (
-                    <p className="text-sm mt-1">
-                      <code className="text-xs font-mono bg-gray-100 px-2 py-1 rounded">
-                        {organisation.companyId || 'Not specified'}
-                      </code>
-                    </p>
-                  )}
-                </div>
+          <TabsContent value="details" className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
-                <div>
-                  <Label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Type</Label>
-                  {editingSections.basicInfo ? (
-                    <Select
-                      value={formData.type || organisation.type}
-                      onValueChange={(value) => updateField('type', value)}
-                    >
-                      <SelectTrigger className="mt-1">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value={OrganizationType.RETAIL_CLIENT}>Retail Client</SelectItem>
-                        <SelectItem value={OrganizationType.DEALER}>Dealer</SelectItem>
-                        <SelectItem value={OrganizationType.EXPEDITOR}>Expeditor</SelectItem>
-                        <SelectItem value={OrganizationType.SHIPPER}>Shipper</SelectItem>
-                        <SelectItem value={OrganizationType.TRANSPORTER}>Transporter</SelectItem>
-                        <SelectItem value={OrganizationType.AUCTION}>Auction House</SelectItem>
-                        <SelectItem value={OrganizationType.PROCESSOR}>Processor</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  ) : (
-                    <p className="text-sm mt-1 capitalize">
-                      {organisation.type.toLowerCase().replace('_', ' ')}
-                    </p>
-                  )}
-                </div>
-                
-                <div>
-                  <Label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Industry</Label>
-                  {editingSections.basicInfo ? (
-                    <Input
-                      value={formData.industry || ''}
-                      onChange={(e) => updateField('industry', e.target.value)}
-                      placeholder="e.g., Automotive, Technology"
-                      className="mt-1"
-                    />
-                  ) : (
-                    <p className="text-sm mt-1">{organisation.industry || 'Not specified'}</p>
-                  )}
-                </div>
-
-                <div>
-                  <Label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Company Size</Label>
-                  {editingSections.basicInfo ? (
-                    <Input
-                      value={formData.size || ''}
-                      onChange={(e) => updateField('size', e.target.value)}
-                      placeholder="e.g., 1-10, 50-100"
-                      className="mt-1"
-                    />
-                  ) : (
-                    <p className="text-sm mt-1">{organisation.size || 'Not specified'}</p>
-                  )}
-                </div>
-
-                <div>
-                  <Label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Website</Label>
-                  {editingSections.basicInfo ? (
-                    <Input
-                      value={formData.website || ''}
-                      onChange={(e) => updateField('website', e.target.value)}
-                      placeholder="https://example.com"
-                      className="mt-1"
-                    />
-                  ) : (
-                    <p className="text-sm mt-1">
-                      {organisation.website ? (
-                        <a
-                          href={organisation.website}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-600 hover:underline inline-flex items-center gap-1"
-                        >
-                          <Globe className="h-3 w-3" />
-                          {organisation.website.replace('https://', '').replace('http://', '')}
-                        </a>
-                      ) : (
-                        'Not specified'
-                      )}
-                    </p>
-                  )}
-                </div>
-              </div>
-
-
-              
-              {/* Contact Information */}
-              <div className="border-t pt-4">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-medium text-gray-900">Contact Information</h3>
-                  {!editingSections.contactInfo ? (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => startEditing('contactInfo')}
-                      className="h-7 px-3 text-xs"
-                    >
-                      <Edit2 className="h-3 w-3 mr-1" />
-                      Edit
-                    </Button>
-                  ) : (
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => cancelEditing('contactInfo')}
-                        className="h-7 px-3 text-xs"
-                      >
-                        <X className="h-3 w-3 mr-1" />
-                        Cancel
-                      </Button>
-                      <Button
-                        size="sm"
-                        onClick={() => saveSection('contactInfo', { contactMethods: formData.contactMethods })}
-                        className="h-7 px-3 text-xs"
-                      >
-                        <Save className="h-3 w-3 mr-1" />
-                        Save
-                      </Button>
-                    </div>
-                  )}
-                </div>
-                {editingSections.contactInfo ? (
-                  <div className="space-y-4">
-                    {/* Email Addresses */}
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <Label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Email Addresses</Label>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => addContactMethod('email')}
-                          className="h-6 px-2 text-xs"
-                        >
-                          <Plus className="h-3 w-3 mr-1" />
-                          Add Email
-                        </Button>
-                      </div>
-                      <div className="space-y-2">
-                        {getContactMethodsForEditing('email').map((method, index) => (
-                          <div key={method.id || `email-${index}`} className="flex items-center gap-2">
-                            <Mail className="h-3 w-3 text-gray-500 flex-shrink-0" />
-                            <Input
-                              value={method.value}
-                              onChange={(e) => updateContactMethod(method.id || `email-${index}`, 'value', e.target.value)}
-                              placeholder="email@example.com"
-                              className="flex-1"
-                            />
-                            <Select
-                              value={method.type}
-                              onValueChange={(value) => updateContactMethod(method.id || `email-${index}`, 'type', value)}
-                            >
-                              <SelectTrigger className="w-32">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value={ContactMethodType.EMAIL_WORK}>Work</SelectItem>
-                                <SelectItem value={ContactMethodType.EMAIL_PERSONAL}>Personal</SelectItem>
-                                <SelectItem value={ContactMethodType.EMAIL_OTHER}>Other</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => removeContactMethod(method.id || `email-${index}`)}
-                              className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        ))}
-                        {getContactMethodsForEditing('email').length === 0 && (
-                          <p className="text-xs text-gray-400">No email addresses</p>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Phone Numbers */}
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <Label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Phone Numbers</Label>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => addContactMethod('phone')}
-                          className="h-6 px-2 text-xs"
-                        >
-                          <Plus className="h-3 w-3 mr-1" />
-                          Add Phone
-                        </Button>
-                      </div>
-                      <div className="space-y-2">
-                        {getContactMethodsForEditing('phone').map((method, index) => (
-                          <div key={method.id || `phone-${index}`} className="flex items-center gap-2">
-                            <Phone className="h-3 w-3 text-gray-500 flex-shrink-0" />
-                            <Input
-                              value={method.value}
-                              onChange={(e) => updateContactMethod(method.id || `phone-${index}`, 'value', e.target.value)}
-                              placeholder="+1-555-0100"
-                              className="flex-1"
-                            />
-                            <Select
-                              value={method.type}
-                              onValueChange={(value) => updateContactMethod(method.id || `phone-${index}`, 'type', value)}
-                            >
-                              <SelectTrigger className="w-32">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value={ContactMethodType.PHONE_WORK}>Work</SelectItem>
-                                <SelectItem value={ContactMethodType.PHONE_MOBILE}>Mobile</SelectItem>
-                                <SelectItem value={ContactMethodType.PHONE_HOME}>Home</SelectItem>
-                                <SelectItem value={ContactMethodType.PHONE_FAX}>Fax</SelectItem>
-                                <SelectItem value={ContactMethodType.PHONE_OTHER}>Other</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => removeContactMethod(method.id || `phone-${index}`)}
-                              className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        ))}
-                        {getContactMethodsForEditing('phone').length === 0 && (
-                          <p className="text-xs text-gray-400">No phone numbers</p>
-                        )}
-                      </div>
-                    </div>
+              {/* Basic Information Card */}
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <div>
+                    <CardTitle>Basic Information</CardTitle>
+                    <CardDescription>Organisation details and classification</CardDescription>
                   </div>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Email Addresses</Label>
-                      {organisation.contactMethods?.filter(m => m.type.startsWith('EMAIL')).map((method) => (
-                        <div key={method.id} className="flex items-center gap-2 text-sm">
-                          <Mail className="h-3 w-3 text-gray-500" />
-                          <span>{method.value}</span>
-                          <span className="text-xs text-gray-400">({method.type.replace('EMAIL_', '').toLowerCase()})</span>
-                        </div>
-                      ))}
-                      {organisation.email && !organisation.contactMethods?.some(m => m.type.startsWith('EMAIL')) && (
-                        <div className="flex items-center gap-2 text-sm">
-                          <Mail className="h-3 w-3 text-gray-500" />
-                          <span>{organisation.email}</span>
-                        </div>
-                      )}
-                      {!organisation.contactMethods?.some(m => m.type.startsWith('EMAIL')) && !organisation.email && (
-                        <p className="text-xs text-gray-400">No email addresses</p>
-                      )}
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Phone Numbers</Label>
-                      {organisation.contactMethods?.filter(m => m.type.startsWith('PHONE')).map((method) => (
-                        <div key={method.id} className="flex items-center gap-2 text-sm">
-                          <Phone className="h-3 w-3 text-gray-500" />
-                          <span>{method.value}</span>
-                          <span className="text-xs text-gray-400">({method.type.replace('PHONE_', '').toLowerCase()})</span>
-                        </div>
-                      ))}
-                      {organisation.phone && !organisation.contactMethods?.some(m => m.type.startsWith('PHONE')) && (
-                        <div className="flex items-center gap-2 text-sm">
-                          <Phone className="h-3 w-3 text-gray-500" />
-                          <span>{organisation.phone}</span>
-                        </div>
-                      )}
-                      {!organisation.contactMethods?.some(m => m.type.startsWith('PHONE')) && !organisation.phone && (
-                        <p className="text-xs text-gray-400">No phone numbers</p>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              
-              {/* Social Media */}
-              {organisation.socialMedia && organisation.socialMedia.length > 0 && (
-                <div className="border-t pt-4">
-                  <h3 className="text-sm font-medium text-gray-900 mb-3">Social Media</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {organisation.socialMedia.map((social) => (
-                      <a
-                        key={social.id}
-                        href={social.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
-                      >
-                        {getSocialIcon(social.platform)}
-                        <span className="capitalize">{social.platform.toLowerCase()}</span>
-                        <ExternalLink className="h-2.5 w-2.5" />
-                      </a>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              
-              {/* Business Relationships */}
-              {(editingSections.businessRelationships || (connections && connections.length > 0)) && (
-                <div className="border-t pt-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-sm font-medium text-gray-900">Business Relationships</h3>
-                    {!editingSections.businessRelationships ? (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => startEditing('businessRelationships')}
-                        className="h-7 px-3 text-xs"
-                      >
-                        <Edit2 className="h-3 w-3 mr-1" />
-                        Edit
-                      </Button>
+                  <SectionEditButtons
+                    section="basicInfo"
+                    onSave={() => saveSection('basicInfo', basicInfoData)}
+                  />
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <Label htmlFor="name">Organisation Name <span className="text-red-500">*</span></Label>
+                    {editingSections.basicInfo ? (
+                      <Input
+                        id="name"
+                        value={basicInfoData.name}
+                        onChange={(e) => setBasicInfoData({ ...basicInfoData, name: e.target.value })}
+                        placeholder="Organisation name"
+                        className="mt-1"
+                      />
                     ) : (
-                      <div className="flex gap-2">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={addBusinessRelationship}
-                          className="h-7 px-3 text-xs"
-                        >
-                          <Plus className="h-3 w-3 mr-1" />
-                          Add
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => cancelEditing('businessRelationships')}
-                          className="h-7 px-3 text-xs"
-                        >
-                          <X className="h-3 w-3 mr-1" />
-                          Cancel
-                        </Button>
-                        <Button
-                          size="sm"
-                          onClick={() => saveSection('businessRelationships', { connections: formData.connections })}
-                          className="h-7 px-3 text-xs"
-                        >
-                          <Save className="h-3 w-3 mr-1" />
-                          Save
-                        </Button>
-                      </div>
+                      <p className="text-sm text-gray-900 mt-1">
+                        {organisation.name || 'Not specified'}
+                      </p>
                     )}
                   </div>
-                  <div className="space-y-2">
-                    {editingSections.businessRelationships ? (
-                      <>
-                        {getBusinessRelationshipsForEditing().map((connection, index) => (
-                          <div key={connection.id || `rel-${index}`} className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
-                            <Building2 className="h-4 w-4 text-gray-600 flex-shrink-0" />
+
+                  <div>
+                    <Label htmlFor="type">Type <span className="text-red-500">*</span></Label>
+                    {editingSections.basicInfo ? (
+                      <Select
+                        value={basicInfoData.type}
+                        onValueChange={(value) => setBasicInfoData({ ...basicInfoData, type: value as OrganizationType })}
+                      >
+                        <SelectTrigger className="mt-1">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Object.values(OrganizationType).map((type) => (
+                            <SelectItem key={type} value={type}>
+                              {formatOrgType(type)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <p className="text-sm text-gray-900 mt-1">
+                        {formatOrgType(organisation.type)}
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <Label htmlFor="size">Size</Label>
+                    {editingSections.basicInfo ? (
+                      <Input
+                        id="size"
+                        value={basicInfoData.size}
+                        onChange={(e) => setBasicInfoData({ ...basicInfoData, size: e.target.value })}
+                        placeholder="50-100"
+                        className="mt-1"
+                      />
+                    ) : (
+                      <p className="text-sm text-gray-900 mt-1">
+                        {organisation.size || 'Not specified'}
+                      </p>
+                    )}
+                  </div>
+
+                </CardContent>
+              </Card>
+
+              {/* Contact Information Card */}
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <div>
+                    <CardTitle>Contact Information</CardTitle>
+                    <CardDescription>Phone numbers, emails, and contact methods</CardDescription>
+                  </div>
+                  <SectionEditButtons
+                    section="contactInfo"
+                    onSave={() => saveSection('contactInfo', { contactMethods: contactInfoData.contactMethods })}
+                  />
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <Label>Contact Methods</Label>
+                    {editingSections.contactInfo ? (
+                      <div className="mt-1 space-y-3">
+                        {contactInfoData.contactMethods.map((method, index) => (
+                          <div key={method.id || index} className="flex gap-2 items-start">
                             <Select
-                              value={connection.toOrganisationId}
-                              onValueChange={(value) => updateBusinessRelationship(connection.id || `rel-${index}`, 'toOrganisationId', value)}
+                              value={method.type}
+                              onValueChange={(value) => updateContactMethod(index, 'type', value)}
                             >
-                              <SelectTrigger className="flex-1">
-                                <SelectValue placeholder="Select organization..." />
+                              <SelectTrigger className="w-32">
+                                <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
-                                {availableOrgs.map((org) => (
-                                  <SelectItem key={org.id} value={org.id}>
-                                    {org.name}
+                                {Object.values(ContactMethodType).map((type) => (
+                                  <SelectItem key={type} value={type}>
+                                    {type.toLowerCase().replace('_', ' ')}
                                   </SelectItem>
                                 ))}
                               </SelectContent>
                             </Select>
+                            <Input
+                              value={method.value}
+                              onChange={(e) => updateContactMethod(index, 'value', e.target.value)}
+                              placeholder="Contact value"
+                              className="flex-1"
+                            />
+                            <Input
+                              value={method.label || ''}
+                              onChange={(e) => updateContactMethod(index, 'label', e.target.value)}
+                              placeholder="Label"
+                              className="w-24"
+                            />
                             <Button
-                              type="button"
                               variant="outline"
                               size="sm"
-                              onClick={() => removeBusinessRelationship(connection.id || `rel-${index}`)}
-                              className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
+                              onClick={() => removeContactMethod(index)}
                             >
-                              <Trash2 className="h-3 w-3" />
+                              <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
                         ))}
-                        {getBusinessRelationshipsForEditing().length === 0 && (
-                          <p className="text-xs text-gray-400">No business relationships</p>
-                        )}
-                      </>
+                        <Button variant="outline" size="sm" onClick={addContactMethod}>
+                          <Plus className="h-4 w-4 mr-2" />
+                          Add Contact Method
+                        </Button>
+                      </div>
                     ) : (
-                      connections.map((connection) => {
-                        const isOutgoing = connection.fromOrganisationId === orgId;
-                        const relatedOrgId = isOutgoing ? connection.toOrganisationId : connection.fromOrganisationId;
-                        const relatedOrg = connectedOrgs.find(org => org.id === relatedOrgId);
-                        
-                        return (
-                          <div key={connection.id} className="flex items-center gap-3 p-2 bg-gray-50 rounded-lg">
-                            <Building2 className="h-4 w-4 text-gray-600 flex-shrink-0" />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-gray-900 truncate">
-                                {relatedOrg?.name || 'Unknown Organisation'}
-                              </p>
-                              <p className="text-xs text-gray-500">
-                                {relatedOrg ? getRelationshipDescription(organisation.type, relatedOrg.type) : 'Business partner'}
-                              </p>
+                      <div className="mt-1">
+                        {organisation.contactMethods && organisation.contactMethods.length > 0 ? (
+                          <div className="space-y-3">
+                            <div>
+                              <Label className="text-xs font-medium text-gray-700 mb-1 block">Email Addresses</Label>
+                              <div className="space-y-1">
+                                {organisation.contactMethods.filter(m => m.type.includes('EMAIL')).map((method, index) => (
+                                  <div key={method.id || `email-${index}`} className="flex items-center space-x-2 text-sm">
+                                    <Mail className="h-3 w-3 text-gray-500" />
+                                    <span>{method.value}</span>
+                                    {method.label && <span className="text-xs text-gray-500">({method.label})</span>}
+                                  </div>
+                                ))}
+                                {organisation.contactMethods.filter(m => m.type.includes('EMAIL')).length === 0 && (
+                                  <p className="text-xs text-gray-500">No email addresses</p>
+                                )}
+                              </div>
+                            </div>
+
+                            <div>
+                              <Label className="text-xs font-medium text-gray-700 mb-1 block">Phone Numbers</Label>
+                              <div className="space-y-1">
+                                {organisation.contactMethods.filter(m => m.type.includes('PHONE')).map((method, index) => (
+                                  <div key={method.id || `phone-${index}`} className="flex items-center space-x-2 text-sm">
+                                    <Phone className="h-3 w-3 text-gray-500" />
+                                    <span>{method.value}</span>
+                                    {method.label && <span className="text-xs text-gray-500">({method.label})</span>}
+                                  </div>
+                                ))}
+                                {organisation.contactMethods.filter(m => m.type.includes('PHONE')).length === 0 && (
+                                  <p className="text-xs text-gray-500">No phone numbers</p>
+                                )}
+                              </div>
                             </div>
                           </div>
-                        );
-                      })
-                    )}
-                  </div>
-                </div>
-              )}
-
-              
-              {/* Address */}
-              <div className="border-t pt-4">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-medium text-gray-900">Address</h3>
-                  {!editingSections.address ? (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => startEditing('address')}
-                      className="h-7 px-3 text-xs"
-                    >
-                      <Edit2 className="h-3 w-3 mr-1" />
-                      Edit
-                    </Button>
-                  ) : (
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => cancelEditing('address')}
-                        className="h-7 px-3 text-xs"
-                      >
-                        <X className="h-3 w-3 mr-1" />
-                        Cancel
-                      </Button>
-                      <Button
-                        size="sm"
-                        onClick={() => saveSection('address', { 
-                          address: formData.address,
-                          city: formData.city,
-                          state: formData.state,
-                          country: formData.country
-                        })}
-                        className="h-7 px-3 text-xs"
-                      >
-                        <Save className="h-3 w-3 mr-1" />
-                        Save
-                      </Button>
-                    </div>
-                  )}
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="md:col-span-3">
-                    <Label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Street Address</Label>
-                    {editingSections.address ? (
-                      <Input
-                        value={formData.address || ''}
-                        onChange={(e) => updateField('address', e.target.value)}
-                        placeholder="123 Main Street"
-                        className="mt-1"
-                      />
-                    ) : (
-                      <p className="text-sm mt-1">{organisation.address || 'Not specified'}</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <Label className="text-xs font-medium text-gray-500 uppercase tracking-wide">City</Label>
-                    {editingSections.address ? (
-                      <Input
-                        value={formData.city || ''}
-                        onChange={(e) => updateField('city', e.target.value)}
-                        placeholder="New York"
-                        className="mt-1"
-                      />
-                    ) : (
-                      <p className="text-sm mt-1">{organisation.city || 'Not specified'}</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <Label className="text-xs font-medium text-gray-500 uppercase tracking-wide">State</Label>
-                    {editingSections.address ? (
-                      <Input
-                        value={formData.state || ''}
-                        onChange={(e) => updateField('state', e.target.value)}
-                        placeholder="NY"
-                        className="mt-1"
-                      />
-                    ) : (
-                      <p className="text-sm mt-1">{organisation.state || 'Not specified'}</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <Label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Country</Label>
-                    {editingSections.address ? (
-                      <Input
-                        value={formData.country || ''}
-                        onChange={(e) => updateField('country', e.target.value)}
-                        placeholder="United States"
-                        className="mt-1"
-                      />
-                    ) : (
-                      <p className="text-sm mt-1">{organisation.country || 'Not specified'}</p>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              
-              {/* Notes */}
-              {(editingSections.notes || organisation.notes) && (
-                <div className="border-t pt-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-sm font-medium text-gray-900">Additional Notes</h3>
-                    {!editingSections.notes ? (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => startEditing('notes')}
-                        className="h-7 px-3 text-xs"
-                      >
-                        <Edit2 className="h-3 w-3 mr-1" />
-                        Edit
-                      </Button>
-                    ) : (
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => cancelEditing('notes')}
-                          className="h-7 px-3 text-xs"
-                        >
-                          <X className="h-3 w-3 mr-1" />
-                          Cancel
-                        </Button>
-                        <Button
-                          size="sm"
-                          onClick={() => saveSection('notes', { notes: formData.notes })}
-                          className="h-7 px-3 text-xs"
-                        >
-                          <Save className="h-3 w-3 mr-1" />
-                          Save
-                        </Button>
+                        ) : (
+                          <p className="text-sm text-gray-500">No contact methods available</p>
+                        )}
                       </div>
                     )}
                   </div>
-                  {editingSections.notes ? (
-                    <Textarea
-                      value={formData.notes || ''}
-                      onChange={(e) => updateField('notes', e.target.value)}
-                      placeholder="Add notes about this organisation..."
-                      rows={3}
-                      className="text-sm"
-                    />
-                  ) : (
-                    <p className="text-sm text-gray-700 whitespace-pre-wrap">
-                      {organisation.notes || 'No notes added'}
-                    </p>
-                  )}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                </CardContent>
+              </Card>
 
-          
-          {/* Related Information */}
-          <Tabs defaultValue="contacts" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="contacts">Contacts ({contacts.length})</TabsTrigger>
-              <TabsTrigger value="deals">Deals ({deals.length})</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="contacts" className="space-y-2">
-              {contacts.length > 0 ? (
-                <div className="space-y-2">
-                  {contacts.map((contact) => (
-                    <div
-                      key={contact.id}
-                      className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer transition-colors"
-                      onClick={() => router.push(`/crm/contacts/${contact.id}`)}
-                    >
-                      <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                        <span className="text-xs font-medium text-blue-600">
-                          {contact.firstName[0]}{contact.lastName[0]}
-                        </span>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">
-                          {contact.firstName} {contact.lastName}
+              {/* Address Information Card */}
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <div>
+                    <CardTitle>Address Information</CardTitle>
+                    <CardDescription>Physical location and address details</CardDescription>
+                  </div>
+                  <SectionEditButtons
+                    section="address"
+                    onSave={() => saveSection('address', addressData)}
+                  />
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* Location Hierarchy */}
+                  <div className="grid grid-cols-1 gap-4">
+                    <div>
+                      <Label htmlFor="country">Country <span className="text-red-500">*</span></Label>
+                      {editingSections.address ? (
+                        <Select
+                          value={addressData.country}
+                          onValueChange={(value) => setAddressData({ ...addressData, country: value, state: '', city: '' })}
+                        >
+                          <SelectTrigger className="mt-1">
+                            <SelectValue placeholder="Select country..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {COUNTRIES_REGIONS.countries.map((country) => (
+                              <SelectItem key={country.code} value={country.code}>
+                                {country.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <p className="text-sm text-gray-900 mt-1">
+                          {organisation.country || 'Not specified'}
                         </p>
-                        {contact.title && (
-                          <p className="text-xs text-gray-500 truncate">{contact.title}</p>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="state">State/Region</Label>
+                        {editingSections.address ? (
+                          <Select
+                            value={addressData.state}
+                            onValueChange={(value) => setAddressData({ ...addressData, state: value, city: '' })}
+                          >
+                            <SelectTrigger className="mt-1">
+                              <SelectValue placeholder="Select state/region..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {getRegionsByCountryCode(addressData.country).map((region) => (
+                                <SelectItem key={region.code} value={region.code}>
+                                  {region.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <p className="text-sm text-gray-900 mt-1">
+                            {organisation.state ? getRegionDisplayName(organisation.country || '', organisation.state) : 'Not specified'}
+                          </p>
                         )}
                       </div>
-                      <div className="text-right flex-shrink-0">
-                        {contact.email && (
-                          <p className="text-xs text-gray-600 truncate max-w-[120px]">{contact.email}</p>
-                        )}
-                        {contact.phone && (
-                          <p className="text-xs text-gray-500">{contact.phone}</p>
+
+                      <div>
+                        <Label htmlFor="city">City</Label>
+                        {editingSections.address ? (
+                          getCitiesByRegion(addressData.country, addressData.state).length > 0 ? (
+                            <>
+                              <Select
+                                value={showCustomCityOrg ? '__custom__' : addressData.city}
+                                onValueChange={(value) => {
+                                  if (value === '__custom__') {
+                                    setShowCustomCityOrg(true);
+                                    setAddressData({ ...addressData, city: '' });
+                                  } else {
+                                    setShowCustomCityOrg(false);
+                                    setAddressData({ ...addressData, city: value });
+                                  }
+                                }}
+                              >
+                                <SelectTrigger className="mt-1">
+                                  <SelectValue placeholder="Select city..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {getCitiesByRegion(addressData.country, addressData.state).map((city) => (
+                                    <SelectItem key={city} value={city}>
+                                      {city}
+                                    </SelectItem>
+                                  ))}
+                                  <SelectItem value="__custom__">Other/Custom city...</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              {showCustomCityOrg && (
+                                <Input
+                                  id="city"
+                                  value={addressData.city}
+                                  onChange={(e) => setAddressData({ ...addressData, city: e.target.value })}
+                                  placeholder="Enter city name..."
+                                  className="mt-2"
+                                />
+                              )}
+                            </>
+                          ) : (
+                            <Input
+                              id="city"
+                              value={addressData.city}
+                              onChange={(e) => setAddressData({ ...addressData, city: e.target.value })}
+                              placeholder="Enter city name..."
+                              className="mt-1"
+                            />
+                          )
+                        ) : (
+                          <p className="text-sm text-gray-900 mt-1">
+                            {organisation.city || 'Not specified'}
+                          </p>
                         )}
                       </div>
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-6 text-gray-500">
-                  <Users className="h-8 w-8 mx-auto mb-2 text-gray-300" />
-                  <p className="text-sm">No contacts found</p>
-                </div>
-              )}
-            </TabsContent>
+                  </div>
 
-            <TabsContent value="deals" className="space-y-2">
-              {deals.length > 0 ? (
-                <div className="space-y-2">
-                  {deals.map((deal) => (
-                    <div
-                      key={deal.id}
-                      className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer transition-colors"
-                      onClick={() => router.push(`/crm/deals?id=${deal.id}`)}
-                    >
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">{deal.title}</p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <Badge
-                            variant={
-                              deal.status === 'WON' ? 'default' :
-                              deal.status === 'LOST' ? 'destructive' :
-                              'secondary'
+                  {/* Address Details */}
+                  <div className="border-t border-gray-200 pt-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="address">Street Address</Label>
+                        {editingSections.address ? (
+                          <Input
+                            id="address"
+                            value={addressData.address}
+                            onChange={(e) => setAddressData({ ...addressData, address: e.target.value })}
+                            placeholder="123 Business Street"
+                            className="mt-1"
+                          />
+                        ) : (
+                          <p className="text-sm text-gray-900 mt-1">
+                            {organisation.address || 'Not specified'}
+                          </p>
+                        )}
+                      </div>
+
+                      <div>
+                        <Label htmlFor="postalCode">Postal Code</Label>
+                        {editingSections.address ? (
+                          <Input
+                            id="postalCode"
+                            value={addressData.postalCode}
+                            onChange={(e) => setAddressData({ ...addressData, postalCode: e.target.value })}
+                            placeholder="12345"
+                            className="mt-1"
+                          />
+                        ) : (
+                          <p className="text-sm text-gray-900 mt-1">
+                            {organisation.postalCode || 'Not specified'}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Social Media Card */}
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <div>
+                    <CardTitle>Social Media</CardTitle>
+                    <CardDescription>Social media profiles and links</CardDescription>
+                  </div>
+                  <SectionEditButtons
+                    section="socialMedia"
+                    onSave={() => saveSection('socialMedia', { socialMedia: socialMediaData.socialMedia })}
+                  />
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <Label>Social Media Links</Label>
+                    {editingSections.socialMedia ? (
+                      <div className="mt-1 space-y-3">
+                        {socialMediaData.socialMedia.map((link, index) => (
+                          <div key={link.id || index} className="flex gap-2 items-start">
+                            <Select
+                              value={link.platform}
+                              onValueChange={(value) => updateSocialMediaLink(index, 'platform', value)}
+                            >
+                              <SelectTrigger className="w-32">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {Object.values(SocialPlatform).map((platform) => (
+                                  <SelectItem key={platform} value={platform}>
+                                    {platform}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <Input
+                              value={link.url}
+                              onChange={(e) => updateSocialMediaLink(index, 'url', e.target.value)}
+                              placeholder="Profile URL"
+                              className="flex-1"
+                            />
+                            <Input
+                              value={link.username || ''}
+                              onChange={(e) => updateSocialMediaLink(index, 'username', e.target.value)}
+                              placeholder="Username"
+                              className="w-32"
+                            />
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => removeSocialMediaLink(index)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ))}
+                        <Button variant="outline" size="sm" onClick={addSocialMediaLink}>
+                          <Plus className="h-4 w-4 mr-2" />
+                          Add Social Media
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="mt-1">
+                        {organisation.socialMedia && organisation.socialMedia.length > 0 ? (
+                          <div className="space-y-2">
+                            {organisation.socialMedia.map((link, index) => (
+                              <div key={link.id || index} className="flex items-center space-x-2 text-sm">
+                                {link.platform === SocialPlatform.FACEBOOK && <Facebook className="h-4 w-4 text-blue-600" />}
+                                {link.platform === SocialPlatform.INSTAGRAM && <Instagram className="h-4 w-4 text-pink-600" />}
+                                {link.platform === SocialPlatform.TWITTER && <Twitter className="h-4 w-4 text-blue-400" />}
+                                {![SocialPlatform.FACEBOOK, SocialPlatform.INSTAGRAM, SocialPlatform.TWITTER].includes(link.platform) && <Globe className="h-4 w-4 text-gray-600" />}
+                                <span>{link.platform}</span>
+                                <a href={link.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                                  {link.username || link.url}
+                                </a>
+                                <ExternalLink className="h-3 w-3 text-gray-400" />
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-gray-500">No social media links</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Type-Specific Information Card */}
+              {getTypeSpecificFields(organisation.type).length > 0 && (
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <div>
+                      <CardTitle>Type-Specific Information</CardTitle>
+                      <CardDescription>{formatOrgType(organisation.type)} specific fields</CardDescription>
+                    </div>
+                    <SectionEditButtons
+                      section="typeSpecific"
+                      onSave={() => saveSection('typeSpecific', { customFields: typeSpecificData.customFields })}
+                    />
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {getTypeSpecificFields(organisation.type).map((field) => (
+                      <div key={field.key}>
+                        <Label>{field.name}</Label>
+                        {editingSections.typeSpecific ? (
+                          field.type === CustomFieldType.SELECT ? (
+                            <Select
+                              value={typeSpecificData.customFields[field.key] as string || ''}
+                              onValueChange={(value) => setTypeSpecificData({
+                                ...typeSpecificData,
+                                customFields: { ...typeSpecificData.customFields, [field.key]: value }
+                              })}
+                            >
+                              <SelectTrigger className="mt-1">
+                                <SelectValue placeholder={`Select ${field.name.toLowerCase()}`} />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {field.options?.map((option) => (
+                                  <SelectItem key={option} value={option}>
+                                    {option}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          ) : field.type === CustomFieldType.MULTISELECT ? (
+                            <div className="mt-1 space-y-2">
+                              {field.options?.map((option) => {
+                                const currentValues = (typeSpecificData.customFields[field.key] as string[]) || [];
+                                const isSelected = currentValues.includes(option);
+                                return (
+                                  <label key={option} className="flex items-center space-x-2 cursor-pointer">
+                                    <input
+                                      type="checkbox"
+                                      checked={isSelected}
+                                      onChange={(e) => {
+                                        let newValues: string[];
+                                        if (e.target.checked) {
+                                          newValues = [...currentValues, option];
+                                        } else {
+                                          newValues = currentValues.filter(v => v !== option);
+                                        }
+                                        setTypeSpecificData({
+                                          ...typeSpecificData,
+                                          customFields: { ...typeSpecificData.customFields, [field.key]: newValues }
+                                        });
+                                      }}
+                                      className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                    />
+                                    <span className="text-sm text-gray-700">{option}</span>
+                                  </label>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <Input
+                              value={typeSpecificData.customFields[field.key] as string || ''}
+                              onChange={(e) => setTypeSpecificData({
+                                ...typeSpecificData,
+                                customFields: { ...typeSpecificData.customFields, [field.key]: e.target.value }
+                              })}
+                              placeholder={`Enter ${field.name.toLowerCase()}`}
+                              className="mt-1"
+                            />
+                          )
+                        ) : (
+                          <p className="text-sm text-gray-900 mt-1">
+                            {field.type === CustomFieldType.MULTISELECT
+                              ? (organisation.customFields?.[field.key] as string[])?.join(', ') || 'Not specified'
+                              : organisation.customFields?.[field.key] || 'Not specified'
                             }
-                            className="text-xs px-1.5 py-0.5"
-                          >
-                            {deal.status}
-                          </Badge>
-                          {deal.amount && (
-                            <span className="text-xs text-gray-600">
-                              {formatCurrency(deal.amount)}
-                            </span>
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Notes Card */}
+              <Card className="md:col-span-2">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <div>
+                    <CardTitle>Notes</CardTitle>
+                    <CardDescription>Additional notes and comments</CardDescription>
+                  </div>
+                  <SectionEditButtons
+                    section="notes"
+                    onSave={() => saveSection('notes', { notes: notesData.notes })}
+                  />
+                </CardHeader>
+                <CardContent>
+                  <div>
+                    <Label htmlFor="notes">Organisation Notes</Label>
+                    {editingSections.notes ? (
+                      <Textarea
+                        id="notes"
+                        value={notesData.notes}
+                        onChange={(e) => setNotesData({ ...notesData, notes: e.target.value })}
+                        placeholder="Add notes about this organisation..."
+                        rows={4}
+                        className="mt-1"
+                      />
+                    ) : (
+                      <p className="text-sm text-gray-900 mt-1">
+                        {organisation.notes || 'No notes added'}
+                      </p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="contacts" className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-medium">Contacts ({contacts.length})</h3>
+                <p className="text-sm text-muted-foreground">
+                  People associated with this organisation
+                </p>
+              </div>
+              <Button onClick={() => setIsContactCreateOpen(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Add Contact
+              </Button>
+            </div>
+
+            {contacts.length === 0 ? (
+              <Card>
+                <CardContent className="text-center py-12">
+                  <Users className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+                  <h4 className="text-lg font-medium mb-2">No contacts found</h4>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Add contacts to track people at this organisation
+                  </p>
+                  <Button onClick={() => setIsContactCreateOpen(true)}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add First Contact
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {contacts.map(contact => (
+                  <Card key={contact.id} className="cursor-pointer hover:shadow-md transition-shadow"
+                        onClick={() => router.push(`/crm/contacts/${contact.id}`)}>
+                    <CardContent className="p-4">
+                      <div className="flex items-start gap-3">
+                        <div className="bg-blue-100 rounded-full p-2">
+                          <Users className="h-4 w-4 text-blue-600" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-medium text-sm text-gray-900 truncate">
+                            {contact.firstName} {contact.lastName}
+                          </h4>
+                          <div className="mb-2">
+                            {contact.type ? (
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                {contact.type.replace(/_/g, ' ')}
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                Contact
+                              </span>
+                            )}
+                          </div>
+                          {contact.contactMethods && contact.contactMethods.length > 0 && (
+                            <div className="space-y-1">
+                              {contact.contactMethods.slice(0, 2).map((method, index) => (
+                                <div key={method.id || index} className="flex items-center gap-1 text-xs text-gray-600">
+                                  {method.type.includes('EMAIL') ? <Mail className="h-3 w-3" /> : <Phone className="h-3 w-3" />}
+                                  <span className="truncate">{method.value}</span>
+                                </div>
+                              ))}
+                            </div>
                           )}
                         </div>
                       </div>
-                      <div className="text-right flex-shrink-0">
-                        <p className="text-xs text-gray-600">
-                          {new Date(deal.createdAt).toLocaleDateString()}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="partners" className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-medium">Business Partners ({connections.length})</h3>
+                <p className="text-sm text-muted-foreground">
+                  Connected organisations and business relationships
+                </p>
+              </div>
+              <Dialog open={isConnectionDialogOpen} onOpenChange={setIsConnectionDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Partner
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-lg">
+                  <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                      <Link2 className="h-5 w-5 text-blue-600" />
+                      Add Business Partner
+                    </DialogTitle>
+                    <p className="text-sm text-muted-foreground">
+                      Connect {organisation?.name} with another organisation to establish a business relationship
+                    </p>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="connection-org" className="text-sm font-medium">Select Organisation</Label>
+                      <Select
+                        value={newConnection.toOrganisationId}
+                        onValueChange={(value) => setNewConnection({ toOrganisationId: value })}
+                      >
+                        <SelectTrigger className="mt-2">
+                          <SelectValue placeholder="Choose an organisation..." />
+                        </SelectTrigger>
+                        <SelectContent position="popper" className="max-h-[300px] overflow-y-auto">
+                          {availableOrgs
+                            .filter(org => !connectedOrgs.some(c => c.id === org.id))
+                            .sort((a, b) => a.name.localeCompare(b.name))
+                            .map((org) => (
+                              <SelectItem key={org.id} value={org.id}>
+                                <div className="flex items-center justify-between w-full">
+                                  <span className="font-medium">{org.name}</span>
+                                  <span className="text-xs text-muted-foreground ml-2">
+                                    {formatOrgType(org.type)}
+                                  </span>
+                                </div>
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                      {availableOrgs.filter(org => !connectedOrgs.some(c => c.id === org.id)).length === 0 && (
+                        <p className="text-xs text-amber-600 mt-1">
+                          All available organisations are already connected
                         </p>
-                        {deal.probability && (
-                          <p className="text-xs text-gray-500">{deal.probability}%</p>
-                        )}
-                      </div>
+                      )}
                     </div>
-                  ))}
+                    <div className="flex justify-end gap-2 pt-4">
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setIsConnectionDialogOpen(false);
+                          setNewConnection({ toOrganisationId: '' });
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        onClick={handleAddConnection}
+                        disabled={!newConnection.toOrganisationId}
+                        className="bg-blue-600 hover:bg-blue-700"
+                      >
+                        Add Partner
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </div>
+
+            {connections.length === 0 ? (
+              <Card>
+                <CardContent className="text-center py-12">
+                  <Link2 className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+                  <h4 className="text-lg font-medium mb-2">No partners yet</h4>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Connect with other organisations to establish business relationships
+                  </p>
+                  <Dialog open={isConnectionDialogOpen} onOpenChange={setIsConnectionDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add First Partner
+                      </Button>
+                    </DialogTrigger>
+                  </Dialog>
+                </CardContent>
+              </Card>
+            ) : (
+              <>
+                {/* Organization Type Filter */}
+                <div className="flex items-center gap-3 pb-4">
+                  <Label className="text-sm font-medium text-gray-700">Filter by type:</Label>
+                  <Select value={partnerFilter} onValueChange={setPartnerFilter}>
+                    <SelectTrigger className="w-48">
+                      <SelectValue placeholder="Select organization type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Organizations ({connections.length})</SelectItem>
+                      {Array.from(new Set(connectedOrgs.map(org => org.type))).map(type => {
+                        const count = connections.filter(c => {
+                          const relatedOrg = connectedOrgs.find(org => org.id === (c.fromOrganisationId === orgId ? c.toOrganisationId : c.fromOrganisationId));
+                          return relatedOrg?.type === type;
+                        }).length;
+                        return (
+                          <SelectItem key={type} value={type}>
+                            {formatOrgType(type)} ({count})
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
                 </div>
-              ) : (
-                <div className="text-center py-6 text-gray-500">
-                  <DollarSign className="h-8 w-8 mx-auto mb-2 text-gray-300" />
-                  <p className="text-sm">No deals found</p>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                {connections
+                  .filter(connection => {
+                    if (partnerFilter === 'all') return true;
+                    const relatedOrg = connectedOrgs.find(org => org.id === (connection.fromOrganisationId === orgId ? connection.toOrganisationId : connection.fromOrganisationId));
+                    return relatedOrg?.type === partnerFilter;
+                  })
+                  .sort((a, b) => {
+                    const orgA = connectedOrgs.find(org => org.id === (a.fromOrganisationId === orgId ? a.toOrganisationId : a.fromOrganisationId));
+                    const orgB = connectedOrgs.find(org => org.id === (b.fromOrganisationId === orgId ? b.toOrganisationId : b.fromOrganisationId));
+                    return (orgA?.name || '').localeCompare(orgB?.name || '');
+                  })
+                  .map((connection) => {
+                  const relatedOrg = connectedOrgs.find(
+                    org => org.id === (connection.fromOrganisationId === orgId
+                      ? connection.toOrganisationId
+                      : connection.fromOrganisationId)
+                  );
+
+                  if (!relatedOrg) return null;
+
+                  return (
+                    <Card key={connection.id} className="cursor-pointer hover:shadow-md transition-shadow"
+                          onClick={() => router.push(`/crm/organisations/${relatedOrg.id}`)}>
+                      <CardHeader className="pb-3">
+                        <div className="flex items-center justify-between">
+                          <Building2 className="h-5 w-5 text-muted-foreground" />
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-red-600 hover:text-red-700"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteConnection(connection.id);
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <h4 className="font-medium text-sm mb-1">{relatedOrg.name}</h4>
+                        <p className="text-xs text-muted-foreground mb-2">
+                          {formatOrgType(relatedOrg.type)}
+                        </p>
+                        {relatedOrg.city && relatedOrg.country && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            <MapPin className="h-3 w-3 inline mr-1" />
+                            {relatedOrg.city}, {relatedOrg.country}
+                          </p>
+                        )}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
                 </div>
-              )}
-            </TabsContent>
-          </Tabs>
-        </div>
+              </>
+            )}
+          </TabsContent>
+
+          <TabsContent value="deals" className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-medium">Deals ({deals.length})</h3>
+                <p className="text-sm text-muted-foreground">
+                  {totalDealsValue > 0 && `Total value: ${formatCurrency(totalDealsValue)} • `}
+                  {activeDeals} active deals
+                </p>
+              </div>
+              <Button onClick={() => setIsDealCreateOpen(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Add Deal
+              </Button>
+            </div>
+
+            {deals.length === 0 ? (
+              <Card>
+                <CardContent className="text-center py-12">
+                  <DollarSign className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+                  <h4 className="text-lg font-medium mb-2">No deals found</h4>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Create deals to track sales opportunities with this organisation
+                  </p>
+                  <Button onClick={() => router.push('/crm/deals?orgId=' + orgId)}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create First Deal
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="space-y-4">
+                {deals.map(deal => (
+                  <Card key={deal.id} className="cursor-pointer hover:shadow-md transition-shadow"
+                        onClick={() => router.push(`/crm/deals/${deal.id}`)}>
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-3 mb-2">
+                            <h4 className="font-medium text-sm text-gray-900 truncate">
+                              {deal.title}
+                            </h4>
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                              {deal.value && (
+                                <span className="text-sm font-semibold text-green-600">
+                                  {formatCurrency(deal.value)}
+                                </span>
+                              )}
+                              <Badge
+                                variant={deal.status === 'WON' ? 'default' :
+                                        deal.status === 'LOST' ? 'destructive' : 'secondary'}
+                                className="text-xs"
+                              >
+                                {deal.status}
+                              </Badge>
+                            </div>
+                          </div>
+
+                          {deal.description && (
+                            <p className="text-xs text-gray-600 mb-2 line-clamp-2">
+                              {deal.description}
+                            </p>
+                          )}
+
+                          <div className="flex items-center gap-4 text-xs text-gray-500">
+                            {deal.probability && (
+                              <span>{deal.probability}% probability</span>
+                            )}
+                            <span>Created {new Date(deal.createdAt).toLocaleDateString()}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="activity" className="space-y-4">
+            <Card>
+              <CardContent className="text-center py-12">
+                <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+                <h4 className="text-lg font-medium mb-2">Activity tracking coming soon</h4>
+                <p className="text-sm text-muted-foreground">
+                  Organisation activity history and timeline will be available in the next update
+                </p>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
+
+      {/* Contact Creation Dialog */}
+      <Dialog open={isContactCreateOpen} onOpenChange={setIsContactCreateOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Create New Contact for {organisation?.name}</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            {/* Basic Information */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="firstName">First Name <span className="text-red-500">*</span></Label>
+                <Input
+                  id="firstName"
+                  value={contactFormData.firstName}
+                  onChange={(e) => setContactFormData({ ...contactFormData, firstName: e.target.value })}
+                  placeholder="John"
+                />
+              </div>
+              <div>
+                <Label htmlFor="lastName">Last Name <span className="text-red-500">*</span></Label>
+                <Input
+                  id="lastName"
+                  value={contactFormData.lastName}
+                  onChange={(e) => setContactFormData({ ...contactFormData, lastName: e.target.value })}
+                  placeholder="Doe"
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="type">Contact Type <span className="text-red-500">*</span></Label>
+              <Select value={contactFormData.type || undefined} onValueChange={(value) => setContactFormData({ ...contactFormData, type: value as ContactType })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select contact type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ContactType.ACCOUNTING}>Accounting</SelectItem>
+                  <SelectItem value={ContactType.ADMINISTRATION}>Administration</SelectItem>
+                  <SelectItem value={ContactType.CEO}>CEO</SelectItem>
+                  <SelectItem value={ContactType.FINANCE}>Finance</SelectItem>
+                  <SelectItem value={ContactType.LOGISTICS}>Logistics</SelectItem>
+                  <SelectItem value={ContactType.MARKETING}>Marketing</SelectItem>
+                  <SelectItem value={ContactType.OPERATIONS}>Operations</SelectItem>
+                  <SelectItem value={ContactType.PURCHASING}>Purchasing</SelectItem>
+                  <SelectItem value={ContactType.RETAIL_BUYER}>Retail Buyer</SelectItem>
+                  <SelectItem value={ContactType.SALES}>Sales</SelectItem>
+                  <SelectItem value={ContactType.VP}>VP</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Contact Information */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="phone">Phone <span className="text-red-500">*</span></Label>
+                <Input
+                  id="phone"
+                  value={contactFormData.phone}
+                  onChange={(e) => setContactFormData({ ...contactFormData, phone: e.target.value })}
+                  placeholder="+1-555-0100"
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={contactFormData.email}
+                  onChange={(e) => setContactFormData({ ...contactFormData, email: e.target.value })}
+                  placeholder="john.doe@company.com"
+                />
+              </div>
+            </div>
+
+            {/* Location Information */}
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="country">Country <span className="text-red-500">*</span></Label>
+                <Select
+                  value={contactFormData.country}
+                  onValueChange={(value) => setContactFormData({ ...contactFormData, country: value, state: '', city: '' })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select country..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {COUNTRIES_REGIONS.countries.map((country) => (
+                      <SelectItem key={country.code} value={country.code}>
+                        {country.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="state">State/Region</Label>
+                  <Select
+                    value={contactFormData.state}
+                    onValueChange={(value) => setContactFormData({ ...contactFormData, state: value, city: '' })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select state/region..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {getRegionsByCountryCode(contactFormData.country).map((region) => (
+                        <SelectItem key={region.code} value={region.code}>
+                          {region.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label htmlFor="city">City</Label>
+                  {getCitiesByRegion(contactFormData.country, contactFormData.state).length > 0 ? (
+                    <>
+                      <Select
+                        value={showCustomCityContact ? '__custom__' : contactFormData.city}
+                        onValueChange={(value) => {
+                          if (value === '__custom__') {
+                            setShowCustomCityContact(true);
+                            setContactFormData({ ...contactFormData, city: '' });
+                          } else {
+                            setShowCustomCityContact(false);
+                            setContactFormData({ ...contactFormData, city: value });
+                          }
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select city..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {getCitiesByRegion(contactFormData.country, contactFormData.state).map((city) => (
+                            <SelectItem key={city} value={city}>
+                              {city}
+                            </SelectItem>
+                          ))}
+                          <SelectItem value="__custom__">Other/Custom city...</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      {showCustomCityContact && (
+                        <Input
+                          id="city"
+                          value={contactFormData.city}
+                          onChange={(e) => setContactFormData({ ...contactFormData, city: e.target.value })}
+                          placeholder="Enter city name..."
+                          className="mt-2"
+                        />
+                      )}
+                    </>
+                  ) : (
+                    <Input
+                      id="city"
+                      value={contactFormData.city}
+                      onChange={(e) => setContactFormData({ ...contactFormData, city: e.target.value })}
+                      placeholder="Enter city name..."
+                    />
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setIsContactCreateOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleCreateContact} disabled={!contactFormData.firstName || !contactFormData.lastName || !contactFormData.type || !contactFormData.phone || !contactFormData.country}>
+                Create Contact
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Deal Creation Dialog */}
+      <Dialog open={isDealCreateOpen} onOpenChange={setIsDealCreateOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Create New Deal</DialogTitle>
+            <div className="text-sm text-muted-foreground mt-2">
+              <div className="flex items-center gap-2">
+                <span className="font-medium">Organization:</span>
+                <span>{organisation?.name}</span>
+                {organisation?.type && (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                    {organisation.type.replace(/_/g, ' ')}
+                  </span>
+                )}
+              </div>
+            </div>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="deal-title">Deal Title *</Label>
+                <Input
+                  id="deal-title"
+                  value={dealFormData.title}
+                  onChange={(e) => setDealFormData({ ...dealFormData, title: e.target.value })}
+                  placeholder="Enter deal title..."
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label htmlFor="deal-value">Deal Value</Label>
+                <Input
+                  id="deal-value"
+                  type="number"
+                  value={dealFormData.value}
+                  onChange={(e) => setDealFormData({ ...dealFormData, value: e.target.value })}
+                  placeholder="0.00"
+                  className="mt-1"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="deal-pipeline">Pipeline</Label>
+                <Select
+                  value={dealFormData.pipeline}
+                  onValueChange={(value) => setDealFormData({ ...dealFormData, pipeline: value })}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Select pipeline" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="DEALER">Dealer Pipeline</SelectItem>
+                    <SelectItem value="INTEGRATION">Integration Pipeline</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="deal-stage">Stage *</Label>
+                <Select
+                  value={dealFormData.stage}
+                  onValueChange={(value) => setDealFormData({ ...dealFormData, stage: value })}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Select stage" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {dealFormData.pipeline === 'DEALER' ? (
+                      <>
+                        <SelectItem value="LEAD">Lead</SelectItem>
+                        <SelectItem value="QUALIFICATION">Qualification</SelectItem>
+                        <SelectItem value="PROPOSAL">Proposal</SelectItem>
+                        <SelectItem value="NEGOTIATION">Negotiation</SelectItem>
+                        <SelectItem value="CLOSING">Closing</SelectItem>
+                      </>
+                    ) : (
+                      <>
+                        <SelectItem value="DISCOVERY">Discovery</SelectItem>
+                        <SelectItem value="TECHNICAL_REVIEW">Technical Review</SelectItem>
+                        <SelectItem value="INTEGRATION">Integration</SelectItem>
+                        <SelectItem value="TESTING">Testing</SelectItem>
+                        <SelectItem value="DEPLOYMENT">Deployment</SelectItem>
+                      </>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="deal-contact">Contact</Label>
+              <Select
+                value={dealFormData.contactId}
+                onValueChange={(value) => setDealFormData({ ...dealFormData, contactId: value })}
+              >
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Select contact (optional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  {contacts.map((contact) => (
+                    <SelectItem key={contact.id} value={contact.id}>
+                      {contact.firstName} {contact.lastName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="deal-description">Description</Label>
+              <Textarea
+                id="deal-description"
+                value={dealFormData.description}
+                onChange={(e) => setDealFormData({ ...dealFormData, description: e.target.value })}
+                placeholder="Enter deal description..."
+                rows={3}
+                className="mt-1"
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-4">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsDealCreateOpen(false);
+                  setDealFormData({
+                    title: '',
+                    description: '',
+                    value: '',
+                    stage: '',
+                    contactId: '',
+                    pipeline: 'DEALER'
+                  });
+                }}
+              >
+                Cancel
+              </Button>
+              <Button onClick={handleCreateDeal}>
+                Create Deal
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 }

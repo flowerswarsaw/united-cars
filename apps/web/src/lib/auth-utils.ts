@@ -31,6 +31,25 @@ export async function getSession(request: NextRequest): Promise<Session | null> 
   try {
     const sessionCookie = request.cookies.get('session')
     if (!sessionCookie?.value) {
+      // In development mode, provide a mock admin user
+      if (process.env.NODE_ENV === 'development') {
+        const mockAdminUser = {
+          id: 'admin-dev-user',
+          email: 'admin@unitedcars.com',
+          name: 'Development Admin',
+          orgId: 'org-admin',
+          orgName: 'United Cars Admin',
+          orgType: 'ADMIN',
+          roles: ['ADMIN', 'SUPER_ADMIN', 'USER']
+        }
+        
+        // Update request context with mock user info
+        requestContext.userId = mockAdminUser.id
+        requestContext.orgId = mockAdminUser.orgId
+        
+        return { user: mockAdminUser }
+      }
+      
       // Log authentication attempt without session
       LogUtils.securityEvent(
         'unauthorized_access',

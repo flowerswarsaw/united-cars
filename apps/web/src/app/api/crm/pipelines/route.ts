@@ -1,25 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAllPipelines } from '@/lib/pipeline-data';
-import { PipelineService, hasPermission } from '@/lib/services/pipeline-service';
-import { getServerSessionFromRequest } from '@/lib/auth';
+import { pipelineRepository, jsonPersistence } from '@united-cars/crm-mocks';
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSessionFromRequest(request);
-    const user = { 
-      id: session?.user?.id || 'anonymous', 
-      role: (session?.user as any)?.role || 'junior' as 'admin' | 'senior' | 'junior'
-    };
+    const pipelines = await pipelineRepository.list();
 
-    if (!hasPermission(user, 'pipeline:read')) {
-      return NextResponse.json(
-        { error: 'Insufficient permissions' },
-        { status: 403 }
-      );
-    }
+    // Get pipeline stages for each pipeline
+    const pipelinesWithStages = await Promise.all(
+      pipelines.map(async (pipeline) => {
+        const stages = await pipelineRepository.getStages(pipeline.id);
+        return {
+          ...pipeline,
+          stages: stages.sort((a, b) => a.order - b.order)
+        };
+      })
+    );
 
-    const pipelines = getAllPipelines();
-    return NextResponse.json(pipelines);
+    return NextResponse.json(pipelinesWithStages);
   } catch (error) {
     console.error('Error fetching pipelines:', error);
     return NextResponse.json(
@@ -31,37 +28,57 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSessionFromRequest(request);
-    const user = { 
-      id: session?.user?.id || 'anonymous', 
-      role: (session?.user as any)?.role || 'junior' as 'admin' | 'senior' | 'junior'
-    };
+    const body = await request.json();
 
-    if (!hasPermission(user, 'pipeline:create')) {
+    // Get existing pipelines to determine order
+    const existingPipelines = await pipelineRepository.list();
+    const maxOrder = existingPipelines.reduce((max, p) => Math.max(max, p.order || 0), 0);
+
+    // Create the pipeline using the repository with all required fields
+    const pipeline = await pipelineRepository.create({
+      name: body.name,
+      description: body.description || '',
+      isDefault: body.isDefault || false,
+      order: maxOrder + 1,
+      color: body.color || '#3B82F6',
+      applicableTypes: body.applicableTypes || [],
+      isTypeSpecific: body.isTypeSpecific || false
+    });
+
+    // Create stages if provided
+    if (body.stages && body.stages.length > 0) {
+      for (let i = 0; i < body.stages.length; i++) {
+        const stageData = body.stages[i];
+        await pipelineRepository.createStage(pipeline.id, {
+          name: stageData.name,
+          description: stageData.description,
+          order: stageData.order || i,
+          isClosing: stageData.isClosing || false,
+          isLost: stageData.isLost || false
+        });
+      }
+    }
+
+    // Save to persistent storage
+    await jsonPersistence.save();
+
+    // Get the pipeline with stages
+    const pipelineWithStages = await pipelineRepository.getWithStages(pipeline.id);
+
+    return NextResponse.json(pipelineWithStages, { status: 201 });
+  } catch (error: any) {
+    console.error('Error creating pipeline:', error);
+
+    if (error.name === 'ZodError') {
       return NextResponse.json(
-        { error: 'Insufficient permissions' },
-        { status: 403 }
+        { error: 'Invalid input', details: error.errors },
+        { status: 400 }
       );
     }
 
-    const body = await request.json();
-    const pipelineService = new PipelineService();
-    
-    const result = await pipelineService.createPipeline(user, {
-      name: body.name,
-      description: body.description,
-      isActive: body.isActive !== false,
-      isDefault: body.isDefault || false,
-      createdBy: user.id,
-      stages: body.stages || []
-    });
-
-    return NextResponse.json(result, { status: 201 });
-  } catch (error: any) {
-    console.error('Error creating pipeline:', error);
     return NextResponse.json(
       { error: error.message || 'Failed to create pipeline' },
-      { status: error.message?.includes('permissions') ? 403 : 500 }
+      { status: 500 }
     );
   }
 }

@@ -2,13 +2,15 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useSession } from '@/hooks/useSession';
 import { Button } from '@/components/ui/button';
-import { User, Mail, Phone, Building2, Plus, Search, X } from 'lucide-react';
-import { Contact, Organisation } from '@united-cars/crm-core';
+import { User, Mail, Phone, Building2, Plus, Search, X, Trash2 } from 'lucide-react';
+import { Contact, Organisation, ContactType } from '@united-cars/crm-core';
 import { AppLayout } from '@/components/layout/app-layout';
 import { PageHeader } from '@/components/layout/page-header';
 import { LoadingState } from '@/components/ui/loading-state';
+import { COUNTRIES_REGIONS, getRegionsByCountryCode, hasRegions, getRegionDisplayName, getCitiesByRegion, hasCities } from '@/lib/countries-regions';
 import {
   Table,
   TableBody,
@@ -37,6 +39,7 @@ import toast from 'react-hot-toast';
 
 
 export default function ContactsPage() {
+  const router = useRouter();
   const { user, loading: sessionLoading } = useSession();
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [organisations, setOrganisations] = useState<Organisation[]>([]);
@@ -53,12 +56,15 @@ export default function ContactsPage() {
     lastName: '',
     email: '',
     phone: '',
-    title: '',
+    type: '',
     organisationId: '',
-    city: '',
+    country: '',
     state: '',
-    country: ''
+    city: '',
+    address: '',
+    postalCode: ''
   });
+  const [showCustomCity, setShowCustomCity] = useState(false);
 
   useEffect(() => {
     const loadOrganisations = async () => {
@@ -121,6 +127,13 @@ export default function ContactsPage() {
       const newUrl = window.location.pathname;
       window.history.replaceState({}, '', newUrl);
     }
+
+    // Pre-select organization if provided
+    const orgId = urlParams.get('orgId');
+    if (orgId) {
+      setFormData(prev => ({ ...prev, organisationId: orgId }));
+      setFilters(prev => ({ ...prev, organisationId: orgId }));
+    }
   }, []);
 
   const getOrganisationName = (orgId?: string) => {
@@ -151,13 +164,19 @@ export default function ContactsPage() {
 
 
   const handleCreate = async () => {
+    // Validate required fields
+    if (!formData.firstName || !formData.lastName || !formData.type || !formData.phone || !formData.country) {
+      alert('Please fill in all required fields: First Name, Last Name, Type, Phone, and Country');
+      return;
+    }
+
     try {
       const response = await fetch('/api/crm/contacts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
       });
-      
+
       if (response.ok) {
         setIsCreateOpen(false);
         setFormData({
@@ -165,12 +184,15 @@ export default function ContactsPage() {
           lastName: '',
           email: '',
           phone: '',
-          title: '',
+          type: '',
           organisationId: '',
-          city: '',
+          country: '',
           state: '',
-          country: ''
+          city: '',
+          address: '',
+          postalCode: ''
         });
+        setShowCustomCity(false);
         const loadContacts = async () => {
           const data = await fetch('/api/crm/contacts').then(r => r.json());
           setContacts(data);
@@ -181,6 +203,30 @@ export default function ContactsPage() {
     } catch (error) {
       console.error('Failed to create contact:', error);
       toast.error('Failed to create contact');
+    }
+  };
+
+  const handleDelete = async (contact: Contact) => {
+    if (!confirm(`Are you sure you want to delete ${contact.firstName} ${contact.lastName}?`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/crm/contacts/${contact.id}`, {
+        method: 'DELETE'
+      });
+
+      if (response.ok) {
+        // Remove the contact from the local state
+        setContacts(prevContacts => prevContacts.filter(c => c.id !== contact.id));
+        toast.success(`Contact deleted: ${contact.firstName} ${contact.lastName}`);
+      } else {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        toast.error(`Failed to delete contact: ${errorData.error}`);
+      }
+    } catch (error) {
+      console.error('Failed to delete contact:', error);
+      toast.error('Failed to delete contact');
     }
   };
 
@@ -210,9 +256,10 @@ export default function ContactsPage() {
           <DialogTitle>Create New Contact</DialogTitle>
         </DialogHeader>
         <div className="grid gap-4 py-4">
+          {/* Basic Information */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="firstName">First Name *</Label>
+              <Label htmlFor="firstName">First Name <span className="text-red-500">*</span></Label>
               <Input
                 id="firstName"
                 value={formData.firstName}
@@ -221,12 +268,48 @@ export default function ContactsPage() {
               />
             </div>
             <div>
-              <Label htmlFor="lastName">Last Name *</Label>
+              <Label htmlFor="lastName">Last Name <span className="text-red-500">*</span></Label>
               <Input
                 id="lastName"
                 value={formData.lastName}
                 onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
                 placeholder="Doe"
+              />
+            </div>
+          </div>
+
+          <div>
+            <Label htmlFor="type">Contact Type <span className="text-red-500">*</span></Label>
+            <Select value={formData.type || undefined} onValueChange={(value) => setFormData({ ...formData, type: value || '' })}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select contact type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ContactType.ACCOUNTING}>Accounting</SelectItem>
+                <SelectItem value={ContactType.ADMINISTRATION}>Administration</SelectItem>
+                <SelectItem value={ContactType.CEO}>CEO</SelectItem>
+                <SelectItem value={ContactType.FINANCE}>Finance</SelectItem>
+                <SelectItem value={ContactType.LOGISTICS}>Logistics</SelectItem>
+                <SelectItem value={ContactType.MARKETING}>Marketing</SelectItem>
+                <SelectItem value={ContactType.OPERATIONS}>Operations</SelectItem>
+                <SelectItem value={ContactType.PURCHASING}>Purchasing</SelectItem>
+                <SelectItem value={ContactType.RETAIL_BUYER}>Retail Buyer</SelectItem>
+                <SelectItem value={ContactType.SALES}>Sales</SelectItem>
+                <SelectItem value={ContactType.VP}>VP</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Contact Information */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="phone">Phone <span className="text-red-500">*</span></Label>
+              <Input
+                id="phone"
+                value={formData.phone}
+                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                placeholder="+1-555-0100"
+                required
               />
             </div>
             <div>
@@ -239,63 +322,119 @@ export default function ContactsPage() {
                 placeholder="john.doe@company.com"
               />
             </div>
+          </div>
+
+          <div>
+            <Label htmlFor="organisationId">Organisation</Label>
+            <Select value={formData.organisationId || undefined} onValueChange={(value) => setFormData({ ...formData, organisationId: value || '' })}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select organisation (optional)" />
+              </SelectTrigger>
+              <SelectContent>
+                {organisations.map(org => (
+                  <SelectItem key={org.id} value={org.id}>
+                    {org.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Location Information */}
+          <div className="space-y-4">
             <div>
-              <Label htmlFor="phone">Phone</Label>
-              <Input
-                id="phone"
-                value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                placeholder="+1-555-0100"
-              />
-            </div>
-            <div>
-              <Label htmlFor="title">Job Title</Label>
-              <Input
-                id="title"
-                value={formData.title}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                placeholder="Sales Manager"
-              />
-            </div>
-            <div>
-              <Label htmlFor="organisationId">Organisation</Label>
-              <Select value={formData.organisationId || undefined} onValueChange={(value) => setFormData({ ...formData, organisationId: value || '' })}>
+              <Label htmlFor="country">Country <span className="text-red-500">*</span></Label>
+              <Select
+                value={formData.country}
+                onValueChange={(value) => setFormData({ ...formData, country: value, state: '', city: '' })}
+              >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select organisation (optional)" />
+                  <SelectValue placeholder="Select country..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {organisations.map(org => (
-                    <SelectItem key={org.id} value={org.id}>
-                      {org.name}
+                  {COUNTRIES_REGIONS.countries.map((country) => (
+                    <SelectItem key={country.code} value={country.code}>
+                      {country.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
-            <div>
-              <Label htmlFor="city">City</Label>
-              <Input
-                id="city"
-                value={formData.city}
-                onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                placeholder="New York"
-              />
-            </div>
-            <div>
-              <Label htmlFor="country">Country</Label>
-              <Input
-                id="country"
-                value={formData.country}
-                onChange={(e) => setFormData({ ...formData, country: e.target.value })}
-                placeholder="United States"
-              />
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="state">State/Region</Label>
+                <Select
+                  value={formData.state}
+                  onValueChange={(value) => setFormData({ ...formData, state: value, city: '' })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select state/region..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {getRegionsByCountryCode(formData.country).map((region) => (
+                      <SelectItem key={region.code} value={region.code}>
+                        {region.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="city">City</Label>
+                {getCitiesByRegion(formData.country, formData.state).length > 0 ? (
+                  <>
+                    <Select
+                      value={showCustomCity ? '__custom__' : formData.city}
+                      onValueChange={(value) => {
+                        if (value === '__custom__') {
+                          setShowCustomCity(true);
+                          setFormData({ ...formData, city: '' });
+                        } else {
+                          setShowCustomCity(false);
+                          setFormData({ ...formData, city: value });
+                        }
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select city..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {getCitiesByRegion(formData.country, formData.state).map((city) => (
+                          <SelectItem key={city} value={city}>
+                            {city}
+                          </SelectItem>
+                        ))}
+                        <SelectItem value="__custom__">Other/Custom city...</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {showCustomCity && (
+                      <Input
+                        id="city"
+                        value={formData.city}
+                        onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                        placeholder="Enter city name..."
+                        className="mt-2"
+                      />
+                    )}
+                  </>
+                ) : (
+                  <Input
+                    id="city"
+                    value={formData.city}
+                    onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                    placeholder="Enter city name..."
+                  />
+                )}
+              </div>
             </div>
           </div>
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleCreate} disabled={!formData.firstName || !formData.lastName}>
+            <Button onClick={handleCreate} disabled={!formData.firstName || !formData.lastName || !formData.type || !formData.phone || !formData.country}>
               Create Contact
             </Button>
           </div>
@@ -385,16 +524,17 @@ export default function ContactsPage() {
           <TableHeader>
             <TableRow>
               <TableHead>Name</TableHead>
-              <TableHead>Title</TableHead>
+              <TableHead>Type</TableHead>
               <TableHead>Organisation</TableHead>
               <TableHead>Country</TableHead>
               <TableHead>Contact</TableHead>
+              <TableHead className="w-[100px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {contacts.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center py-8">
+                <TableCell colSpan={6} className="text-center py-8">
                   <div className="flex flex-col items-center space-y-3">
                     <User className="h-12 w-12 text-gray-300" />
                     <div className="text-gray-500">
@@ -427,13 +567,24 @@ export default function ContactsPage() {
                       }} />
                     </Link>
                   </TableCell>
-                  <TableCell>{contact.title || '-'}</TableCell>
+                  <TableCell>
+                    {contact.type ? (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        {contact.type.replace(/_/g, ' ')}
+                      </span>
+                    ) : (
+                      '-'
+                    )}
+                  </TableCell>
                   <TableCell>
                     {contact.organisationId ? (
-                      <div className="flex items-center">
+                      <button
+                        onClick={() => router.push(`/crm/organisations/${contact.organisationId}`)}
+                        className="flex items-center text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+                      >
                         <Building2 className="mr-2 h-4 w-4 text-gray-400" />
                         {getOrganisationName(contact.organisationId) || 'Unknown'}
-                      </div>
+                      </button>
                     ) : (
                       '-'
                     )}
@@ -454,6 +605,16 @@ export default function ContactsPage() {
                         </a>
                       )}
                     </div>
+                  </TableCell>
+                  <TableCell>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDelete(contact)}
+                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))

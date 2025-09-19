@@ -3,7 +3,6 @@
 import { Sidebar } from './sidebar'
 import { Toaster } from 'react-hot-toast'
 import { ReactNode, useState, useEffect } from 'react'
-import { RealTimeNotifications, RealTimeStatus } from '@/components/ui/real-time-notifications'
 import { useAuth } from '@/contexts/auth-context'
 import { systemHealthService } from '@/lib/system-health'
 
@@ -57,10 +56,9 @@ export function AppLayout({ children, user }: AppLayoutProps) {
   if (!isClient) {
     return (
       <div className="h-screen bg-background flex max-w-full overflow-hidden relative">
-        <div className="fixed left-0 top-0 h-full z-40 w-64 border-r border-border bg-card" />
+        <div className="fixed left-0 top-0 h-full z-40 w-56 border-r border-border bg-card" />
         <div 
-          className="flex-1 flex flex-col min-w-0 max-w-full min-h-0 overflow-hidden"
-          style={{ marginLeft: '256px' }}
+          className="flex-1 flex flex-col min-w-0 max-w-full min-h-0 overflow-hidden ml-0 sm:ml-56"
         >
           {/* Header placeholder */}
           <header className="border-b border-border bg-card/50 backdrop-blur-sm">
@@ -70,7 +68,7 @@ export function AppLayout({ children, user }: AppLayoutProps) {
             </div>
           </header>
           
-          <main className="flex-1 min-w-0 max-w-full overflow-auto flex flex-col">
+          <main className="flex-1 min-w-0 max-w-full overflow-auto flex flex-col min-h-0">
             {children}
           </main>
         </div>
@@ -105,34 +103,18 @@ export function AppLayout({ children, user }: AppLayoutProps) {
     <div className="h-screen bg-background flex max-w-full overflow-hidden relative">
       <div className="fixed left-0 top-0 h-full z-40">
         <Sidebar 
-          user={currentUser} 
+          user={currentUser || undefined} 
           isCollapsed={isSidebarCollapsed}
           onToggleCollapse={toggleSidebar}
         />
       </div>
       <div 
-        className="flex-1 flex flex-col min-w-0 max-w-full min-h-0 overflow-hidden transition-all duration-200"
-        style={{ marginLeft: isSidebarCollapsed ? '80px' : '256px' }}
+        className={`flex-1 flex flex-col min-w-0 max-w-full min-h-0 overflow-hidden transition-all duration-200 ${
+          isSidebarCollapsed ? 'ml-0 sm:ml-16' : 'ml-0 sm:ml-56'
+        }`}
       >
-        {/* Header Bar */}
-        {currentUser && (
-          <header className="border-b border-border bg-card/50 backdrop-blur-sm">
-            <div className="flex items-center justify-between px-6 py-3">
-              <div className="flex items-center space-x-4">
-                <h2 className="text-lg font-semibold text-foreground">
-                  {currentUser.orgName}
-                </h2>
-                <RealTimeStatus />
-              </div>
-              
-              <div className="flex items-center space-x-3">
-                <RealTimeNotifications />
-              </div>
-            </div>
-          </header>
-        )}
         
-        <main className="flex-1 min-w-0 max-w-full overflow-auto flex flex-col">
+        <main className="flex-1 min-w-0 max-w-full overflow-auto flex flex-col min-h-0">
           {children}
         </main>
       </div>

@@ -22,9 +22,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Building2, User, DollarSign, Clock, Calendar, Plus, CheckCircle2, Circle, ChevronLeft, ChevronRight, Minimize2, Maximize2, Trash2, History, CheckSquare, Square, Trophy, X, AlertCircle, AlertTriangle } from 'lucide-react';
-import { LossReason, DealStatus, Organisation, Contact, Task, TaskStatus, TaskPriority, EntityType } from '@united-cars/crm-core';
-import { EnhancedDeal, Pipeline, Stage } from '@/lib/pipeline-data';
-import { calculateSlaBreachDays } from '@/lib/pipeline-utils';
+import { LossReason, DealStatus, Organisation, Contact, Task, TaskStatus, TaskPriority, EntityType, Deal, Pipeline, Stage } from '@united-cars/crm-core';
 
 // Extend Window interface for native drag and drop
 declare global {
@@ -34,8 +32,8 @@ declare global {
 }
 
 interface KanbanBoardProps {
-  pipeline: Pipeline;
-  deals: EnhancedDeal[];
+  pipeline: Pipeline & { stages: Stage[] };
+  deals: Deal[];
   organisations: Organisation[];
   contacts: Contact[];
   tasks?: Task[];
@@ -43,19 +41,19 @@ interface KanbanBoardProps {
   onDealWon?: (dealId: string, note?: string) => void;
   onDealLost?: (dealId: string, lossReason: LossReason, note?: string) => void;
   onMoveStage?: (dealId: string, direction: 'left' | 'right') => void;
-  onDealUpdated?: (deal: EnhancedDeal) => void;
+  onDealUpdated?: (deal: Deal) => void;
   onTaskCreated?: (task: Task) => void;
   onOrganisationClick?: (orgId: string) => void;
   onContactClick?: (contactId: string) => void;
   onQuickAddDeal?: (stageId: string) => void;
   isFiltered?: boolean;
   totalDeals?: number;
-  allDealsByStage?: Record<string, EnhancedDeal[]>;
+  allDealsByStage?: Record<string, Deal[]>;
   searchQuery?: string;
 }
 
 interface DealCard {
-  deal: EnhancedDeal;
+  deal: Deal;
   organisations: Organisation[];
   contacts: Contact[];
   tasks?: Task[];
@@ -121,21 +119,21 @@ function DealCardComponent({ deal, organisations, contacts, tasks, onClick, onOr
 
   // Calculate SLA breach status
   const getSlaStatus = () => {
-    if (!deal.currentStages || !stages) return null;
+    if (!deal.stageId || !stages) return null;
 
-    const currentStage = deal.currentStages.find(cs => stages.some(s => s.id === cs.stageId));
-    if (!currentStage) return null;
+    const stage = stages.find(s => s.id === deal.stageId);
+    if (!stage?.slaTarget) return null;
 
-    const stage = stages.find(s => s.id === currentStage.stageId);
-    if (!stage?.slaDays) return null;
+    // Calculate days since deal creation (simplified for now)
+    const daysSinceCreation = Math.floor((new Date().getTime() - new Date(deal.createdAt).getTime()) / (1000 * 60 * 60 * 24));
+    const breachDays = daysSinceCreation - stage.slaTarget;
 
-    const breachDays = calculateSlaBreachDays(currentStage.enteredAt, stage.slaDays);
-    if (breachDays === null || breachDays <= 0) return null;
+    if (breachDays <= 0) return null;
 
     return {
       breachDays,
-      slaDays: stage.slaDays,
-      severity: breachDays > stage.slaDays * 0.5 ? 'critical' : 'warning'
+      slaDays: stage.slaTarget,
+      severity: breachDays > stage.slaTarget * 0.5 ? 'critical' : 'warning'
     };
   };
 
@@ -173,7 +171,8 @@ function DealCardComponent({ deal, organisations, contacts, tasks, onClick, onOr
       onDragEnd={handleDragEnd}
       onDoubleClick={(e) => {
         e.stopPropagation();
-        onClick?.();
+        // Navigate to deal detail page instead of opening dialog
+        window.location.href = `/crm/deals/${deal.id}`;
       }}
       className={`group relative rounded-xl border transition-all duration-200 ease-out isolate w-full max-w-full overflow-hidden bg-gradient-to-br from-card to-card/95 shadow-md shadow-slate-200/40 dark:shadow-slate-900/40 border-slate-200/60 dark:border-slate-700/60 hover:shadow-lg hover:shadow-indigo-500/10 hover:border-indigo-300/70 z-10 hover:z-20 p-2.5 mb-2 cursor-grab active:cursor-grabbing ${
         isDragging ? 'opacity-60' : ''
@@ -382,11 +381,11 @@ function DealCardComponent({ deal, organisations, contacts, tasks, onClick, onOr
 
 interface StageColumn {
   stage: Stage;
-  deals: EnhancedDeal[];
+  deals: Deal[];
   organisations: Organisation[];
   contacts: Contact[];
   tasks?: Task[];
-  onDealClick?: (deal: EnhancedDeal) => void;
+  onDealClick?: (deal: Deal) => void;
   onOrganisationClick?: (orgId: string) => void;
   onContactClick?: (contactId: string) => void;
   onTaskClick?: (dealId: string) => void;
@@ -433,7 +432,7 @@ function StageColumn({ stage, deals, organisations, contacts, tasks, onDealClick
       const data = JSON.parse(e.dataTransfer.getData('application/json'));
       if (data.type === 'deal' && data.dealId) {
         // Check if moving to a terminal stage (prevent direct drag to won/lost)
-        if (stage.isTerminal) {
+        if (stage.isClosing || stage.isLost) {
           console.log('Terminal stages require using Won/Lost buttons, not drag-and-drop');
           return;
         }
@@ -451,12 +450,12 @@ function StageColumn({ stage, deals, organisations, contacts, tasks, onDealClick
   // Won/Lost action availability
   const canMarkWon = (dealId: string) => {
     const deal = deals.find(d => d.id === dealId);
-    return deal?.status === 'ACTIVE' && !stage.isTerminal;
+    return deal?.status === DealStatus.OPEN && !(stage.isClosing || stage.isLost);
   };
 
   const canMarkLost = (dealId: string) => {
     const deal = deals.find(d => d.id === dealId);
-    return deal?.status === 'ACTIVE' && !stage.isTerminal;
+    return deal?.status === DealStatus.OPEN && !(stage.isClosing || stage.isLost);
   };
 
   // Collapsed view (simplified for new structure)
@@ -555,7 +554,7 @@ export default function KanbanBoard({ pipeline, deals, organisations, contacts, 
   const [dealToMarkWon, setDealToMarkWon] = useState<string | null>(null);
   const [dealToMarkLost, setDealToMarkLost] = useState<string | null>(null);
   const [wonNote, setWonNote] = useState('');
-  const [selectedDeal, setSelectedDeal] = useState<EnhancedDeal | null>(null);
+  const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);
   const [selectedDealForTask, setSelectedDealForTask] = useState<string | null>(null);
   const [collapsedStages, setCollapsedStages] = useState<Set<string>>(() => {
     // Initialize with saved collapsed stages from localStorage
@@ -625,11 +624,10 @@ export default function KanbanBoard({ pipeline, deals, organisations, contacts, 
   
   const dealsByStage = stages.reduce((acc, stage) => {
     acc[stage.id] = deals.filter(deal => {
-      const currentStage = deal.currentStages?.find(cs => cs.pipelineId === pipeline.id);
-      return currentStage?.stageId === stage.id;
+      return deal.pipelineId === pipeline.id && deal.stageId === stage.id;
     });
     return acc;
-  }, {} as Record<string, EnhancedDeal[]>);
+  }, {} as Record<string, Deal[]>);
 
   // Get total deals by stage for filter display
   const totalDealsByStage = isFiltered && allDealsByStage ? 
@@ -696,14 +694,14 @@ export default function KanbanBoard({ pipeline, deals, organisations, contacts, 
     }
   };
 
-  const handleDealClick = (deal: EnhancedDeal) => {
+  const handleDealClick = (deal: Deal) => {
     setSelectedDeal(deal);
     setDealFormData({
       title: deal.title || '',
       amount: deal.value?.toString() || '',
       currency: deal.currency || 'USD',
       probability: deal.probability?.toString() || '',
-      notes: deal.description || '',
+      notes: deal.notes || '',
       organisationId: deal.organisationId || '',
       contactId: deal.contactId || ''
     });
@@ -722,7 +720,7 @@ export default function KanbanBoard({ pipeline, deals, organisations, contacts, 
           value: dealFormData.amount ? parseFloat(dealFormData.amount) : undefined,
           currency: dealFormData.currency,
           probability: dealFormData.probability ? parseFloat(dealFormData.probability) : undefined,
-          description: dealFormData.notes,
+          notes: dealFormData.notes,
           organisationId: dealFormData.organisationId || undefined,
           contactId: dealFormData.contactId || undefined
         })
@@ -867,11 +865,11 @@ export default function KanbanBoard({ pipeline, deals, organisations, contacts, 
                           className="w-3.5 h-3.5 rounded-full shadow-sm flex-shrink-0 ring-2 ring-white/50 dark:ring-slate-900/50"
                           style={{ backgroundColor: stage.color || '#6B7280' }}
                         />
-                        <h3 className="font-semibold text-foreground text-sm truncate">{stage.label}</h3>
+                        <h3 className="font-semibold text-foreground text-sm truncate">{stage.name}</h3>
                         <div className="bg-gradient-to-r from-slate-100 to-slate-50 dark:from-slate-800 dark:to-slate-700 text-slate-700 dark:text-slate-300 text-xs font-medium px-2 py-1 rounded-md shadow-sm border border-slate-200/50 dark:border-slate-600/50 flex-shrink-0">
-                          {isFiltered && totalDealsByStage[stage.id] !== undefined ? (
+                          {isFiltered && allDealsByStage && allDealsByStage[stage.id] ? (
                             <span>
-                              {(dealsByStage[stage.id] || []).length} / {totalDealsByStage[stage.id]}
+                              {(dealsByStage[stage.id] || []).length} / {allDealsByStage[stage.id].length}
                             </span>
                           ) : (
                             (dealsByStage[stage.id] || []).length
@@ -901,10 +899,10 @@ export default function KanbanBoard({ pipeline, deals, organisations, contacts, 
                           style={{ backgroundColor: stage.color || '#6B7280' }}
                         />
                         <div className="text-xs font-medium text-foreground/80 mb-2 truncate w-full px-1 leading-tight">
-                          {stage.label}
+                          {stage.name}
                         </div>
                         <Badge variant="outline" className="text-xs px-1.5 py-0.5">
-                          {isFiltered && totalDealsByStage[stage.id] !== undefined ? totalDealsByStage[stage.id] : (dealsByStage[stage.id] || []).length}
+                          {(dealsByStage[stage.id] || []).length}
                         </Badge>
                       </div>
                     </>

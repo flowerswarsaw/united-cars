@@ -2,6 +2,7 @@ import { promises as fs } from 'fs';
 import * as path from 'path';
 import {
   organisationRepository,
+  organisationConnectionRepository,
   contactRepository,
   leadRepository,
   dealRepository,
@@ -17,6 +18,7 @@ const DATA_FILE = path.join(DATA_DIR, 'data.json');
 
 interface CRMData {
   organisations: any[];
+  organisationConnections: any[];
   contacts: any[];
   leads: any[];
   deals: any[];
@@ -42,6 +44,7 @@ export class JSONPersistenceAdapter {
 
       const data: CRMData = {
         organisations: organisationRepository.toJSON(),
+        organisationConnections: organisationConnectionRepository.toJSON(),
         contacts: contactRepository.toJSON(),
         leads: leadRepository.toJSON(),
         deals: dealRepository.toJSON(),
@@ -67,6 +70,7 @@ export class JSONPersistenceAdapter {
       const data = JSON.parse(dataStr) as CRMData;
 
       organisationRepository.fromJSON(data.organisations);
+      organisationConnectionRepository.fromJSON(data.organisationConnections || []);
       contactRepository.fromJSON(data.contacts);
       leadRepository.fromJSON(data.leads);
       dealRepository.fromJSON(data.deals);

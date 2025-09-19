@@ -1,37 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getPipelineById } from '@/lib/pipeline-data';
-import { PipelineService, hasPermission } from '@/lib/services/pipeline-service';
-import { getServerSessionFromRequest } from '@/lib/auth';
+import { pipelineRepository, jsonPersistence } from '@united-cars/crm-mocks';
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSessionFromRequest(request);
-    const user = { 
-      id: session?.user?.id || 'anonymous', 
-      role: (session?.user as any)?.role || 'junior' as 'admin' | 'senior' | 'junior'
-    };
-
-    if (!hasPermission(user, 'pipeline:read')) {
-      return NextResponse.json(
-        { error: 'Insufficient permissions' },
-        { status: 403 }
-      );
-    }
-
     const { id } = await params;
-    const pipeline = getPipelineById(id);
-    
+
+    // Ensure we have the latest data
+    await jsonPersistence.load();
+
+    const pipeline = await pipelineRepository.get(id);
     if (!pipeline) {
       return NextResponse.json(
         { error: 'Pipeline not found' },
         { status: 404 }
       );
     }
-    
-    return NextResponse.json(pipeline);
+
+    // Get pipeline stages
+    const stages = await pipelineRepository.getStages(id);
+    const pipelineWithStages = {
+      ...pipeline,
+      stages: stages.sort((a, b) => a.order - b.order)
+    };
+
+    return NextResponse.json(pipelineWithStages);
   } catch (error) {
     console.error('Error fetching pipeline:', error);
     return NextResponse.json(
@@ -46,31 +41,47 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSessionFromRequest(request);
-    const user = { 
-      id: session?.user?.id || 'anonymous', 
-      role: (session?.user as any)?.role || 'junior' as 'admin' | 'senior' | 'junior'
-    };
+    const { id } = await params;
+    const body = await request.json();
 
-    if (!hasPermission(user, 'pipeline:update')) {
+    // Ensure we have the latest data
+    await jsonPersistence.load();
+
+    const pipeline = await pipelineRepository.get(id);
+    if (!pipeline) {
       return NextResponse.json(
-        { error: 'Insufficient permissions' },
-        { status: 403 }
+        { error: 'Pipeline not found' },
+        { status: 404 }
       );
     }
 
-    const { id } = await params;
-    const body = await request.json();
-    
-    const pipelineService = new PipelineService();
-    const result = await pipelineService.updatePipeline(user, id, body);
-    
-    return NextResponse.json(result);
-  } catch (error: any) {
+    // Update the pipeline
+    const updatedPipeline = await pipelineRepository.update(id, {
+      name: body.name ?? pipeline.name,
+      description: body.description ?? pipeline.description,
+      color: body.color ?? pipeline.color,
+      isDefault: body.isDefault ?? pipeline.isDefault,
+      order: body.order ?? pipeline.order,
+      applicableTypes: body.applicableTypes ?? pipeline.applicableTypes,
+      isTypeSpecific: body.isTypeSpecific ?? pipeline.isTypeSpecific
+    });
+
+    // Save to persistent storage
+    await jsonPersistence.save();
+
+    // Get stages and return complete pipeline
+    const stages = await pipelineRepository.getStages(id);
+    const pipelineWithStages = {
+      ...updatedPipeline,
+      stages: stages.sort((a, b) => a.order - b.order)
+    };
+
+    return NextResponse.json(pipelineWithStages);
+  } catch (error) {
     console.error('Error updating pipeline:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to update pipeline' },
-      { status: error.message?.includes('permissions') ? 403 : 500 }
+      { error: 'Failed to update pipeline' },
+      { status: 500 }
     );
   }
 }
@@ -80,30 +91,37 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSessionFromRequest(request);
-    const user = { 
-      id: session?.user?.id || 'anonymous', 
-      role: (session?.user as any)?.role || 'junior' as 'admin' | 'senior' | 'junior'
-    };
+    const { id } = await params;
 
-    if (!hasPermission(user, 'pipeline:delete')) {
+    // Ensure we have the latest data
+    await jsonPersistence.load();
+
+    const pipeline = await pipelineRepository.get(id);
+    if (!pipeline) {
       return NextResponse.json(
-        { error: 'Insufficient permissions' },
-        { status: 403 }
+        { error: 'Pipeline not found' },
+        { status: 404 }
       );
     }
 
-    const { id } = await params;
-    const pipelineService = new PipelineService();
-    
-    const result = await pipelineService.deletePipeline(user, id);
-    
-    return NextResponse.json(result);
-  } catch (error: any) {
+    // Delete the pipeline
+    const success = await pipelineRepository.remove(id);
+    if (!success) {
+      return NextResponse.json(
+        { error: 'Failed to delete pipeline' },
+        { status: 500 }
+      );
+    }
+
+    // Save to persistent storage
+    await jsonPersistence.save();
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
     console.error('Error deleting pipeline:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to delete pipeline' },
-      { status: error.message?.includes('permissions') ? 403 : error.message?.includes('not found') ? 404 : 500 }
+      { error: 'Failed to delete pipeline' },
+      { status: 500 }
     );
   }
 }

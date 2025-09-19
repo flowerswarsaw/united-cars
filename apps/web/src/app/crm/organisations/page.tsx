@@ -26,16 +26,18 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { 
-  Plus, 
-  Search, 
-  Building2, 
-  Mail, 
-  Phone, 
+import {
+  Plus,
+  Search,
+  Building2,
+  Mail,
+  Phone,
   Globe,
-  X
+  X,
+  Trash2
 } from 'lucide-react';
 import { Organisation, OrganizationType } from '@united-cars/crm-core';
+import { COUNTRIES_REGIONS, getRegionsByCountryCode, hasRegions, getRegionDisplayName, getCitiesByRegion, hasCities } from '@/lib/countries-regions';
 import toast from 'react-hot-toast';
 
 interface OrganisationFilters {
@@ -62,15 +64,15 @@ export default function OrganisationsPage() {
     name: '',
     companyId: '',
     type: OrganizationType.RETAIL_CLIENT,
-    email: '',
     phone: '',
+    email: '',
     website: '',
-    industry: '',
     size: '',
-    city: '',
+    country: '',
     state: '',
-    country: ''
+    city: ''
   });
+  const [showCustomCity, setShowCustomCity] = useState(false);
 
   const loadOrganisations = useCallback(async () => {
     try {
@@ -125,6 +127,12 @@ export default function OrganisationsPage() {
   }, []);
 
   const handleCreate = async () => {
+    // Validate required fields
+    if (!formData.name || !formData.companyId || !formData.type || !formData.country) {
+      alert('Please fill in all required fields: Name, Company ID, Type, and Country');
+      return;
+    }
+
     try {
       const response = await fetch('/api/crm/organisations', {
         method: 'POST',
@@ -138,15 +146,15 @@ export default function OrganisationsPage() {
           name: '',
           companyId: '',
           type: OrganizationType.RETAIL_CLIENT,
-          email: '',
           phone: '',
+          email: '',
           website: '',
-          industry: '',
           size: '',
-          city: '',
+          country: '',
           state: '',
-          country: ''
+          city: ''
         });
+        setShowCustomCity(false);
         loadOrganisations();
         toast.success(`Organisation created: ${formData.name}`);
       }
@@ -165,10 +173,35 @@ export default function OrganisationsPage() {
   };
 
   const hasActiveFilters = Boolean(
-    searchQuery || 
+    searchQuery ||
     (filters.type && filters.type !== 'all') ||
     filters.country
   );
+
+  const handleDelete = async (org: Organisation, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!confirm(`Are you sure you want to delete the organization "${org.name}"?`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/crm/organisations/${org.id}`, {
+        method: 'DELETE'
+      });
+
+      if (response.ok) {
+        toast.success('Organization deleted successfully');
+        loadOrganisations();
+      } else {
+        toast.error('Failed to delete organization');
+      }
+    } catch (error) {
+      console.error('Error deleting organization:', error);
+      toast.error('Failed to delete organization');
+    }
+  };
 
 
   if (sessionLoading || !user || loading) {
@@ -198,6 +231,7 @@ export default function OrganisationsPage() {
               <DialogTitle>Create New Organisation</DialogTitle>
             </DialogHeader>
             <div className="grid gap-4 py-4">
+              {/* Basic Information */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="name">Name *</Label>
@@ -217,25 +251,40 @@ export default function OrganisationsPage() {
                     placeholder="COMP-001"
                   />
                 </div>
+              </div>
+
+              <div>
+                <Label htmlFor="type">Organization Type *</Label>
+                <Select
+                  value={formData.type}
+                  onValueChange={(value) => setFormData({ ...formData, type: value as OrganizationType })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select organization type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={OrganizationType.RETAIL_CLIENT}>Retail Client</SelectItem>
+                    <SelectItem value={OrganizationType.DEALER}>Dealer</SelectItem>
+                    <SelectItem value={OrganizationType.BROKER}>Broker</SelectItem>
+                    <SelectItem value={OrganizationType.EXPEDITOR}>Expeditor</SelectItem>
+                    <SelectItem value={OrganizationType.SHIPPER}>Shipper</SelectItem>
+                    <SelectItem value={OrganizationType.TRANSPORTER}>Transporter</SelectItem>
+                    <SelectItem value={OrganizationType.AUCTION}>Auction House</SelectItem>
+                    <SelectItem value={OrganizationType.PROCESSOR}>Processor</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Contact Information */}
+              <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <Label htmlFor="type">Organization Type *</Label>
-                  <Select
-                    value={formData.type}
-                    onValueChange={(value) => setFormData({ ...formData, type: value as OrganizationType })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select organization type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={OrganizationType.RETAIL_CLIENT}>Retail Client</SelectItem>
-                      <SelectItem value={OrganizationType.DEALER}>Dealer</SelectItem>
-                      <SelectItem value={OrganizationType.EXPEDITOR}>Expeditor</SelectItem>
-                      <SelectItem value={OrganizationType.SHIPPER}>Shipper</SelectItem>
-                      <SelectItem value={OrganizationType.TRANSPORTER}>Transporter</SelectItem>
-                      <SelectItem value={OrganizationType.AUCTION}>Auction House</SelectItem>
-                      <SelectItem value={OrganizationType.PROCESSOR}>Processor</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Label htmlFor="phone">Phone</Label>
+                  <Input
+                    id="phone"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    placeholder="+1-555-0100"
+                  />
                 </div>
                 <div>
                   <Label htmlFor="email">Email</Label>
@@ -248,15 +297,6 @@ export default function OrganisationsPage() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="phone">Phone</Label>
-                  <Input
-                    id="phone"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    placeholder="+1-555-0100"
-                  />
-                </div>
-                <div>
                   <Label htmlFor="website">Website</Label>
                   <Input
                     id="website"
@@ -265,57 +305,113 @@ export default function OrganisationsPage() {
                     placeholder="https://company.com"
                   />
                 </div>
+              </div>
+
+              <div>
+                <Label htmlFor="size">Size</Label>
+                <Input
+                  id="size"
+                  value={formData.size}
+                  onChange={(e) => setFormData({ ...formData, size: e.target.value })}
+                  placeholder="50-100"
+                />
+              </div>
+
+              {/* Location Information */}
+              <div className="space-y-4">
                 <div>
-                  <Label htmlFor="industry">Industry</Label>
-                  <Input
-                    id="industry"
-                    value={formData.industry}
-                    onChange={(e) => setFormData({ ...formData, industry: e.target.value })}
-                    placeholder="Automotive"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="size">Size</Label>
-                  <Input
-                    id="size"
-                    value={formData.size}
-                    onChange={(e) => setFormData({ ...formData, size: e.target.value })}
-                    placeholder="50-100"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="city">City</Label>
-                  <Input
-                    id="city"
-                    value={formData.city}
-                    onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                    placeholder="New York"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="state">State</Label>
-                  <Input
-                    id="state"
-                    value={formData.state}
-                    onChange={(e) => setFormData({ ...formData, state: e.target.value })}
-                    placeholder="NY"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="country">Country</Label>
-                  <Input
-                    id="country"
+                  <Label htmlFor="country">Country *</Label>
+                  <Select
                     value={formData.country}
-                    onChange={(e) => setFormData({ ...formData, country: e.target.value })}
-                    placeholder="USA"
-                  />
+                    onValueChange={(value) => setFormData({ ...formData, country: value, state: '', city: '' })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select country..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {COUNTRIES_REGIONS.countries.map((country) => (
+                        <SelectItem key={country.code} value={country.code}>
+                          {country.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="state">State/Region</Label>
+                    <Select
+                      value={formData.state}
+                      onValueChange={(value) => setFormData({ ...formData, state: value, city: '' })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select state/region..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {getRegionsByCountryCode(formData.country).map((region) => (
+                          <SelectItem key={region.code} value={region.code}>
+                            {region.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="city">City</Label>
+                    {getCitiesByRegion(formData.country, formData.state).length > 0 ? (
+                      <>
+                        <Select
+                          value={showCustomCity ? '__custom__' : formData.city}
+                          onValueChange={(value) => {
+                            if (value === '__custom__') {
+                              setShowCustomCity(true);
+                              setFormData({ ...formData, city: '' });
+                            } else {
+                              setShowCustomCity(false);
+                              setFormData({ ...formData, city: value });
+                            }
+                          }}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select city..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {getCitiesByRegion(formData.country, formData.state).map((city) => (
+                              <SelectItem key={city} value={city}>
+                                {city}
+                              </SelectItem>
+                            ))}
+                            <SelectItem value="__custom__">Other/Custom city...</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        {showCustomCity && (
+                          <Input
+                            id="city"
+                            value={formData.city}
+                            onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                            placeholder="Enter city name..."
+                            className="mt-2"
+                          />
+                        )}
+                      </>
+                    ) : (
+                      <Input
+                        id="city"
+                        value={formData.city}
+                        onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                        placeholder="Enter city name..."
+                      />
+                    )}
+                  </div>
                 </div>
               </div>
               <div className="flex justify-end gap-2">
                 <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
                   Cancel
                 </Button>
-                <Button onClick={handleCreate} disabled={!formData.name || !formData.companyId || !formData.type}>
+                <Button onClick={handleCreate} disabled={!formData.name || !formData.companyId || !formData.type || !formData.country}>
                   Create Organisation
                 </Button>
               </div>
@@ -361,6 +457,7 @@ export default function OrganisationsPage() {
                     <SelectItem value="all">All Types</SelectItem>
                     <SelectItem value={OrganizationType.RETAIL_CLIENT}>Retail Client</SelectItem>
                     <SelectItem value={OrganizationType.DEALER}>Dealer</SelectItem>
+                    <SelectItem value={OrganizationType.BROKER}>Broker</SelectItem>
                     <SelectItem value={OrganizationType.EXPEDITOR}>Expeditor</SelectItem>
                     <SelectItem value={OrganizationType.SHIPPER}>Shipper</SelectItem>
                     <SelectItem value={OrganizationType.TRANSPORTER}>Transporter</SelectItem>
@@ -411,12 +508,13 @@ export default function OrganisationsPage() {
               <TableHead>Type</TableHead>
               <TableHead>Country</TableHead>
               <TableHead>Contact</TableHead>
+              <TableHead className="w-[50px]"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {organisations.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center py-8">
+                <TableCell colSpan={6} className="text-center py-8">
                   <div className="flex flex-col items-center space-y-3">
                     <Building2 className="h-12 w-12 text-text-tertiary" />
                     <div className="text-text-secondary">
@@ -480,6 +578,16 @@ export default function OrganisationsPage() {
                         </a>
                       )}
                     </div>
+                  </TableCell>
+                  <TableCell>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => handleDelete(org, e)}
+                      className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))

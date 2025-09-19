@@ -40,6 +40,9 @@ import {
 import { UnifiedOrganization, UnifiedOrganizationType, ContactMethodType } from '@united-cars/core'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { AppLayout } from '@/components/layout/app-layout'
+import { PageHeader } from '@/components/layout/page-header'
+import { useSession } from '@/hooks/useSession'
 
 // Mock data for development - in production this would come from API
 const mockOrganizations: UnifiedOrganization[] = [
@@ -175,6 +178,7 @@ interface OrganizationFormData {
 }
 
 export default function OrganizationManagementPage() {
+  const { user, loading: sessionLoading } = useSession()
   const [organizations, setOrganizations] = useState<UnifiedOrganization[]>(mockOrganizations)
   const [filteredOrganizations, setFilteredOrganizations] = useState<UnifiedOrganization[]>(mockOrganizations)
   const [searchTerm, setSearchTerm] = useState('')
@@ -408,37 +412,38 @@ export default function OrganizationManagementPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Organization Management</h1>
-          <p className="text-text-secondary mt-2">
-            Manage organizations, relationships, and field configurations
-          </p>
-        </div>
-        
-        <div className="flex items-center space-x-2">
-          <Button variant="outline" size="sm">
-            <Import className="w-4 h-4 mr-2" />
-            Import
-          </Button>
-          <Button variant="outline" size="sm">
-            <Download className="w-4 h-4 mr-2" />
-            Export
-          </Button>
-          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="w-4 h-4 mr-2" />
-                Add Organization
+    <AppLayout user={user}>
+      <PageHeader 
+        title="Organization Management"
+        description="Manage organizations, relationships, and field configurations"
+        breadcrumbs={[{ label: 'Admin' }, { label: 'Data' }, { label: 'Organizations' }]}
+      />
+      
+      <div className="px-4 sm:px-6 lg:px-8 py-6">
+        <div className="space-y-6">
+          <div className="flex items-center justify-end">
+            <div className="flex items-center space-x-2">
+              <Button variant="outline" size="sm">
+                <Import className="w-4 h-4 mr-2" />
+                Import
               </Button>
-            </DialogTrigger>
-          </Dialog>
-        </div>
-      </div>
+              <Button variant="outline" size="sm">
+                <Download className="w-4 h-4 mr-2" />
+                Export
+              </Button>
+              <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Organization
+                  </Button>
+                </DialogTrigger>
+              </Dialog>
+            </div>
+          </div>
 
-      {/* Stats Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {/* Stats Overview */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
@@ -921,7 +926,9 @@ export default function OrganizationManagementPage() {
             </Button>
           </div>
         </DialogContent>
-      </Dialog>
-    </div>
+        </Dialog>
+        </div>
+      </div>
+    </AppLayout>
   )
 }

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@united-cars/db'
-import { processSecureUpload, ALLOWED_IMAGE_TYPES, MAX_FILES_PER_REQUEST } from '@united-cars/core'
+import { processSecureUpload, ALLOWED_IMAGE_TYPES, MAX_FILES_PER_REQUEST } from '@united-cars/core/server'
 import { join } from 'path'
 
 // Simple auth helper

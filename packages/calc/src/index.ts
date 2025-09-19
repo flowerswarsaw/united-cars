@@ -17,8 +17,6 @@ export {
   CalculationResult,
   CalculationInput
 } from './types/pricing'
-export * from './logic/calculateTowing'
-export * from './logic/calculateShipping'
 export * from './logic/calculateFees'
 export * from './logic/calculateTotal'
 

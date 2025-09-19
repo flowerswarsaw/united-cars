@@ -33,6 +33,7 @@ export enum TaskPriority {
 
 export enum OrganizationType {
   DEALER = 'DEALER',
+  BROKER = 'BROKER',
   RETAIL_CLIENT = 'RETAIL_CLIENT',
   EXPEDITOR = 'EXPEDITOR',
   SHIPPER = 'SHIPPER',
@@ -106,6 +107,20 @@ export enum OrganisationRelationType {
   SHIPPER_DEALER = 'SHIPPER_DEALER',
   AUCTION_DEALER = 'AUCTION_DEALER',
   OTHER = 'OTHER'
+}
+
+export enum ContactType {
+  ACCOUNTING = 'ACCOUNTING',
+  ADMINISTRATION = 'ADMINISTRATION',
+  CEO = 'CEO',
+  FINANCE = 'FINANCE',
+  LOGISTICS = 'LOGISTICS',
+  MARKETING = 'MARKETING',
+  OPERATIONS = 'OPERATIONS',
+  PURCHASING = 'PURCHASING',
+  RETAIL_BUYER = 'RETAIL_BUYER',
+  SALES = 'SALES',
+  VP = 'VP'
 }
 
 export interface ContactMethod {
@@ -186,7 +201,7 @@ export interface Organisation extends BaseEntity, OrganisationCore, Organisation
 export interface ContactCore {
   firstName: string;
   lastName: string;
-  title?: string;
+  type: ContactType;
   organisationId?: string;
 }
 
@@ -244,6 +259,7 @@ export interface DealCore {
 
 export interface DealFinancial {
   amount?: number;
+  value?: number; // Legacy field - same as amount for backward compatibility
   currency?: string;
   probability?: number;
 }

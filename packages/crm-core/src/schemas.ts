@@ -9,6 +9,7 @@ import {
   ActivityType,
   CustomFieldType,
   ContactMethodType,
+  ContactType,
   SocialPlatform,
   OrganisationRelationType
 } from './types';
@@ -51,13 +52,22 @@ export const organisationSchema = z.object({
   name: z.string().min(1),
   companyId: z.string().min(1),
   type: z.nativeEnum(OrganizationType),
-  contactMethods: z.array(contactMethodSchema),
+  contactMethods: z.array(contactMethodSchema).min(1).refine((methods) =>
+    methods.some(method =>
+      method.type === 'PHONE_MOBILE' ||
+      method.type === 'PHONE_WORK' ||
+      method.type === 'PHONE_HOME' ||
+      method.type === 'PHONE_FAX' ||
+      method.type === 'PHONE_OTHER'
+    ),
+    { message: "At least one phone contact method is required" }
+  ),
   socialMedia: z.array(socialMediaLinkSchema).optional(),
   website: z.string().url().optional(),
   address: z.string().optional(),
   city: z.string().optional(),
   state: z.string().optional(),
-  country: z.string().optional(),
+  country: z.string().min(1),
   postalCode: z.string().optional(),
   industry: z.string().optional(),
   size: z.string().optional(),
@@ -73,13 +83,22 @@ export const contactSchema = z.object({
   tenantId: z.string(),
   firstName: z.string().min(1),
   lastName: z.string().min(1),
-  contactMethods: z.array(contactMethodSchema),
-  title: z.string().optional(),
+  contactMethods: z.array(contactMethodSchema).min(1).refine((methods) =>
+    methods.some(method =>
+      method.type === 'PHONE_MOBILE' ||
+      method.type === 'PHONE_WORK' ||
+      method.type === 'PHONE_HOME' ||
+      method.type === 'PHONE_FAX' ||
+      method.type === 'PHONE_OTHER'
+    ),
+    { message: "At least one phone contact method is required" }
+  ),
+  type: z.nativeEnum(ContactType),
   organisationId: z.string().optional(),
   address: z.string().optional(),
   city: z.string().optional(),
   state: z.string().optional(),
-  country: z.string().optional(),
+  country: z.string().min(1),
   postalCode: z.string().optional(),
   notes: z.string().optional(),
   tags: z.array(z.string()).optional(),

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { organizationsStore } from '@/lib/organizations-store';
+import { organisationRepository, jsonPersistence } from '@united-cars/crm-mocks';
 
 export async function GET(request: NextRequest) {
   try {
@@ -8,8 +8,8 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search');
     const type = searchParams.get('type');
     const country = searchParams.get('country');
-    
-    let filteredOrgs = organizationsStore.getAll();
+
+    let filteredOrgs = await organisationRepository.list();
     
     if (search) {
       const searchLower = search.toLowerCase();
@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    
+
     // Create the new organization object
     const orgData = {
       name: body.name || '',
@@ -70,13 +70,17 @@ export async function POST(request: NextRequest) {
       },
       verified: false
     };
-    
-    // Add to the store
-    const newOrg = organizationsStore.create(orgData);
-    
+
+    // Add to the repository
+    const newOrg = await organisationRepository.create(orgData);
+
+    // Save to persistent storage
+    await jsonPersistence.save();
+
     console.log(`Created new organization: ${newOrg.name} (ID: ${newOrg.id})`);
-    console.log(`Total organizations in store: ${organizationsStore.getAll().length}`);
-    
+    const allOrgs = await organisationRepository.list();
+    console.log(`Total organizations in repository: ${allOrgs.length}`);
+
     return NextResponse.json(newOrg, { status: 201 });
   } catch (error: any) {
     console.error('Failed to create organisation:', error);

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { organizationsStore } from '@/lib/organizations-store';
+import { organisationRepository, jsonPersistence } from '@united-cars/crm-mocks';
 
 export async function GET(
   request: NextRequest,
@@ -7,17 +7,17 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    
+
     // Find the specific organization
-    const organisation = organizationsStore.getById(id);
-    
+    const organisation = await organisationRepository.get(id);
+
     if (!organisation) {
       return NextResponse.json(
         { error: 'Organisation not found' },
         { status: 404 }
       );
     }
-    
+
     console.log(`Found organization: ${organisation.name} (ID: ${id})`);
     return NextResponse.json(organisation);
   } catch (error) {
@@ -36,19 +36,22 @@ export async function PATCH(
   try {
     const body = await request.json();
     const { id } = await params;
-    
-    // Update the organization using the store
-    const updatedOrg = organizationsStore.update(id, body);
-    
+
+    // Update the organization using the repository
+    const updatedOrg = await organisationRepository.update(id, body);
+
     if (!updatedOrg) {
       return NextResponse.json(
         { error: 'Organisation not found' },
         { status: 404 }
       );
     }
-    
+
+    // Save to persistent storage
+    await jsonPersistence.save();
+
     console.log(`Updated organization: ${updatedOrg.name} (ID: ${id})`);
-    
+
     return NextResponse.json(updatedOrg);
   } catch (error: any) {
     console.error('Failed to update organisation:', error);
@@ -65,12 +68,25 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    
-    // For now, return a simple success response since we don't have delete functionality
-    // This would need to be implemented with the same storage system as the main endpoint
+
+    // Delete the organization using the repository
+    const deleted = await organisationRepository.delete(id);
+
+    if (!deleted) {
+      return NextResponse.json(
+        { error: 'Organisation not found' },
+        { status: 404 }
+      );
+    }
+
+    // Save to persistent storage
+    await jsonPersistence.save();
+
+    console.log(`Deleted organization with ID: ${id}`);
+
     return NextResponse.json(
-      { message: 'Delete functionality not yet implemented with in-memory storage' },
-      { status: 501 }
+      { message: 'Organisation deleted successfully' },
+      { status: 200 }
     );
   } catch (error) {
     return NextResponse.json(

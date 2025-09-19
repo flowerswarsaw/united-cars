@@ -25,8 +25,7 @@ import {
 } from '@/components/ui/select';
 import { Plus, Search, X } from 'lucide-react';
 import KanbanBoard from './kanban-board';
-import { Pipeline as CRMPipeline, LossReason, Organisation, Contact, ContactMethodType, Task } from '@united-cars/crm-core';
-import { EnhancedDeal, Pipeline as EnhancedPipeline } from '@/lib/pipeline-data';
+import { Pipeline, LossReason, Organisation, Contact, ContactMethodType, Task, Deal } from '@united-cars/crm-core';
 import { KanbanStageSkeleton } from '@/components/ui/skeleton';
 import toast from 'react-hot-toast';
 
@@ -68,8 +67,8 @@ export default function DealsPage() {
       return { error: 'Invalid response format' };
     }
   };
-  const [pipelines, setPipelines] = useState<EnhancedPipeline[]>([]);
-  const [deals, setDeals] = useState<EnhancedDeal[]>([]);
+  const [pipelines, setPipelines] = useState<Pipeline[]>([]);
+  const [deals, setDeals] = useState<Deal[]>([]);
   const [organisations, setOrganisations] = useState<Organisation[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -143,7 +142,14 @@ export default function DealsPage() {
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('create') === 'true') {
       setIsCreateOpen(true);
-      // Remove the parameter from URL without refresh
+
+      // Pre-select contact if contactId parameter is present
+      const contactId = urlParams.get('contactId');
+      if (contactId) {
+        setFormData(prev => ({ ...prev, contactId }));
+      }
+
+      // Remove the parameters from URL without refresh
       const newUrl = window.location.pathname;
       window.history.replaceState({}, '', newUrl);
     }
@@ -219,7 +225,7 @@ export default function DealsPage() {
 
       // Set default active pipeline
       if (pipelines && pipelines.length > 0 && !activePipelineId) {
-        const dealerPipeline = pipelines.find((p: EnhancedPipeline) => p.name === 'Dealer' || p.name === 'Dealer Acquisition');
+        const dealerPipeline = pipelines.find((p: Pipeline) => p.name === 'Dealer Pipeline' || p.name === 'Dealer Acquisition');
         setActivePipelineId(dealerPipeline?.id || pipelines[0].id);
       }
 
@@ -263,14 +269,10 @@ export default function DealsPage() {
     setPendingMoves(prev => new Set([...prev, dealId]));
     
     // Create optimistically updated deal
-    const optimisticDeal: EnhancedDeal = {
+    const optimisticDeal: Deal = {
       ...dealToMove,
-      currentStages: dealToMove.currentStages?.map(cs => 
-        cs.pipelineId === activePipelineId 
-          ? { ...cs, stageId: toStageId, enteredAt: new Date().toISOString() }
-          : cs
-      ) || [],
-      updatedAt: new Date().toISOString()
+      stageId: toStageId,
+      updatedAt: new Date()
     };
 
     // Update optimistic deals state immediately
@@ -299,13 +301,13 @@ export default function DealsPage() {
         ));
 
         const stage = activePipeline.stages?.find(s => s.id === toStageId);
-        
-        if (stage?.isTerminal && stage?.probability === 100) {
-          toast.success(`Deal Won! ${updatedDeal.title} has been marked as won and moved to integration pipeline.`);
-        } else if (stage?.isTerminal && stage?.probability === 0) {
+
+        if (stage?.isClosing) {
+          toast.success(`Deal Won! ${updatedDeal.title} has been marked as won.`);
+        } else if (stage?.isLost) {
           toast.error(`Deal Lost: ${updatedDeal.title} has been marked as lost: ${lossReason}`);
         } else {
-          toast.success(`Deal Moved: ${updatedDeal.title} moved to ${stage?.label}`);
+          toast.success(`Deal Moved: ${updatedDeal.title} moved to ${stage?.name}`);
         }
 
       } else {
@@ -343,9 +345,9 @@ export default function DealsPage() {
     const dealToWon = deals.find(d => d.id === dealId);
     if (!dealToWon) return;
 
-    // Find the won stage (terminal stage with 100% probability)
+    // Find the won stage (closing stage)
     const wonStage = activePipeline.stages?.find(stage =>
-      stage.isTerminal && stage.probability === 100
+      stage.isClosing
     );
 
     if (!wonStage) {
@@ -359,18 +361,8 @@ export default function DealsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           status: 'WON',
-          outcome: 'won',
-          wonAt: new Date().toISOString(),
-          isFrozen: true,
-          stageId: wonStage.id,  // Move to the won stage
+          stageId: wonStage.id,
           pipelineId: activePipeline.id,
-          enteredStageAt: new Date().toISOString(),
-          // Update currentStages for backward compatibility
-          currentStages: [{
-            pipelineId: activePipeline.id,
-            stageId: wonStage.id,
-            enteredAt: new Date().toISOString()
-          }],
           ...(note && { wonNote: note })
         })
       });
@@ -399,11 +391,9 @@ export default function DealsPage() {
     const dealToLose = deals.find(d => d.id === dealId);
     if (!dealToLose) return;
 
-    // Find the lost stage (terminal stage with 0% probability or label containing "Lost")
+    // Find the lost stage (lost stage)
     let lostStage = activePipeline.stages?.find(stage =>
-      stage.isTerminal && stage.probability === 0
-    ) || activePipeline.stages?.find(stage =>
-      stage.label?.toLowerCase().includes('lost')
+      stage.isLost
     );
 
     // If no lost stage exists, we'll just mark it as lost without moving to a stage
@@ -427,12 +417,6 @@ export default function DealsPage() {
       if (lostStage) {
         patchBody.stageId = lostStage.id;
         patchBody.pipelineId = activePipeline.id;
-        patchBody.enteredStageAt = new Date().toISOString();
-        patchBody.currentStages = [{
-          pipelineId: activePipeline.id,
-          stageId: lostStage.id,
-          enteredAt: new Date().toISOString()
-        }];
       }
 
       const response = await fetch(`/api/crm/deals/${dealId}`, {
@@ -561,7 +545,7 @@ export default function DealsPage() {
           contactId: formData.contactId || undefined,
           status: 'ACTIVE',
           pipelineId: activePipelineId,
-          stageId: quickAddStageId || undefined
+          stageId: quickAddStageId || (activePipeline?.stages?.[0]?.id)
         })
       });
 
@@ -663,18 +647,17 @@ export default function DealsPage() {
   // Use optimistic deals for immediate UI updates during drag operations
   const currentDeals = optimisticDeals.length > 0 ? optimisticDeals : deals;
   const pipelineDeals = currentDeals.filter(deal => {
-    return deal.currentStages?.some(cs => cs.pipelineId === activePipelineId);
+    return deal.pipelineId === activePipelineId;
   });
 
   // Calculate deals by stage for all deals (before filtering)
   const stages = activePipeline?.stages || [];
   const allDealsByStage = stages.reduce((acc, stage) => {
     acc[stage.id] = pipelineDeals.filter(deal => {
-      const currentStage = deal.currentStages?.find(cs => cs.pipelineId === activePipelineId);
-      return currentStage?.stageId === stage.id;
+      return deal.stageId === stage.id;
     });
     return acc;
-  }, {} as Record<string, EnhancedDeal[]>);
+  }, {} as Record<string, Deal[]>);
 
   // Simple filter and search deals with robust logic
   const hasActiveFilters = Boolean(
@@ -683,16 +666,16 @@ export default function DealsPage() {
   );
 
   // Get filtered stages based on status filter
-  const getFilteredStages = (pipeline: EnhancedPipeline) => {
+  const getFilteredStages = (pipeline: Pipeline) => {
     if (!pipeline.stages) return [];
-    
+
     switch (statusFilter) {
       case 'won':
-        return pipeline.stages.filter(stage => stage.isTerminal && stage.probability === 100);
+        return pipeline.stages.filter(stage => stage.isClosing);
       case 'lost':
-        return pipeline.stages.filter(stage => stage.isTerminal && stage.probability === 0);
+        return pipeline.stages.filter(stage => stage.isLost);
       case 'open':
-        return pipeline.stages.filter(stage => !stage.isTerminal);
+        return pipeline.stages.filter(stage => !stage.isClosing && !stage.isLost);
       default:
         return pipeline.stages;
     }
@@ -765,21 +748,18 @@ export default function DealsPage() {
 
     // Status filter based on stage properties
     if (statusFilter && statusFilter !== 'all') {
-      const dealCurrentStage = deal.currentStages?.find(cs => cs.pipelineId === activePipelineId);
-      if (dealCurrentStage) {
-        const stage = activePipeline?.stages?.find(s => s.id === dealCurrentStage.stageId);
-        if (stage) {
-          switch (statusFilter) {
-            case 'won':
-              if (!stage.isTerminal || stage.probability !== 100) return false;
-              break;
-            case 'lost':
-              if (!stage.isTerminal || stage.probability !== 0) return false;
-              break;
-            case 'open':
-              if (stage.isTerminal) return false;
-              break;
-          }
+      const stage = activePipeline?.stages?.find(s => s.id === deal.stageId);
+      if (stage) {
+        switch (statusFilter) {
+          case 'won':
+            if (!stage.isClosing) return false;
+            break;
+          case 'lost':
+            if (!stage.isLost) return false;
+            break;
+          case 'open':
+            if (stage.isClosing || stage.isLost) return false;
+            break;
         }
       } else if (statusFilter !== 'open') {
         // If deal has no current stage, only show it in 'open' filter
@@ -792,9 +772,7 @@ export default function DealsPage() {
 
   // Function to get deal count for any pipeline
   const getDealCountForPipeline = (pipelineId: string) => {
-    return deals.filter(deal => 
-      deal.currentStages?.some(cs => cs.pipelineId === pipelineId)
-    ).length;
+    return deals.filter(deal => deal.pipelineId === pipelineId).length;
   };
 
   const clearFilters = () => {
@@ -810,7 +788,7 @@ export default function DealsPage() {
     if (stage) {
       setFormData(prev => ({
         ...prev,
-        title: `New Deal - ${stage.label}`,
+        title: `New Deal - ${stage.name}`,
         organisationId: '',
         contactId: ''
       }));
