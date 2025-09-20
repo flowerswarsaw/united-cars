@@ -43,6 +43,7 @@ import {
   arrayMove,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { InlineColorPicker, ColorSelector, STAGE_COLORS } from '@/components/ui/color-palette';
 
 export default function PipelinesPage() {
   const { user, loading: sessionLoading } = useSession();
@@ -67,10 +68,22 @@ export default function PipelinesPage() {
     isClosing: false,
     isLost: false,
     wipLimit: '',
-    slaTarget: ''
+    slaTarget: '',
+    slaUnit: 'hours'
   });
   const [editingStageId, setEditingStageId] = useState<string | null>(null);
+  const [editingColorStageId, setEditingColorStageId] = useState<string | null>(null);
   const [isAddingStage, setIsAddingStage] = useState(false);
+  const [isEditingStage, setIsEditingStage] = useState(false);
+  const [editStageFormData, setEditStageFormData] = useState({
+    name: '',
+    color: '#6B7280',
+    isClosing: false,
+    isLost: false,
+    wipLimit: '',
+    slaTarget: '',
+    slaUnit: 'hours'
+  });
   const [localStages, setLocalStages] = useState<Stage[]>([]);
 
   const sensors = useSensors(
@@ -283,6 +296,7 @@ export default function PipelinesPage() {
           isLost: stageFormData.isLost,
           wipLimit: stageFormData.wipLimit ? parseInt(stageFormData.wipLimit) : undefined,
           slaTarget: stageFormData.slaTarget ? parseInt(stageFormData.slaTarget) : undefined,
+          slaUnit: stageFormData.slaUnit,
           order: localStages.length
         })
       });
@@ -303,7 +317,8 @@ export default function PipelinesPage() {
           isClosing: false,
           isLost: false,
           wipLimit: '',
-          slaTarget: ''
+          slaTarget: '',
+          slaUnit: 'hours'
         });
         toast.success(`Stage Added: ${newStage.name} has been added to the pipeline.`);
       } else {
@@ -337,6 +352,7 @@ export default function PipelinesPage() {
           setPipelines(prev => prev.map(p => p.id === selectedPipeline.id ? updatedPipeline : p));
         }
         setEditingStageId(null);
+        setEditingColorStageId(null);
         toast.success(`Stage Updated: ${updatedStage.name} has been updated.`);
       } else {
         const error = await response.json();
@@ -346,6 +362,41 @@ export default function PipelinesPage() {
       console.error('Failed to update stage:', error);
       toast.error('Failed to update stage');
     }
+  };
+
+  const handleOpenStageEdit = (stage: Stage) => {
+    setEditStageFormData({
+      name: stage.name,
+      color: stage.color || '#6B7280',
+      isClosing: stage.isClosing || false,
+      isLost: stage.isLost || false,
+      wipLimit: stage.wipLimit?.toString() || '',
+      slaTarget: stage.slaTarget?.toString() || '',
+      slaUnit: (stage as any).slaUnit || 'hours' // Use stored unit or default to hours
+    });
+    setEditingStageId(stage.id);
+    setIsEditingStage(true);
+  };
+
+  const handleSaveStageEdit = async () => {
+    if (!editingStageId || !editStageFormData.name) return;
+
+    const stage = localStages.find(s => s.id === editingStageId);
+    if (!stage) return;
+
+    const updatedData = {
+      name: editStageFormData.name,
+      color: editStageFormData.color,
+      isClosing: editStageFormData.isClosing,
+      isLost: editStageFormData.isLost,
+      wipLimit: editStageFormData.wipLimit ? parseInt(editStageFormData.wipLimit) : undefined,
+      slaTarget: editStageFormData.slaTarget ? parseInt(editStageFormData.slaTarget) : undefined,
+      slaUnit: editStageFormData.slaUnit
+    };
+
+    await handleUpdateStage(stage, updatedData);
+    setIsEditingStage(false);
+    setEditingStageId(null);
   };
 
   const handleDeleteStage = async (stage: Stage) => {
@@ -462,17 +513,33 @@ export default function PipelinesPage() {
                 {stage.isClosing && <Badge variant="secondary" className="text-xs">Closing</Badge>}
                 {stage.isLost && <Badge variant="destructive" className="text-xs">Lost</Badge>}
                 {stage.wipLimit && <span className="text-xs">WIP: {stage.wipLimit}</span>}
-                {stage.slaTarget && <span className="text-xs">SLA: {stage.slaTarget}h</span>}
+                {stage.slaTarget && <span className="text-xs">SLA: {stage.slaTarget}{(stage as any).slaUnit === 'days' ? 'd' : 'h'}</span>}
               </div>
             </div>
           )}
         </div>
         <div className="flex items-center gap-2">
-          <div 
-            className="w-4 h-4 rounded-full"
-            style={{ backgroundColor: stage.color || '#6B7280' }}
-          />
-          {editingStageId !== stage.id && (
+          {editingColorStageId === stage.id ? (
+            <div className="relative">
+              <InlineColorPicker
+                value={stage.color || '#6B7280'}
+                onChange={(color) => {
+                  handleUpdateStage(stage, { color });
+                  setEditingColorStageId(null);
+                }}
+                onClose={() => setEditingColorStageId(null)}
+                className="right-0 top-0"
+              />
+            </div>
+          ) : (
+            <div
+              className="w-4 h-4 rounded-full cursor-pointer hover:ring-2 hover:ring-gray-400 transition-all"
+              style={{ backgroundColor: stage.color || '#6B7280' }}
+              onClick={() => setEditingColorStageId(stage.id)}
+              title="Click to change color"
+            />
+          )}
+          {editingStageId !== stage.id && editingColorStageId !== stage.id && (
             <>
               <Button
                 size="sm"
@@ -642,22 +709,11 @@ export default function PipelinesPage() {
               </div>
               
               <div>
-                <Label htmlFor="manageColor">Color</Label>
-                <div className="flex items-center gap-2">
-                  <Input
-                    id="manageColor"
-                    type="color"
-                    value={managePipelineData.color}
-                    onChange={(e) => setManagePipelineData({ ...managePipelineData, color: e.target.value })}
-                    className="w-20 h-10"
-                  />
-                  <Input
-                    value={managePipelineData.color}
-                    onChange={(e) => setManagePipelineData({ ...managePipelineData, color: e.target.value })}
-                    placeholder="#3B82F6"
-                    className="flex-1"
-                  />
-                </div>
+                <ColorSelector
+                  value={managePipelineData.color}
+                  onChange={(color) => setManagePipelineData({ ...managePipelineData, color })}
+                  label="Pipeline Color"
+                />
               </div>
               
               <Button onClick={handleUpdatePipeline} disabled={!managePipelineData.name} className="w-full">
@@ -706,7 +762,7 @@ export default function PipelinesPage() {
                         key={`sortable-${stage.id}`}
                         stage={stage}
                         index={index}
-                        onEdit={(stage) => setEditingStageId(stage.id)}
+                        onEdit={handleOpenStageEdit}
                         onDelete={handleDeleteStage}
                       />
                     ))}
@@ -730,13 +786,10 @@ export default function PipelinesPage() {
                         />
                       </div>
                       <div>
-                        <Label htmlFor="stageColor" className="text-sm">Color</Label>
-                        <Input
-                          id="stageColor"
-                          type="color"
+                        <ColorSelector
                           value={stageFormData.color}
-                          onChange={(e) => setStageFormData({ ...stageFormData, color: e.target.value })}
-                          className="h-10 w-full"
+                          onChange={(color) => setStageFormData({ ...stageFormData, color })}
+                          label="Stage Color"
                         />
                       </div>
                     </div>
@@ -753,14 +806,25 @@ export default function PipelinesPage() {
                         />
                       </div>
                       <div>
-                        <Label htmlFor="slaTarget" className="text-sm">SLA Target (hours)</Label>
-                        <Input
-                          id="slaTarget"
-                          type="number"
-                          value={stageFormData.slaTarget}
-                          onChange={(e) => setStageFormData({ ...stageFormData, slaTarget: e.target.value })}
-                          placeholder="Optional"
-                        />
+                        <Label htmlFor="slaTarget" className="text-sm">SLA Target</Label>
+                        <div className="flex gap-2">
+                          <Input
+                            id="slaTarget"
+                            type="number"
+                            value={stageFormData.slaTarget}
+                            onChange={(e) => setStageFormData({ ...stageFormData, slaTarget: e.target.value })}
+                            placeholder="Optional"
+                            className="flex-1"
+                          />
+                          <select
+                            value={stageFormData.slaUnit}
+                            onChange={(e) => setStageFormData({ ...stageFormData, slaUnit: e.target.value })}
+                            className="px-3 py-2 border border-gray-300 rounded-md text-sm bg-white"
+                          >
+                            <option value="hours">Hours</option>
+                            <option value="days">Days</option>
+                          </select>
+                        </div>
                       </div>
                     </div>
                     
@@ -794,7 +858,8 @@ export default function PipelinesPage() {
                             isClosing: false,
                             isLost: false,
                             wipLimit: '',
-                            slaTarget: ''
+                            slaTarget: '',
+                            slaUnit: 'hours'
                           });
                         }}
                       >
@@ -810,7 +875,8 @@ export default function PipelinesPage() {
                   </div>
                 </div>
               )}
-              
+
+
               {localStages.length === 0 && !isAddingStage && (
                 <div className="text-center py-8 text-gray-500">
                   <div className="mb-2">No stages in this pipeline</div>
@@ -862,22 +928,11 @@ export default function PipelinesPage() {
               />
             </div>
             <div>
-              <Label htmlFor="color">Color</Label>
-              <div className="flex items-center gap-2">
-                <Input
-                  id="color"
-                  type="color"
-                  value={formData.color}
-                  onChange={(e) => setFormData({ ...formData, color: e.target.value })}
-                  className="w-20 h-10"
-                />
-                <Input
-                  value={formData.color}
-                  onChange={(e) => setFormData({ ...formData, color: e.target.value })}
-                  placeholder="#3B82F6"
-                  className="flex-1"
-                />
-              </div>
+              <ColorSelector
+                value={formData.color}
+                onChange={(color) => setFormData({ ...formData, color })}
+                label="Pipeline Color"
+              />
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
@@ -885,6 +940,106 @@ export default function PipelinesPage() {
               </Button>
               <Button onClick={handleCreatePipeline} disabled={!formData.name}>
                 Create Pipeline
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Stage Dialog */}
+      <Dialog open={isEditingStage} onOpenChange={setIsEditingStage}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Edit Stage</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="editStageName" className="text-sm">Stage Name *</Label>
+                <Input
+                  id="editStageName"
+                  value={editStageFormData.name}
+                  onChange={(e) => setEditStageFormData({ ...editStageFormData, name: e.target.value })}
+                  placeholder="Enter stage name"
+                />
+              </div>
+              <div>
+                <ColorSelector
+                  value={editStageFormData.color}
+                  onChange={(color) => setEditStageFormData({ ...editStageFormData, color })}
+                  label="Stage Color"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="editWipLimit" className="text-sm">WIP Limit</Label>
+                <Input
+                  id="editWipLimit"
+                  type="number"
+                  value={editStageFormData.wipLimit}
+                  onChange={(e) => setEditStageFormData({ ...editStageFormData, wipLimit: e.target.value })}
+                  placeholder="Optional"
+                />
+              </div>
+              <div>
+                <Label htmlFor="editSlaTarget" className="text-sm">SLA Target</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="editSlaTarget"
+                    type="number"
+                    value={editStageFormData.slaTarget}
+                    onChange={(e) => setEditStageFormData({ ...editStageFormData, slaTarget: e.target.value })}
+                    placeholder="Optional"
+                    className="flex-1"
+                  />
+                  <select
+                    value={editStageFormData.slaUnit}
+                    onChange={(e) => setEditStageFormData({ ...editStageFormData, slaUnit: e.target.value })}
+                    className="px-3 py-2 border border-gray-300 rounded-md text-sm bg-white"
+                  >
+                    <option value="hours">Hours</option>
+                    <option value="days">Days</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-4">
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={editStageFormData.isClosing}
+                  onChange={(e) => setEditStageFormData({ ...editStageFormData, isClosing: e.target.checked })}
+                />
+                Closing Stage
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={editStageFormData.isLost}
+                  onChange={(e) => setEditStageFormData({ ...editStageFormData, isLost: e.target.checked })}
+                />
+                Lost Stage
+              </label>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-4">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsEditingStage(false);
+                  setEditingStageId(null);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSaveStageEdit}
+                disabled={!editStageFormData.name}
+              >
+                Save Changes
               </Button>
             </div>
           </div>

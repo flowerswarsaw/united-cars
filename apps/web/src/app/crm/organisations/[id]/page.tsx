@@ -16,8 +16,10 @@ import { PageHeader } from '@/components/layout/page-header';
 import { LoadingState } from '@/components/ui/loading-state';
 import { useSession } from '@/hooks/useSession';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { Organisation, Contact, Deal, OrganizationType, ContactMethod, ContactMethodType, SocialMediaLink, SocialPlatform, OrganisationConnection, TypeSpecificFieldDef, CustomFieldType, getTypeSpecificFields, ContactType } from '@united-cars/crm-core';
 import { COUNTRIES_REGIONS, getRegionsByCountryCode, hasRegions, getRegionDisplayName, getCitiesByRegion, hasCities } from '@/lib/countries-regions';
+import { CrmBadge } from '@united-cars/ui';
 import toast from 'react-hot-toast';
 
 export default function OrganisationDetailPage() {
@@ -56,6 +58,12 @@ export default function OrganisationDetailPage() {
   });
   const [showCustomCityOrg, setShowCustomCityOrg] = useState(false);
   const [showCustomCityContact, setShowCustomCityContact] = useState(false);
+
+  // Contact management dialog state
+  const [isContactManageOpen, setIsContactManageOpen] = useState(false);
+  const [contactManageMode, setContactManageMode] = useState<'select' | 'create'>('select');
+  const [unassignedContacts, setUnassignedContacts] = useState<Contact[]>([]);
+  const [selectedContactId, setSelectedContactId] = useState<string>('');
   const [partnerFilter, setPartnerFilter] = useState<string>('all');
 
   // Deal creation dialog state
@@ -483,6 +491,119 @@ export default function OrganisationDetailPage() {
     } catch (error) {
       console.error('Error removing connection:', error);
       toast.error('Error removing connection');
+    }
+  };
+
+  const handleToggleConnectionActive = async (connectionId: string, currentActiveState: boolean) => {
+    try {
+      const response = await fetch(`/api/crm/organisation-connections/${connectionId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          isActive: !currentActiveState
+        })
+      });
+
+      if (response.ok) {
+        toast.success(`Partnership ${!currentActiveState ? 'activated' : 'deactivated'} successfully`);
+        await fetchRelatedData(); // Reload connections
+      } else {
+        toast.error('Failed to update partnership status');
+      }
+    } catch (error) {
+      console.error('Error updating connection:', error);
+      toast.error('Error updating partnership status');
+    }
+  };
+
+  const fetchUnassignedContacts = async () => {
+    try {
+      const response = await fetch('/api/crm/contacts');
+      const allContacts = await response.json();
+
+      // Filter contacts that don't have an organization assigned
+      const unassigned = allContacts.filter((contact: Contact) => !contact.organisationId);
+      setUnassignedContacts(unassigned);
+    } catch (error) {
+      console.error('Error fetching unassigned contacts:', error);
+      toast.error('Failed to load available contacts');
+    }
+  };
+
+  const handleOpenContactManage = () => {
+    fetchUnassignedContacts();
+    setContactManageMode('select');
+    setSelectedContactId('');
+    setIsContactManageOpen(true);
+  };
+
+  const handleAssignContact = async () => {
+    if (!selectedContactId) {
+      toast.error('Please select a contact');
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/crm/contacts/${selectedContactId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ organisationId: orgId })
+      });
+
+      if (response.ok) {
+        toast.success('Contact assigned successfully');
+        setIsContactManageOpen(false);
+        setSelectedContactId('');
+        await fetchRelatedData(); // Reload contacts
+      } else {
+        toast.error('Failed to assign contact');
+      }
+    } catch (error) {
+      console.error('Error assigning contact:', error);
+      toast.error('Error assigning contact');
+    }
+  };
+
+  const handleCreateNewContactInDialog = async () => {
+    // Validate required fields
+    if (!contactFormData.firstName || !contactFormData.lastName || !contactFormData.type || !contactFormData.phone || !contactFormData.country) {
+      alert('Please fill in all required fields: First Name, Last Name, Type, Phone, and Country');
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/crm/contacts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...contactFormData, organisationId: orgId })
+      });
+
+      if (response.ok) {
+        setIsContactManageOpen(false);
+        setContactManageMode('select');
+        setContactFormData({
+          firstName: '',
+          lastName: '',
+          type: ContactType.SALES,
+          phone: '',
+          email: '',
+          organisationId: orgId,
+          country: '',
+          state: '',
+          city: ''
+        });
+        setShowCustomCityContact(false);
+        await fetchRelatedData(); // Reload contacts
+        toast.success(`Contact created: ${contactFormData.firstName} ${contactFormData.lastName}`);
+      } else {
+        const errorData = await response.json();
+        toast.error(`Failed to create contact: ${errorData.error}`);
+      }
+    } catch (error) {
+      console.error('Error creating contact:', error);
+      toast.error('Error creating contact');
     }
   };
 
@@ -1214,9 +1335,9 @@ export default function OrganisationDetailPage() {
                   People associated with this organisation
                 </p>
               </div>
-              <Button onClick={() => setIsContactCreateOpen(true)}>
+              <Button onClick={handleOpenContactManage}>
                 <Plus className="h-4 w-4 mr-2" />
-                Add Contact
+                Manage Contacts
               </Button>
             </div>
 
@@ -1228,7 +1349,7 @@ export default function OrganisationDetailPage() {
                   <p className="text-sm text-muted-foreground mb-4">
                     Add contacts to track people at this organisation
                   </p>
-                  <Button onClick={() => setIsContactCreateOpen(true)}>
+                  <Button onClick={handleOpenContactManage}>
                     <Plus className="h-4 w-4 mr-2" />
                     Add First Contact
                   </Button>
@@ -1249,15 +1370,10 @@ export default function OrganisationDetailPage() {
                             {contact.firstName} {contact.lastName}
                           </h4>
                           <div className="mb-2">
-                            {contact.type ? (
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                {contact.type.replace(/_/g, ' ')}
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                                Contact
-                              </span>
-                            )}
+                            <CrmBadge
+                              entity={{ kind: 'contact', label: contact.type ? contact.type.replace(/_/g, ' ') : undefined }}
+                              size="sm"
+                            />
                           </div>
                           {contact.contactMethods && contact.contactMethods.length > 0 && (
                             <div className="space-y-1">
@@ -1428,7 +1544,16 @@ export default function OrganisationDetailPage() {
                           onClick={() => router.push(`/crm/organisations/${relatedOrg.id}`)}>
                       <CardHeader className="pb-3">
                         <div className="flex items-center justify-between">
-                          <Building2 className="h-5 w-5 text-muted-foreground" />
+                          <div className="flex items-center gap-2">
+                            <Building2 className="h-5 w-5 text-muted-foreground" />
+                            <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                              connection.isActive
+                                ? 'bg-green-100 text-green-700'
+                                : 'bg-gray-100 text-gray-700'
+                            }`}>
+                              {connection.isActive ? 'Active' : 'Inactive'}
+                            </span>
+                          </div>
                           <Button
                             size="sm"
                             variant="ghost"
@@ -1448,11 +1573,29 @@ export default function OrganisationDetailPage() {
                           {formatOrgType(relatedOrg.type)}
                         </p>
                         {relatedOrg.city && relatedOrg.country && (
-                          <p className="text-xs text-muted-foreground mt-1">
+                          <p className="text-xs text-muted-foreground mb-2">
                             <MapPin className="h-3 w-3 inline mr-1" />
                             {relatedOrg.city}, {relatedOrg.country}
                           </p>
                         )}
+                        <div className="flex items-center justify-between mt-3 pt-3 border-t">
+                          <span className="text-xs text-muted-foreground">
+                            Partnership Status
+                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-muted-foreground">
+                              {connection.isActive ? 'Active' : 'Inactive'}
+                            </span>
+                            <Switch
+                              checked={connection.isActive}
+                              onCheckedChange={(checked) => {
+                                handleToggleConnectionActive(connection.id, connection.isActive);
+                              }}
+                              onClick={(e) => e.stopPropagation()}
+                              className="data-[state=checked]:bg-green-600"
+                            />
+                          </div>
+                        </div>
                       </CardContent>
                     </Card>
                   );
@@ -1553,6 +1696,306 @@ export default function OrganisationDetailPage() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Contact Management Dialog */}
+      <Dialog open={isContactManageOpen} onOpenChange={setIsContactManageOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>
+              {contactManageMode === 'select'
+                ? `Add Contact to ${organisation?.name}`
+                : `Create New Contact for ${organisation?.name}`
+              }
+            </DialogTitle>
+          </DialogHeader>
+
+          {contactManageMode === 'select' ? (
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <p className="text-sm text-muted-foreground">
+                  Select an existing contact to assign to this organization
+                </p>
+                <Button
+                  variant="outline"
+                  onClick={() => setContactManageMode('create')}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create New Contact
+                </Button>
+              </div>
+
+              {unassignedContacts.length === 0 ? (
+                <div className="text-center py-8">
+                  <Users className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+                  <h4 className="text-lg font-medium mb-2">No unassigned contacts found</h4>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    All contacts are already assigned to organizations.
+                  </p>
+                  <Button onClick={() => setContactManageMode('create')}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create New Contact
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-3 max-h-96 overflow-y-auto">
+                  {unassignedContacts.map((contact) => (
+                    <div
+                      key={contact.id}
+                      className={`p-3 border rounded-lg cursor-pointer transition-colors ${
+                        selectedContactId === contact.id
+                          ? 'border-primary bg-primary/5'
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                      onClick={() => setSelectedContactId(contact.id)}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="font-medium">
+                            {contact.firstName} {contact.lastName}
+                          </h4>
+                          <div className="flex items-center gap-2 mt-1">
+                            <CrmBadge
+                              entity={{ kind: 'contact', label: contact.type?.replace(/_/g, ' ') }}
+                              size="sm"
+                            />
+                            {contact.title && (
+                              <span className="text-sm text-muted-foreground">
+                                • {contact.title}
+                              </span>
+                            )}
+                          </div>
+                          {contact.contactMethods && contact.contactMethods.length > 0 && (
+                            <div className="flex gap-4 mt-2 text-sm text-muted-foreground">
+                              {contact.contactMethods.filter(m => m.type.includes('EMAIL')).slice(0, 1).map(method => (
+                                <span key={method.id} className="flex items-center gap-1">
+                                  <Mail className="h-3 w-3" />
+                                  {method.value}
+                                </span>
+                              ))}
+                              {contact.contactMethods.filter(m => m.type.includes('PHONE')).slice(0, 1).map(method => (
+                                <span key={method.id} className="flex items-center gap-1">
+                                  <Phone className="h-3 w-3" />
+                                  {method.value}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        {selectedContactId === contact.id && (
+                          <div className="h-4 w-4 rounded-full bg-primary flex items-center justify-center">
+                            <div className="h-2 w-2 rounded-full bg-white" />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {unassignedContacts.length > 0 && (
+                <div className="flex justify-end gap-2 pt-4 border-t">
+                  <Button variant="outline" onClick={() => setIsContactManageOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleAssignContact}
+                    disabled={!selectedContactId}
+                  >
+                    Assign Contact
+                  </Button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <p className="text-sm text-muted-foreground">
+                  Create a new contact for this organization
+                </p>
+                <Button
+                  variant="outline"
+                  onClick={() => setContactManageMode('select')}
+                >
+                  Back to Selection
+                </Button>
+              </div>
+
+              <div className="grid gap-4 py-4">
+                {/* Name Fields */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="firstName">First Name <span className="text-red-500">*</span></Label>
+                    <Input
+                      id="firstName"
+                      value={contactFormData.firstName}
+                      onChange={(e) => setContactFormData({ ...contactFormData, firstName: e.target.value })}
+                      placeholder="John"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="lastName">Last Name <span className="text-red-500">*</span></Label>
+                    <Input
+                      id="lastName"
+                      value={contactFormData.lastName}
+                      onChange={(e) => setContactFormData({ ...contactFormData, lastName: e.target.value })}
+                      placeholder="Doe"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <Label htmlFor="type">Contact Type <span className="text-red-500">*</span></Label>
+                  <Select value={contactFormData.type || undefined} onValueChange={(value) => setContactFormData({ ...contactFormData, type: value as ContactType })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select contact type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={ContactType.ACCOUNTING}>Accounting</SelectItem>
+                      <SelectItem value={ContactType.ADMINISTRATION}>Administration</SelectItem>
+                      <SelectItem value={ContactType.CEO}>CEO</SelectItem>
+                      <SelectItem value={ContactType.FINANCE}>Finance</SelectItem>
+                      <SelectItem value={ContactType.LOGISTICS}>Logistics</SelectItem>
+                      <SelectItem value={ContactType.MARKETING}>Marketing</SelectItem>
+                      <SelectItem value={ContactType.OPERATIONS}>Operations</SelectItem>
+                      <SelectItem value={ContactType.PURCHASING}>Purchasing</SelectItem>
+                      <SelectItem value={ContactType.RETAIL_BUYER}>Retail Buyer</SelectItem>
+                      <SelectItem value={ContactType.SALES}>Sales</SelectItem>
+                      <SelectItem value={ContactType.VP}>VP</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Contact Information */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="phone">Phone <span className="text-red-500">*</span></Label>
+                    <Input
+                      id="phone"
+                      value={contactFormData.phone}
+                      onChange={(e) => setContactFormData({ ...contactFormData, phone: e.target.value })}
+                      placeholder="+1-555-0100"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="email">Email</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={contactFormData.email}
+                      onChange={(e) => setContactFormData({ ...contactFormData, email: e.target.value })}
+                      placeholder="john.doe@company.com"
+                    />
+                  </div>
+                </div>
+
+                {/* Location Information */}
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="country">Country <span className="text-red-500">*</span></Label>
+                    <Select
+                      value={contactFormData.country}
+                      onValueChange={(value) => setContactFormData({ ...contactFormData, country: value, state: '', city: '' })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select country..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.keys(COUNTRIES_REGIONS).map((countryCode) => (
+                          <SelectItem key={countryCode} value={countryCode}>
+                            {COUNTRIES_REGIONS[countryCode].name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="state">State/Region</Label>
+                      <Select
+                        value={contactFormData.state}
+                        onValueChange={(value) => setContactFormData({ ...contactFormData, state: value, city: '' })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select state/region..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {getRegionsByCountryCode(contactFormData.country).map((region) => (
+                            <SelectItem key={region.code} value={region.code}>
+                              {region.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="city">City</Label>
+                      {getCitiesByRegion(contactFormData.country, contactFormData.state).length > 0 ? (
+                        <>
+                          <Select
+                            value={showCustomCityContact ? '__custom__' : contactFormData.city}
+                            onValueChange={(value) => {
+                              if (value === '__custom__') {
+                                setShowCustomCityContact(true);
+                                setContactFormData({ ...contactFormData, city: '' });
+                              } else {
+                                setShowCustomCityContact(false);
+                                setContactFormData({ ...contactFormData, city: value });
+                              }
+                            }}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select city..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {getCitiesByRegion(contactFormData.country, contactFormData.state).map((city) => (
+                                <SelectItem key={city} value={city}>
+                                  {city}
+                                </SelectItem>
+                              ))}
+                              <SelectItem value="__custom__">Other/Custom city...</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          {showCustomCityContact && (
+                            <Input
+                              id="city"
+                              value={contactFormData.city}
+                              onChange={(e) => setContactFormData({ ...contactFormData, city: e.target.value })}
+                              placeholder="Enter city name..."
+                              className="mt-2"
+                            />
+                          )}
+                        </>
+                      ) : (
+                        <Input
+                          id="city"
+                          value={contactFormData.city}
+                          onChange={(e) => setContactFormData({ ...contactFormData, city: e.target.value })}
+                          placeholder="Enter city name..."
+                        />
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-2 pt-4 border-t">
+                  <Button variant="outline" onClick={() => setContactManageMode('select')}>
+                    Back
+                  </Button>
+                  <Button
+                    onClick={handleCreateNewContactInDialog}
+                    disabled={!contactFormData.firstName || !contactFormData.lastName || !contactFormData.type || !contactFormData.phone || !contactFormData.country}
+                  >
+                    Create Contact
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Contact Creation Dialog */}
       <Dialog open={isContactCreateOpen} onOpenChange={setIsContactCreateOpen}>
@@ -1742,9 +2185,10 @@ export default function OrganisationDetailPage() {
                 <span className="font-medium">Organization:</span>
                 <span>{organisation?.name}</span>
                 {organisation?.type && (
-                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                    {organisation.type.replace(/_/g, ' ')}
-                  </span>
+                  <CrmBadge
+                    entity={{ kind: 'org', type: organisation.type.toLowerCase() }}
+                    size="sm"
+                  />
                 )}
               </div>
             </div>

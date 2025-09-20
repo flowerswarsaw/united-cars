@@ -29,9 +29,13 @@ export async function POST(
     const stage = await pipelineRepository.createStage(pipelineId, {
       name: body.name,
       description: body.description || '',
+      color: body.color,
       order: body.order ?? (maxOrder + 1),
       isClosing: body.isClosing || false,
-      isLost: body.isLost || false
+      isLost: body.isLost || false,
+      wipLimit: body.wipLimit,
+      slaTarget: body.slaTarget,
+      slaUnit: body.slaUnit
     });
 
     // Save to persistent storage
