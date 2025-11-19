@@ -221,18 +221,36 @@ export interface LeadCore {
   status?: string;
 }
 
+export interface LeadContactInfo {
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  phone?: string;
+  company?: string;
+  jobTitle?: string;
+}
+
 export interface LeadRelationships {
   organisationId?: string;
   contactId?: string;
+  convertedDealId?: string;
 }
 
-// Main Lead interface composed of focused components  
-export interface Lead extends BaseEntity, LeadCore, LeadRelationships, EntityMetadata {}
+export interface LeadArchive {
+  isArchived: boolean;
+  archivedAt?: Date;
+  archivedReason?: 'converted' | 'not_qualified' | 'duplicate' | 'invalid';
+  archivedBy?: string;
+}
+
+// Main Lead interface composed of focused components
+export interface Lead extends BaseEntity, LeadCore, LeadContactInfo, LeadRelationships, LeadArchive, EntityMetadata {}
 
 export interface Pipeline extends BaseEntity {
   name: string;
   description?: string;
   isDefault?: boolean;
+  isActive?: boolean;
   order: number;
   color?: string;
   applicableTypes: OrganizationType[];

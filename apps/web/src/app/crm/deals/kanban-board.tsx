@@ -21,13 +21,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Building2, User, DollarSign, Clock, Calendar, Plus, CheckCircle2, Circle, ChevronLeft, ChevronRight, Minimize2, Maximize2, Trash2, History, CheckSquare, Square, Trophy, X, AlertCircle, AlertTriangle } from 'lucide-react';
+import { Building2, User, DollarSign, Clock, Calendar, Plus, CheckCircle2, Circle, ChevronLeft, ChevronRight, Minimize2, Maximize2, Trash2, History, CheckSquare, Square, Trophy, X, AlertCircle, AlertTriangle, ChevronsLeft, ChevronsRight, Eye, EyeOff } from 'lucide-react';
 import { LossReason, DealStatus, Organisation, Contact, Task, TaskStatus, TaskPriority, EntityType, Deal, Pipeline, Stage } from '@united-cars/crm-core';
 
 // Extend Window interface for native drag and drop
 declare global {
   interface Window {
     onDealMoved?: (dealId: string, stageId: string) => void;
+    kanbanExpandAllStages?: () => void;
+    kanbanCollapseAllStages?: () => void;
+    kanbanToggleWonLostStages?: () => void;
   }
 }
 
@@ -50,6 +53,10 @@ interface KanbanBoardProps {
   totalDeals?: number;
   allDealsByStage?: Record<string, Deal[]>;
   searchQuery?: string;
+  // Bulk collapse functions
+  onExpandAllStages?: () => void;
+  onCollapseAllStages?: () => void;
+  onToggleWonLostStages?: () => void;
 }
 
 interface DealCard {
@@ -119,9 +126,13 @@ function DealCardComponent({ deal, organisations, contacts, tasks, onClick, onOr
 
   // Calculate SLA breach status
   const getSlaStatus = () => {
-    if (!deal.stageId || !stages) return null;
+    if (!deal.currentStages || deal.currentStages.length === 0 || !stages) return null;
 
-    const stage = stages.find(s => s.id === deal.stageId);
+    // Get the current stage from the first currentStage (assuming single pipeline)
+    const currentStage = deal.currentStages[0];
+    if (!currentStage) return null;
+
+    const stage = stages.find(s => s.id === currentStage.stageId);
     if (!stage?.slaTarget) return null;
 
     // Calculate days since deal creation (simplified for now)
@@ -462,12 +473,12 @@ function StageColumn({ stage, deals, organisations, contacts, tasks, onDealClick
   if (isCollapsed) {
     return (
       <div
-        className="flex-none w-16 sm:w-20 md:w-24 h-full min-h-[400px] transition-all duration-300 ease-out will-change-transform relative bg-gradient-to-b from-muted/30 via-muted/20 to-muted/40 hover:from-muted/50 hover:via-muted/30 hover:to-muted/60 rounded-b-2xl hover:shadow-md backdrop-blur-sm border border-slate-200/50 dark:border-slate-700/50 shadow-sm"
+        className="w-full h-full min-h-[400px] transition-all duration-300 ease-out will-change-transform relative bg-gradient-to-b from-muted/30 via-muted/20 to-muted/40 hover:from-muted/50 hover:via-muted/30 hover:to-muted/60 rounded-2xl hover:shadow-md backdrop-blur-sm border border-slate-200/50 dark:border-slate-700/50 shadow-sm"
       >
         {/* Default collapsed state display */}
-        <div className="h-full flex items-center justify-center">
-          <div className="text-muted-foreground text-xs text-center transition-all duration-300 hover:text-foreground/70 hover:font-medium" style={{ writingMode: 'vertical-rl' }}>
-            Collapsed
+        <div className="h-full flex items-center justify-center p-2">
+          <div className="text-foreground/80 text-xs text-center transition-all duration-300 hover:text-foreground hover:font-medium font-medium" style={{ writingMode: 'vertical-rl' }}>
+            {stage.name}
           </div>
         </div>
       </div>
@@ -542,7 +553,7 @@ function StageColumn({ stage, deals, organisations, contacts, tasks, onDealClick
   );
 }
 
-export default function KanbanBoard({ pipeline, deals, organisations, contacts, tasks, onDealMoved, onDealWon, onDealLost, onDealUpdated, onTaskCreated, onOrganisationClick, onContactClick, onQuickAddDeal, isFiltered = false, totalDeals = 0, allDealsByStage, searchQuery }: KanbanBoardProps) {
+export default function KanbanBoard({ pipeline, deals, organisations, contacts, tasks, onDealMoved, onDealWon, onDealLost, onDealUpdated, onTaskCreated, onOrganisationClick, onContactClick, onQuickAddDeal, isFiltered = false, totalDeals = 0, allDealsByStage, searchQuery, onExpandAllStages, onCollapseAllStages, onToggleWonLostStages }: KanbanBoardProps) {
   const [showLossDialog, setShowLossDialog] = useState(false);
   const [showDealDialog, setShowDealDialog] = useState(false);
   const [showTaskDialog, setShowTaskDialog] = useState(false);
@@ -624,7 +635,10 @@ export default function KanbanBoard({ pipeline, deals, organisations, contacts, 
   
   const dealsByStage = stages.reduce((acc, stage) => {
     acc[stage.id] = deals.filter(deal => {
-      return deal.pipelineId === pipeline.id && deal.stageId === stage.id;
+      // Check if deal has currentStages for this pipeline and stage
+      return deal.currentStages?.some(currentStage =>
+        currentStage.pipelineId === pipeline.id && currentStage.stageId === stage.id
+      );
     });
     return acc;
   }, {} as Record<string, Deal[]>);
@@ -797,6 +811,48 @@ export default function KanbanBoard({ pipeline, deals, organisations, contacts, 
     });
   };
 
+  const collapseAllStages = () => {
+    const allStageIds = stages.map(stage => stage.id);
+    setCollapsedStages(new Set(allStageIds));
+  };
+
+  const expandAllStages = () => {
+    setCollapsedStages(new Set());
+  };
+
+  const toggleWonLostStages = () => {
+    const wonLostStageIds = stages
+      .filter(stage => stage.isClosing || stage.isLost)
+      .map(stage => stage.id);
+
+    setCollapsedStages(prev => {
+      const newSet = new Set(prev);
+      const allWonLostCollapsed = wonLostStageIds.every(id => newSet.has(id));
+
+      if (allWonLostCollapsed) {
+        // Expand all won/lost stages
+        wonLostStageIds.forEach(id => newSet.delete(id));
+      } else {
+        // Collapse all won/lost stages
+        wonLostStageIds.forEach(id => newSet.add(id));
+      }
+      return newSet;
+    });
+  };
+
+  // Connect functions to window for external access
+  useEffect(() => {
+    window.kanbanExpandAllStages = expandAllStages;
+    window.kanbanCollapseAllStages = collapseAllStages;
+    window.kanbanToggleWonLostStages = toggleWonLostStages;
+
+    return () => {
+      delete window.kanbanExpandAllStages;
+      delete window.kanbanCollapseAllStages;
+      delete window.kanbanToggleWonLostStages;
+    };
+  }, [stages, collapsedStages]);
+
   const handleDeleteClick = (dealId: string) => {
     setDealToDelete(dealId);
     setShowDeleteDialog(true);
@@ -839,14 +895,14 @@ export default function KanbanBoard({ pipeline, deals, organisations, contacts, 
         <div className="flex-1 overflow-x-auto overflow-y-hidden min-h-0 h-full scroll-smooth scrollbar-thin scrollbar-thumb-slate-300/60 dark:scrollbar-thumb-slate-700/60 scrollbar-track-transparent hover:scrollbar-thumb-slate-400/80 dark:hover:scrollbar-thumb-slate-600/80 isolate">
           <div className="flex gap-3 sm:gap-4 h-full min-w-max pb-4 px-2">
           {stages.map((stage, index) => (
-            <div 
+            <div
               key={stage.id}
-              className={`flex-none flex flex-col h-full ${
-                collapsedStages.has(stage.id) 
-                  ? 'w-14 sm:w-16 md:w-18' 
+              className={`flex-none flex flex-col h-full transition-all duration-500 ease-out will-change-transform animate-in fade-in-0 slide-in-from-bottom-4 ${
+                collapsedStages.has(stage.id)
+                  ? 'w-16'
                   : 'w-64 sm:w-68 md:w-72 lg:w-76'
-              } transition-all duration-500 ease-out will-change-transform animate-in fade-in-0 slide-in-from-bottom-4`}
-              style={{ 
+              }`}
+              style={{
                 animationDelay: `${index * 150}ms`,
                 animationFillMode: 'both'
               }}
@@ -854,9 +910,9 @@ export default function KanbanBoard({ pipeline, deals, organisations, contacts, 
               {/* Stage Header */}
               <div className="mb-2">
                 <div className={`bg-gradient-to-r from-card/90 via-card to-card/90 backdrop-blur-md rounded-lg shadow-md shadow-slate-200/40 dark:shadow-slate-900/40 border border-slate-200/70 dark:border-slate-700/70 z-30 isolate hover:shadow-lg transition-all duration-300 ${
-                  collapsedStages.has(stage.id) 
-                    ? 'p-2.5 relative' 
-                    : 'p-3 flex items-center justify-between min-h-[2.5rem]'
+                  collapsedStages.has(stage.id)
+                    ? 'p-2 w-full h-16 flex flex-col items-center justify-center relative'
+                    : 'p-3 flex items-center justify-between min-h-[2.5rem] w-full'
                 }`}>
                   {!collapsedStages.has(stage.id) ? (
                     <>
@@ -885,27 +941,24 @@ export default function KanbanBoard({ pipeline, deals, organisations, contacts, 
                       </button>
                     </>
                   ) : (
-                    <>
+                    <div className="w-full h-full flex flex-col items-center text-center relative">
                       <button
                         onClick={() => toggleStageCollapse(stage.id)}
-                        className="absolute top-2 right-2 flex items-center justify-center w-6 h-6 rounded-lg hover:bg-slate-100/80 dark:hover:bg-slate-800/80 hover:scale-110 active:scale-95 transition-all duration-200 ease-out z-40 isolate hover:shadow-md border border-transparent hover:border-slate-200/50 dark:hover:border-slate-700/50 backdrop-blur-sm"
+                        className="absolute -top-1 -right-1 flex items-center justify-center w-5 h-5 rounded-md hover:bg-slate-100/80 dark:hover:bg-slate-800/80 hover:scale-110 active:scale-95 transition-all duration-200 ease-out z-40 isolate hover:shadow-md border border-transparent hover:border-slate-200/50 dark:hover:border-slate-700/50 backdrop-blur-sm"
                         title="Expand stage"
                       >
-                        <ChevronRight className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground transition-colors duration-200" />
+                        <ChevronRight className="h-3 w-3 text-muted-foreground hover:text-foreground transition-colors duration-200" />
                       </button>
-                      <div className="flex flex-col items-center text-center pt-1">
-                        <div 
-                          className="w-2 h-2 rounded-full mb-2"
+                      <div className="flex flex-col items-center justify-center h-full pt-1">
+                        <div
+                          className="w-4 h-4 rounded-full mb-2"
                           style={{ backgroundColor: stage.color || '#6B7280' }}
                         />
-                        <div className="text-xs font-medium text-foreground/80 mb-2 truncate w-full px-1 leading-tight">
-                          {stage.name}
-                        </div>
-                        <Badge variant="outline" className="text-xs px-1.5 py-0.5">
+                        <Badge variant="outline" className="text-xs px-1.5 py-1 min-w-0 font-medium">
                           {(dealsByStage[stage.id] || []).length}
                         </Badge>
                       </div>
-                    </>
+                    </div>
                   )}
                 </div>
               </div>

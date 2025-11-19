@@ -69,7 +69,18 @@
     --chart-4: 271 81% 56%;
     --chart-5: 0 84.2% 60.2%;
     --chart-6: 199 89% 48%;
-    
+
+    /* CRM Entity Colors */
+    --crm-contact: 217 91% 60%;
+    --crm-org-customer: 160 84% 39%;
+    --crm-org-dealer: 172 76% 36%;
+    --crm-org-supplier: 142 71% 45%;
+    --crm-org-partner: 84 81% 44%;
+    --crm-deal-open: 24 95% 53%;
+    --crm-deal-in-progress: 45 93% 47%;
+    --crm-deal-closed-won: 142 76% 36%;
+    --crm-deal-closed-lost: 0 84% 60%;
+
     --radius: 0.5rem;
   }
 
@@ -139,6 +150,17 @@
     --chart-4: 271 91% 65%;
     --chart-5: 0 72.2% 50.6%;
     --chart-6: 199 95% 62%;
+
+    /* CRM Entity Colors - Dark Mode */
+    --crm-contact: 217 91% 65%;
+    --crm-org-customer: 160 84% 45%;
+    --crm-org-dealer: 172 76% 42%;
+    --crm-org-supplier: 142 71% 51%;
+    --crm-org-partner: 84 81% 50%;
+    --crm-deal-open: 24 95% 58%;
+    --crm-deal-in-progress: 45 93% 52%;
+    --crm-deal-closed-won: 142 76% 42%;
+    --crm-deal-closed-lost: 0 84% 65%;
   }
 }
 

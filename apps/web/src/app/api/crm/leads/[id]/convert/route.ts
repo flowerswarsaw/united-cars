@@ -6,16 +6,23 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  let id: string | undefined;
+
   try {
-    const { id } = await params;
+    const paramsData = await params;
+    id = paramsData.id;
+    console.log(`Attempting to convert lead with ID: ${id}`);
+
     const body = await request.json();
     const validated = convertLeadInputSchema.parse(body);
-    
+
     const deal = await leadRepository.convertToDeal(id, validated);
     await jsonPersistence.save();
-    
+
+    console.log(`Successfully converted lead: ${id} to deal: ${deal.id}`);
     return NextResponse.json(deal, { status: 201 });
   } catch (error: any) {
+    console.error(`Error converting lead ${id || 'unknown'}:`, error.message);
     if (error.name === 'ZodError') {
       return NextResponse.json(
         { error: 'Invalid input', details: error.errors },

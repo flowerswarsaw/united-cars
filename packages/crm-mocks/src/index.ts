@@ -84,13 +84,123 @@ function initializeData() {
       dataInitialized = true;
     } else {
       console.log('No persisted data found, seeding CRM data synchronously...');
-      seedData();
+
+      // Load actual seed data and repositories
+      const seedsModule = require('./seeds');
+      const {
+        organisations,
+        organisationConnections,
+        contacts,
+        leads,
+        deals,
+        tasks,
+        customFieldDefs,
+        customFieldValues,
+        pipelines,
+        dealerAcquisitionStages,
+        dealerIntegrationStages,
+        retailSalesStages,
+        vendorOnboardingStages,
+        auctionIntegrationStages,
+        organisationRepository: orgRepo,
+        organisationConnectionRepository: orgConnRepo,
+        contactRepository: contactRepo,
+        leadRepository: leadRepo,
+        dealRepository: dealRepo,
+        pipelineRepository: pipelineRepo,
+        taskRepository: taskRepo,
+        customFieldRepository: customFieldRepo
+      } = seedsModule;
+
+      // Load organizations and connections
+      orgRepo.fromJSON(organisations || []);
+      orgConnRepo.fromJSON(organisationConnections || []);
+
+      // Load contacts and leads
+      contactRepo.fromJSON(contacts || []);
+      leadRepo.fromJSON(leads || []);
+
+      // Load deals and tasks
+      dealRepo.fromJSON(deals || []);
+      taskRepo.fromJSON(tasks || []);
+
+      // Load pipelines
+      pipelineRepo.fromJSON(pipelines || []);
+
+      // Load custom fields
+      customFieldRepo.fromJSON({ fieldDefs: customFieldDefs || [], fieldValues: customFieldValues || [] });
+
+      // Load pipeline stages
+      const allStages = [
+        ...(dealerAcquisitionStages || []),
+        ...(dealerIntegrationStages || []),
+        ...(retailSalesStages || []),
+        ...(vendorOnboardingStages || []),
+        ...(auctionIntegrationStages || [])
+      ];
+      pipelineRepo.stagesFromJSON(allStages);
+
       console.log('CRM data seeded successfully');
       dataInitialized = true;
     }
   } catch (error) {
     console.warn('Failed to load persisted data synchronously, falling back to seed data:', error);
-    seedData();
+
+    // Load actual seed data and repositories
+    const seedsModule = require('./seeds');
+    const {
+      organisations,
+      organisationConnections,
+      contacts,
+      leads,
+      deals,
+      tasks,
+      customFieldDefs,
+      customFieldValues,
+      pipelines,
+      dealerAcquisitionStages,
+      dealerIntegrationStages,
+      retailSalesStages,
+      vendorOnboardingStages,
+      auctionIntegrationStages,
+      organisationRepository: orgRepo,
+      organisationConnectionRepository: orgConnRepo,
+      contactRepository: contactRepo,
+      leadRepository: leadRepo,
+      dealRepository: dealRepo,
+      pipelineRepository: pipelineRepo,
+      taskRepository: taskRepo,
+      customFieldRepository: customFieldRepo
+    } = seedsModule;
+
+    // Load organizations and connections
+    orgRepo.fromJSON(organisations || []);
+    orgConnRepo.fromJSON(organisationConnections || []);
+
+    // Load contacts and leads
+    contactRepo.fromJSON(contacts || []);
+    leadRepo.fromJSON(leads || []);
+
+    // Load deals and tasks
+    dealRepo.fromJSON(deals || []);
+    taskRepo.fromJSON(tasks || []);
+
+    // Load pipelines
+    pipelineRepo.fromJSON(pipelines || []);
+
+    // Load custom fields
+    customFieldRepo.fromJSON({ fieldDefs: customFieldDefs || [], fieldValues: customFieldValues || [] });
+
+    // Load pipeline stages
+    const allStages = [
+      ...(dealerAcquisitionStages || []),
+      ...(dealerIntegrationStages || []),
+      ...(retailSalesStages || []),
+      ...(vendorOnboardingStages || []),
+      ...(auctionIntegrationStages || [])
+    ];
+    pipelineRepo.stagesFromJSON(allStages);
+
     dataInitialized = true;
   }
 }

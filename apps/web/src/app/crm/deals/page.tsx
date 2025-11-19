@@ -23,7 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, Search, X } from 'lucide-react';
+import { Plus, Search, X, ChevronsLeft, ChevronsRight, Eye, EyeOff } from 'lucide-react';
 import KanbanBoard from './kanban-board';
 import { Pipeline, LossReason, Organisation, Contact, ContactMethodType, Task, Deal } from '@united-cars/crm-core';
 import { KanbanStageSkeleton } from '@/components/ui/skeleton';
@@ -204,11 +204,14 @@ export default function DealsPage() {
       ]);
 
       // Handle results with fallbacks
-      const pipelines = pipelinesData.status === 'fulfilled' ? pipelinesData.value : [];
+      const allPipelines = pipelinesData.status === 'fulfilled' ? pipelinesData.value : [];
       const deals = dealsData.status === 'fulfilled' ? dealsData.value : [];
       const organisations = organisationsData.status === 'fulfilled' ? organisationsData.value : [];
       const contacts = contactsData.status === 'fulfilled' ? contactsData.value : [];
       const tasks = tasksData.status === 'fulfilled' ? tasksData.value : [];
+
+      // Filter to only show active pipelines
+      const pipelines = allPipelines.filter((p: Pipeline) => p.isActive !== false);
 
       // Log any failures
       if (pipelinesData.status === 'rejected') console.error('Failed to load pipelines:', pipelinesData.reason);
@@ -226,7 +229,8 @@ export default function DealsPage() {
       // Set default active pipeline
       if (pipelines && pipelines.length > 0 && !activePipelineId) {
         const dealerPipeline = pipelines.find((p: Pipeline) => p.name === 'Dealer Pipeline' || p.name === 'Dealer Acquisition');
-        setActivePipelineId(dealerPipeline?.id || pipelines[0].id);
+        const selectedPipelineId = dealerPipeline?.id || pipelines[0].id;
+        setActivePipelineId(selectedPipelineId);
       }
 
       // Show partial success message if some data failed to load
@@ -288,7 +292,8 @@ export default function DealsPage() {
           pipelineId: activePipelineId,
           toStageId,
           note,
-          lossReason
+          lossReason,
+          movedBy: user?.id || user?.email || 'anonymous'
         })
       });
 
@@ -531,6 +536,12 @@ export default function DealsPage() {
   const handleCreate = async () => {
     if (!formData.title || !activePipelineId) return;
 
+    // Ensure the pipeline is active
+    if (activePipeline?.isActive === false) {
+      toast.error('Cannot create deal in inactive pipeline');
+      return;
+    }
+
     try {
       const response = await fetch('/api/crm/deals', {
         method: 'POST',
@@ -647,14 +658,22 @@ export default function DealsPage() {
   // Use optimistic deals for immediate UI updates during drag operations
   const currentDeals = optimisticDeals.length > 0 ? optimisticDeals : deals;
   const pipelineDeals = currentDeals.filter(deal => {
-    return deal.pipelineId === activePipelineId;
+    // Check if deal has currentStages for this pipeline
+    const hasMatchingStage = deal.currentStages?.some(currentStage =>
+      currentStage.pipelineId === activePipelineId
+    );
+    return hasMatchingStage;
   });
+
 
   // Calculate deals by stage for all deals (before filtering)
   const stages = activePipeline?.stages || [];
   const allDealsByStage = stages.reduce((acc, stage) => {
     acc[stage.id] = pipelineDeals.filter(deal => {
-      return deal.stageId === stage.id;
+      // Check if deal has currentStages for this pipeline and stage
+      return deal.currentStages?.some(currentStage =>
+        currentStage.pipelineId === activePipelineId && currentStage.stageId === stage.id
+      );
     });
     return acc;
   }, {} as Record<string, Deal[]>);
@@ -729,7 +748,6 @@ export default function DealsPage() {
       const allSearchFields = [
         // Deal core data
         deal.title,
-        deal.description,
         deal.value?.toString(),
         deal.currency,
         deal.status,
@@ -772,7 +790,12 @@ export default function DealsPage() {
 
   // Function to get deal count for any pipeline
   const getDealCountForPipeline = (pipelineId: string) => {
-    return deals.filter(deal => deal.pipelineId === pipelineId).length;
+    return deals.filter(deal => {
+      // Check if deal has currentStages for this pipeline
+      return deal.currentStages?.some(currentStage =>
+        currentStage.pipelineId === pipelineId
+      );
+    }).length;
   };
 
   const clearFilters = () => {
@@ -922,15 +945,6 @@ export default function DealsPage() {
                     </SelectContent>
                   </Select>
                 </div>
-              </div>
-              <div>
-                <Label htmlFor="description">Description</Label>
-                <Textarea
-                  id="description"
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  placeholder="Optional deal description..."
-                />
               </div>
               <div className="flex justify-end gap-2">
                 <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
@@ -1130,10 +1144,11 @@ export default function DealsPage() {
 
   return (
     <AppLayout user={user}>
-      <PageHeader 
+      <PageHeader
         title="Deals"
         description="Manage your sales pipeline"
         breadcrumbs={[{ label: 'CRM' }, { label: 'Deals' }]}
+        actions={null}
       />
       
       {/* Main Content Container - Full Height */}
@@ -1148,9 +1163,9 @@ export default function DealsPage() {
                 {pipelines.map((pipeline) => (
                   <TabsTrigger key={pipeline.id} value={pipeline.id}>
                     <div className="flex items-center">
-                      <div 
+                      <div
                         className="w-2 h-2 rounded-full mr-2"
-                        style={{ backgroundColor: '#6B7280' }}
+                        style={{ backgroundColor: pipeline.color || '#6B7280' }}
                       />
                       {pipeline.name}
                       <span className="ml-1.5 text-xs bg-muted text-muted-foreground px-1.5 py-0.5 rounded text-[10px]">
@@ -1229,6 +1244,41 @@ export default function DealsPage() {
                               </Button>
                             )}
                           </div>
+                        </div>
+
+                        {/* Center: Bulk Collapse Controls */}
+                        <div className="flex items-center gap-1 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-lg border border-slate-200/50 dark:border-slate-700/50 p-1 shadow-sm">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => window.kanbanExpandAllStages?.()}
+                            className="h-7 px-2 text-xs hover:bg-slate-100 dark:hover:bg-slate-700"
+                            title="Expand all stages"
+                          >
+                            <ChevronsRight className="h-3 w-3 mr-1" />
+                            Expand All
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => window.kanbanCollapseAllStages?.()}
+                            className="h-7 px-2 text-xs hover:bg-slate-100 dark:hover:bg-slate-700"
+                            title="Collapse all stages"
+                          >
+                            <ChevronsLeft className="h-3 w-3 mr-1" />
+                            Collapse All
+                          </Button>
+                          <div className="w-px h-4 bg-slate-300 dark:bg-slate-600 mx-1" />
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => window.kanbanToggleWonLostStages?.()}
+                            className="h-7 px-2 text-xs hover:bg-slate-100 dark:hover:bg-slate-700"
+                            title="Toggle won/lost stages"
+                          >
+                            <EyeOff className="h-3 w-3 mr-1" />
+                            Won/Lost
+                          </Button>
                         </div>
 
                         {/* Right Side: New Deal Button - Far Right */}

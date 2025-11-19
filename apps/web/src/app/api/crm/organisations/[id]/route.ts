@@ -68,11 +68,14 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
+    console.log(`Attempting to delete organization with ID: ${id}`);
 
     // Delete the organization using the repository
-    const deleted = await organisationRepository.delete(id);
+    const deleted = await organisationRepository.remove(id);
+    console.log(`Delete result:`, deleted);
 
     if (!deleted) {
+      console.log(`Organization not found: ${id}`);
       return NextResponse.json(
         { error: 'Organisation not found' },
         { status: 404 }
@@ -89,6 +92,7 @@ export async function DELETE(
       { status: 200 }
     );
   } catch (error) {
+    console.error('Error in DELETE organization:', error);
     return NextResponse.json(
       { error: 'Failed to delete organisation' },
       { status: 500 }

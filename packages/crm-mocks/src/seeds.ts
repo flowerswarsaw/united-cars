@@ -48,6 +48,7 @@ import {
 import { EnhancedPersistenceManager } from './persistence/enhanced-persistence';
 import { UniquenessManager } from '@united-cars/crm-core/src/uniqueness';
 import { HistoryLogger } from '@united-cars/crm-core/src/history';
+import dealsData from './deals-seed';
 
 // Seed data with organization types
 const organisations = [
@@ -939,19 +940,21 @@ const leads = [
   })
 ];
 
-// Create deals with proper stage assignments
-const deals = [
+// Use the clean deals with proper pipeline assignments from the imported file
+const deals = dealsData;
+
+// Old deals array replaced with clean version
+/*
+const deals_old = [
   makeDeal({
-    id: 'deal_1',
+    id: 'deal_1_old',
     title: 'AutoMax Fleet Expansion',
     amount: 250000,
     currency: 'USD',
     organisationId: 'org_1',
     status: DealStatus.OPEN,
     probability: 60,
-    notes: 'Q1 target deal, multiple vehicle imports',
-    pipelineId: 'pipeline-dealer-acquisition',
-    currentStageId: 'stage-da-proposal'
+    notes: 'Q1 target deal, multiple vehicle imports'
   }),
   makeDeal({
     id: 'deal_2',
@@ -971,9 +974,7 @@ const deals = [
     organisationId: 'org_3',
     status: DealStatus.OPEN,
     probability: 40,
-    notes: 'Focus on compact and economy vehicles',
-    pipelineId: 'pipeline-dealer-acquisition',
-    currentStageId: 'stage-da-qualification'
+    notes: 'Focus on compact and economy vehicles'
   }),
   makeDeal({
     id: 'deal_4',
@@ -1016,64 +1017,9 @@ const deals = [
     probability: 55,
     notes: 'New shipping route partnership proposal'
   })
-];
+*/
 
-// Assign deals to stages - Updated to use new pipeline/stage IDs
-deals[0].currentStages = [makeDealCurrentStage('deal_1', 'dealer-acquisition', 'stage_da_3')];
-deals[0].stageHistory = [
-  makeDealStageHistory('deal_1', 'dealer-acquisition', 'stage_da_1'),
-  makeDealStageHistory('deal_1', 'dealer-acquisition', 'stage_da_2', { fromStageId: 'stage_da_1' }),
-  makeDealStageHistory('deal_1', 'dealer-acquisition', 'stage_da_3', { fromStageId: 'stage_da_2' })
-];
-
-deals[1].currentStages = [makeDealCurrentStage('deal_2', 'dealer-acquisition', 'stage_da_6')];
-deals[1].stageHistory = [
-  makeDealStageHistory('deal_2', 'dealer-acquisition', 'stage_da_1'),
-  makeDealStageHistory('deal_2', 'dealer-acquisition', 'stage_da_2', { fromStageId: 'stage_da_1' }),
-  makeDealStageHistory('deal_2', 'dealer-acquisition', 'stage_da_3', { fromStageId: 'stage_da_2' }),
-  makeDealStageHistory('deal_2', 'dealer-acquisition', 'stage_da_4', { fromStageId: 'stage_da_3' }),
-  makeDealStageHistory('deal_2', 'dealer-acquisition', 'stage_da_5', { fromStageId: 'stage_da_4' }),
-  makeDealStageHistory('deal_2', 'dealer-acquisition', 'stage_da_6', { fromStageId: 'stage_da_5' })
-];
-
-deals[2].currentStages = [makeDealCurrentStage('deal_3', 'dealer-acquisition', 'stage_da_2')];
-deals[2].stageHistory = [
-  makeDealStageHistory('deal_3', 'dealer-acquisition', 'stage_da_1'),
-  makeDealStageHistory('deal_3', 'dealer-acquisition', 'stage_da_2', { fromStageId: 'stage_da_1' })
-];
-
-// Deal 4 is won, so it has both pipelines
-deals[3].currentStages = [
-  makeDealCurrentStage('deal_4', 'dealer-acquisition', 'stage_da_10'),
-  makeDealCurrentStage('deal_4', 'dealer-integration', 'stage_di_3')
-];
-deals[3].stageHistory = [
-  makeDealStageHistory('deal_4', 'dealer-acquisition', 'stage_da_1'),
-  makeDealStageHistory('deal_4', 'dealer-acquisition', 'stage_da_10', { fromStageId: 'stage_da_9' }),
-  makeDealStageHistory('deal_4', 'dealer-integration', 'stage_di_1'),
-  makeDealStageHistory('deal_4', 'dealer-integration', 'stage_di_2', { fromStageId: 'stage_di_1' }),
-  makeDealStageHistory('deal_4', 'dealer-integration', 'stage_di_3', { fromStageId: 'stage_di_2' })
-];
-
-deals[4].currentStages = [makeDealCurrentStage('deal_5', 'dealer-acquisition', 'stage_da_1')];
-deals[4].stageHistory = [
-  makeDealStageHistory('deal_5', 'dealer-acquisition', 'stage_da_1')
-];
-
-// Deal 6 - Retail client using retail-sales pipeline
-deals[5].currentStages = [makeDealCurrentStage('deal_6', 'retail-sales', 'stage_rs_3')];
-deals[5].stageHistory = [
-  makeDealStageHistory('deal_6', 'retail-sales', 'stage_rs_1'),
-  makeDealStageHistory('deal_6', 'retail-sales', 'stage_rs_2', { fromStageId: 'stage_rs_1' }),
-  makeDealStageHistory('deal_6', 'retail-sales', 'stage_rs_3', { fromStageId: 'stage_rs_2' })
-];
-
-// Deal 7 - Shipper using vendor-onboarding pipeline  
-deals[6].currentStages = [makeDealCurrentStage('deal_7', 'vendor-onboarding', 'stage_vo_2')];
-deals[6].stageHistory = [
-  makeDealStageHistory('deal_7', 'vendor-onboarding', 'stage_vo_1'),
-  makeDealStageHistory('deal_7', 'vendor-onboarding', 'stage_vo_2', { fromStageId: 'stage_vo_1' })
-];
+// The deals array now comes with stages already assigned from deals-seed.ts
 
 const tasks = [
   makeTask(EntityType.DEAL, 'deal_1', {
@@ -1170,6 +1116,15 @@ const customFieldValues = [
   makeCustomFieldValue('field_def_5', 'deal_2', ['Quality', 'Delivery Time', 'Service'])
 ];
 
+// Collect all pipelines
+const pipelines = [
+  dealerAcquisitionPipeline,
+  dealerIntegrationPipeline,
+  retailSalesPipeline,
+  vendorOnboardingPipeline,
+  auctionIntegrationPipeline
+];
+
 // Repository instances for compatibility
 import { OrganisationRepository } from './repositories/organisation-repository';
 import { OrganisationConnectionRepository } from './repositories/organisation-connection-repository';
@@ -1191,6 +1146,24 @@ export const pipelineRepository = new PipelineRepository();
 export const taskRepository = new TaskRepository();
 export const customFieldRepository = new CustomFieldRepository();
 export const activityRepository = new ActivityRepository();
+
+// Export seed data arrays
+export {
+  organisations,
+  organisationConnections,
+  contacts,
+  leads,
+  deals,
+  tasks,
+  customFieldDefs,
+  customFieldValues,
+  pipelines,
+  dealerAcquisitionStages,
+  dealerIntegrationStages,
+  retailSalesStages,
+  vendorOnboardingStages,
+  auctionIntegrationStages
+};
 
 // Legacy seed functions - deprecated in favor of enhanced system
 export function seedData() {

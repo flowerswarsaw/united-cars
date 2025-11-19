@@ -1,60 +1,60 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { activityRepository, jsonPersistence } from '@united-cars/crm-mocks';
+import { EntityType } from '@united-cars/crm-core';
 
 export async function GET(request: NextRequest) {
   try {
-    // Temporary fix: return basic test data while fixing import issues
-    const testActivities = [
-      {
-        id: 'activity_1',
-        entityType: 'ORGANISATION',
-        entityId: 'org_1',
-        userId: 'user_1',
-        type: 'UPDATE',
-        title: 'Organisation updated',
-        description: 'Updated organisation details',
-        metadata: {},
-        createdAt: new Date(Date.now() - 60000).toISOString(),
-        updatedAt: new Date(Date.now() - 60000).toISOString()
-      },
-      {
-        id: 'activity_2',
-        entityType: 'CONTACT',
-        entityId: 'contact_1',
-        userId: 'user_1',
-        type: 'CREATE',
-        title: 'Contact created',
-        description: 'New contact added to system',
-        metadata: {},
-        createdAt: new Date(Date.now() - 120000).toISOString(),
-        updatedAt: new Date(Date.now() - 120000).toISOString()
-      },
-      {
-        id: 'activity_3',
-        entityType: 'DEAL',
-        entityId: 'deal_1',
-        userId: 'user_2',
-        type: 'STATUS_CHANGE',
-        title: 'Deal status changed',
-        description: 'Deal moved to negotiation stage',
-        metadata: {},
-        createdAt: new Date(Date.now() - 180000).toISOString(),
-        updatedAt: new Date(Date.now() - 180000).toISOString()
-      }
-    ];
-    
+    // Ensure we have the latest data
+    await jsonPersistence.load();
+
     const { searchParams } = new URL(request.url);
-    const entityType = searchParams.get('entityType');
+    const entityType = searchParams.get('entityType') as EntityType;
     const entityId = searchParams.get('entityId');
-    
-    let activities = testActivities;
-    
-    // Filter by entity type and id if provided
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '20');
+    const type = searchParams.get('type'); // Filter by activity type
+
+    let activities;
+
+    // If entity type and ID provided, get activities for specific entity
     if (entityType && entityId) {
-      activities = activities.filter(a => a.entityType === entityType && a.entityId === entityId);
+      activities = await activityRepository.getByEntity(entityType, entityId);
+    } else {
+      // Get all activities
+      activities = await activityRepository.list();
     }
-    
-    return NextResponse.json(activities);
+
+    // Filter by activity type if provided
+    if (type && activities) {
+      activities = activities.filter(activity => activity.type === type);
+    }
+
+    // Sort by created date (newest first)
+    if (activities) {
+      activities = activities.sort((a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+    }
+
+    // Apply pagination
+    const offset = (page - 1) * limit;
+    const paginatedActivities = activities ? activities.slice(offset, offset + limit) : [];
+    const total = activities ? activities.length : 0;
+    const totalPages = Math.ceil(total / limit);
+
+    return NextResponse.json({
+      activities: paginatedActivities,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+        hasNext: page < totalPages,
+        hasPrev: page > 1
+      }
+    });
   } catch (error) {
+    console.error('Error fetching activities:', error);
     return NextResponse.json(
       { error: 'Failed to fetch activities' },
       { status: 500 }

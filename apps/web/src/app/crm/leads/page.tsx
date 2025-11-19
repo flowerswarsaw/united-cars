@@ -23,6 +23,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Select,
   SelectContent,
@@ -32,12 +33,12 @@ import {
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-import { 
-  Plus, 
-  Search, 
-  Target, 
-  ArrowRight, 
-  ToggleLeft, 
+import {
+  Plus,
+  Search,
+  Target,
+  ArrowRight,
+  ToggleLeft,
   ToggleRight,
   Building2,
   User,
@@ -45,7 +46,13 @@ import {
   Filter,
   ChevronDown,
   ChevronUp,
-  Keyboard
+  Keyboard,
+  Archive,
+  ArchiveRestore,
+  UserPlus,
+  Mail,
+  Phone,
+  AlertTriangle
 } from 'lucide-react';
 import { Lead, Pipeline, Organisation } from '@united-cars/crm-core';
 import toast from 'react-hot-toast';
@@ -61,6 +68,7 @@ interface LeadFilters {
 
 export default function LeadsPage() {
   const { user, loading: sessionLoading } = useSession();
+  const [activeTab, setActiveTab] = useState<'active' | 'archive'>('active');
   const [leads, setLeads] = useState<Lead[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState<LeadFilters>({
@@ -76,6 +84,7 @@ export default function LeadsPage() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isFiltersExpanded, setIsFiltersExpanded] = useState(false);
   const [pipelines, setPipelines] = useState<Pipeline[]>([]);
+  const [stages, setStages] = useState<any[]>([]);
   const [organisations, setOrganisations] = useState<Organisation[]>([]);
   const [loading, setLoading] = useState(true);
   const [convertData, setConvertData] = useState({
@@ -83,6 +92,7 @@ export default function LeadsPage() {
     amount: '',
     currency: 'USD',
     pipelineId: '',
+    stageId: '',
     notes: ''
   });
   const [createData, setCreateData] = useState({
@@ -90,21 +100,29 @@ export default function LeadsPage() {
     lastName: '',
     email: '',
     phone: '',
-    company: '',
+    jobTitle: '',
     title: '',
     isTarget: false,
     notes: ''
   });
+  const [duplicateWarning, setDuplicateWarning] = useState<{
+    leads: Lead[];
+    contacts: any[];
+  } | null>(null);
+  const [isCheckingDuplicates, setIsCheckingDuplicates] = useState(false);
 
   const loadLeads = useCallback(async () => {
     try {
       setLoading(true);
       const params = new URLSearchParams();
-      
+
+      // Add archive filter based on active tab
+      params.append('isArchived', activeTab === 'archive' ? 'true' : 'false');
+
       if (searchQuery.trim()) {
         params.append('search', searchQuery.trim());
       }
-      
+
       if (filters.target !== 'all') {
         params.append('isTarget', filters.target === 'target' ? 'true' : 'false');
       }
@@ -143,7 +161,7 @@ export default function LeadsPage() {
     } finally {
       setLoading(false);
     }
-  }, [searchQuery, filters.target, filters.pipelineId, filters.source, filters.minScore, filters.maxScore, filters.organisationId]);
+  }, [activeTab, searchQuery, filters.target, filters.pipelineId, filters.source, filters.minScore, filters.maxScore, filters.organisationId]);
 
   useEffect(() => {
     loadPipelines();
@@ -196,6 +214,25 @@ export default function LeadsPage() {
     } catch (error) {
       console.error('Failed to load organisations:', error);
       setOrganisations([]);
+    }
+  };
+
+  const loadStages = async (pipelineId: string) => {
+    try {
+      const response = await fetch(`/api/crm/pipelines/${pipelineId}`);
+      const pipeline = await response.json();
+      setStages(pipeline.stages || []);
+
+      // Set first stage as default
+      if (pipeline.stages && pipeline.stages.length > 0) {
+        setConvertData(prev => ({
+          ...prev,
+          stageId: pipeline.stages[0].id
+        }));
+      }
+    } catch (error) {
+      console.error('Failed to load stages:', error);
+      setStages([]);
     }
   };
 
@@ -270,6 +307,35 @@ export default function LeadsPage() {
     }
   };
 
+  const checkForDuplicates = async (email?: string, phone?: string) => {
+    if (!email && !phone) {
+      setDuplicateWarning(null);
+      return;
+    }
+
+    setIsCheckingDuplicates(true);
+    try {
+      const response = await fetch('/api/crm/leads/check-duplicates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, phone })
+      });
+
+      if (response.ok) {
+        const duplicates = await response.json();
+        if (duplicates.leads.length > 0 || duplicates.contacts.length > 0) {
+          setDuplicateWarning(duplicates);
+        } else {
+          setDuplicateWarning(null);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to check duplicates:', error);
+    } finally {
+      setIsCheckingDuplicates(false);
+    }
+  };
+
   const handleCreate = async () => {
     try {
       const response = await fetch('/api/crm/leads', {
@@ -286,11 +352,12 @@ export default function LeadsPage() {
           lastName: '',
           email: '',
           phone: '',
-          company: '',
+          jobTitle: '',
           title: '',
           isTarget: false,
           notes: ''
         });
+        setDuplicateWarning(null);
         loadLeads();
         
         toast.success(`Lead created: ${newLead.firstName} ${newLead.lastName}`);
@@ -309,13 +376,19 @@ export default function LeadsPage() {
       toast.error('Only target leads can be converted to deals');
       return;
     }
-    
+
     setSelectedLead(lead);
     setConvertData(prev => ({
       ...prev,
-      title: lead.title || 'New Deal',
+      title: lead.title || `${lead.firstName} ${lead.lastName} - Deal`,
       notes: lead.notes || ''
     }));
+
+    // Load stages for the current pipeline
+    if (convertData.pipelineId) {
+      loadStages(convertData.pipelineId);
+    }
+
     setConvertDialogOpen(true);
   };
 
@@ -328,6 +401,7 @@ export default function LeadsPage() {
         ...(convertData.amount && { amount: parseFloat(convertData.amount) }),
         currency: convertData.currency,
         pipelineId: convertData.pipelineId,
+        ...(convertData.stageId && { stageId: convertData.stageId }),
         notes: convertData.notes
       };
 
@@ -346,11 +420,12 @@ export default function LeadsPage() {
           amount: '',
           currency: 'USD',
           pipelineId: convertData.pipelineId,
+          stageId: '',
           notes: ''
         });
-        
+
         toast.success(`Lead converted: ${deal.title} has been created and added to the pipeline`);
-        
+
         // Refresh leads
         loadLeads();
       } else {
@@ -360,6 +435,48 @@ export default function LeadsPage() {
     } catch (error) {
       console.error('Failed to convert lead:', error);
       toast.error('Failed to convert lead');
+    }
+  };
+
+  const archiveLead = async (leadId: string, reason: 'not_qualified' | 'duplicate' | 'invalid' = 'not_qualified') => {
+    try {
+      const response = await fetch(`/api/crm/leads/${leadId}/archive`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason, userId: user?.id })
+      });
+
+      if (response.ok) {
+        toast.success('Lead archived successfully');
+        loadLeads();
+      } else {
+        const error = await response.json();
+        toast.error(error.error || 'Failed to archive lead');
+      }
+    } catch (error) {
+      console.error('Failed to archive lead:', error);
+      toast.error('Failed to archive lead');
+    }
+  };
+
+  const restoreLead = async (leadId: string) => {
+    try {
+      const response = await fetch(`/api/crm/leads/${leadId}/restore`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user?.id })
+      });
+
+      if (response.ok) {
+        toast.success('Lead restored successfully');
+        loadLeads();
+      } else {
+        const error = await response.json();
+        toast.error(error.error || 'Failed to restore lead');
+      }
+    } catch (error) {
+      console.error('Failed to restore lead:', error);
+      toast.error('Failed to restore lead');
     }
   };
 
@@ -414,7 +531,12 @@ export default function LeadsPage() {
                     id="email"
                     type="email"
                     value={createData.email}
-                    onChange={(e) => setCreateData({ ...createData, email: e.target.value })}
+                    onChange={(e) => {
+                      setCreateData({ ...createData, email: e.target.value });
+                      if (e.target.value) {
+                        checkForDuplicates(e.target.value, createData.phone);
+                      }
+                    }}
                     placeholder="john.doe@company.com"
                   />
                 </div>
@@ -423,29 +545,74 @@ export default function LeadsPage() {
                   <Input
                     id="phone"
                     value={createData.phone}
-                    onChange={(e) => setCreateData({ ...createData, phone: e.target.value })}
+                    onChange={(e) => {
+                      setCreateData({ ...createData, phone: e.target.value });
+                      if (e.target.value) {
+                        checkForDuplicates(createData.email, e.target.value);
+                      }
+                    }}
                     placeholder="+1-555-0100"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="company">Company</Label>
+                  <Label htmlFor="jobTitle">Job Title</Label>
                   <Input
-                    id="company"
-                    value={createData.company}
-                    onChange={(e) => setCreateData({ ...createData, company: e.target.value })}
-                    placeholder="Company Name"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="title">Job Title</Label>
-                  <Input
-                    id="title"
-                    value={createData.title}
-                    onChange={(e) => setCreateData({ ...createData, title: e.target.value })}
+                    id="jobTitle"
+                    value={createData.jobTitle}
+                    onChange={(e) => setCreateData({ ...createData, jobTitle: e.target.value })}
                     placeholder="Sales Manager"
                   />
                 </div>
+                <div>
+                  <Label htmlFor="leadTitle">Lead Title</Label>
+                  <Input
+                    id="leadTitle"
+                    value={createData.title}
+                    onChange={(e) => setCreateData({ ...createData, title: e.target.value })}
+                    placeholder="Partnership Opportunity"
+                  />
+                </div>
               </div>
+
+              {/* Duplicate Warning */}
+              {duplicateWarning && (duplicateWarning.leads.length > 0 || duplicateWarning.contacts.length > 0) && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4">
+                  <div className="flex items-start">
+                    <AlertTriangle className="h-5 w-5 text-yellow-600 mt-0.5 mr-2" />
+                    <div>
+                      <h4 className="text-sm font-medium text-yellow-800 mb-2">
+                        Potential Duplicate Found
+                      </h4>
+                      <div className="text-sm text-yellow-700 space-y-2">
+                        {duplicateWarning.leads.length > 0 && (
+                          <div>
+                            <p className="font-medium">Existing Leads:</p>
+                            {duplicateWarning.leads.map(lead => (
+                              <div key={lead.id} className="ml-4">
+                                • {lead.firstName} {lead.lastName} ({lead.email || lead.phone})
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {duplicateWarning.contacts.length > 0 && (
+                          <div>
+                            <p className="font-medium">Existing Contacts:</p>
+                            {duplicateWarning.contacts.map(contact => (
+                              <div key={contact.id} className="ml-4">
+                                • {contact.firstName} {contact.lastName}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        <p className="text-xs italic">
+                          Consider reviewing these existing records before creating a new lead.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div>
                 <Label htmlFor="notes">Notes</Label>
                 <Input
@@ -664,121 +831,243 @@ export default function LeadsPage() {
           </div>
         </div>
 
-        {/* Main Content */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-          <div className="overflow-x-auto">
-            <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Title</TableHead>
-              <TableHead>Source</TableHead>
-              <TableHead>Target</TableHead>
-              <TableHead>Score</TableHead>
-              <TableHead>Link</TableHead>
-              <TableHead>Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {leads.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={6} className="text-center py-8">
-                  <div className="flex flex-col items-center space-y-3">
-                    <Target className="h-12 w-12 text-gray-300" />
-                    <div className="text-gray-500">
-                      {hasActiveFilters ? 'No leads match your filters' : 'No leads found'}
-                    </div>
-                    {hasActiveFilters && (
-                      <Button variant="outline" onClick={clearFilters} className="text-sm">
-                        Clear filters
-                      </Button>
-                    )}
-                  </div>
-                </TableCell>
-              </TableRow>
-            ) : (
-              leads.map((lead) => (
-                <TableRow key={lead.id}>
-                  <TableCell>
-                    <div className="flex items-center">
-                      <Target className="mr-2 h-4 w-4 text-gray-400" />
-                      <div>
-                        <div className="font-medium">
-                          <span dangerouslySetInnerHTML={{ 
-                            __html: searchQuery 
-                              ? lead.title.replace(
-                                  new RegExp(`(${searchQuery})`, 'gi'),
-                                  '<mark class="bg-yellow-200 px-1 rounded">$1</mark>'
-                                )
-                              : lead.title
-                          }} />
-                        </div>
-                        {lead.notes && (
-                          <div className="text-sm text-gray-500 truncate max-w-xs">
-                            {lead.notes}
+        {/* Main Content with Tabs */}
+        <Tabs value={activeTab} onValueChange={(value: 'active' | 'archive') => setActiveTab(value)} className="space-y-6">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="active" className="flex items-center gap-2">
+              <UserPlus className="h-4 w-4" />
+              Active Leads
+            </TabsTrigger>
+            <TabsTrigger value="archive" className="flex items-center gap-2">
+              <Archive className="h-4 w-4" />
+              Archive
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="active" className="space-y-4">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Contact</TableHead>
+                      <TableHead>Job Title</TableHead>
+                      <TableHead>Source</TableHead>
+                      <TableHead>Target</TableHead>
+                      <TableHead>Score</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {leads.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center py-8">
+                          <div className="flex flex-col items-center space-y-3">
+                            <UserPlus className="h-12 w-12 text-gray-300" />
+                            <div className="text-gray-500">
+                              {hasActiveFilters ? 'No active leads match your filters' : 'No active leads found'}
+                            </div>
+                            {hasActiveFilters && (
+                              <Button variant="outline" onClick={clearFilters} className="text-sm">
+                                Clear filters
+                              </Button>
+                            )}
                           </div>
-                        )}
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline">{lead.source || 'Unknown'}</Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => toggleTarget(lead.id, lead.isTarget)}
-                      className="p-0"
-                    >
-                      {lead.isTarget ? (
-                        <ToggleRight className="h-5 w-5 text-green-600" />
-                      ) : (
-                        <ToggleLeft className="h-5 w-5 text-gray-400" />
-                      )}
-                    </Button>
-                  </TableCell>
-                  <TableCell>
-                    {lead.score ? (
-                      <Badge variant={lead.score >= 70 ? 'default' : 'secondary'}>
-                        {lead.score}
-                      </Badge>
+                        </TableCell>
+                      </TableRow>
                     ) : (
-                      '-'
+                      leads.map((lead) => (
+                        <TableRow key={lead.id}>
+                          <TableCell>
+                            <div className="flex items-center">
+                              <div>
+                                <div className="font-medium">
+                                  {lead.firstName} {lead.lastName}
+                                </div>
+                                <div className="text-sm text-gray-500">
+                                  {lead.title}
+                                </div>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="space-y-1">
+                              {lead.email && (
+                                <div className="flex items-center text-sm">
+                                  <Mail className="h-3 w-3 mr-1 text-gray-400" />
+                                  <span className="truncate max-w-xs">{lead.email}</span>
+                                </div>
+                              )}
+                              {lead.phone && (
+                                <div className="flex items-center text-sm">
+                                  <Phone className="h-3 w-3 mr-1 text-gray-400" />
+                                  <span>{lead.phone}</span>
+                                </div>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-sm">
+                              {lead.jobTitle && (
+                                <div className="font-medium">{lead.jobTitle}</div>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline">{lead.source || 'Unknown'}</Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => toggleTarget(lead.id, lead.isTarget)}
+                              className="p-0"
+                            >
+                              {lead.isTarget ? (
+                                <ToggleRight className="h-5 w-5 text-green-600" />
+                              ) : (
+                                <ToggleLeft className="h-5 w-5 text-gray-400" />
+                              )}
+                            </Button>
+                          </TableCell>
+                          <TableCell>
+                            {lead.score ? (
+                              <Badge variant={lead.score >= 70 ? 'default' : 'secondary'}>
+                                {lead.score}
+                              </Badge>
+                            ) : (
+                              '-'
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center space-x-2">
+                              {lead.isTarget ? (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => openConvertDialog(lead)}
+                                  className="text-green-600 hover:text-green-700"
+                                >
+                                  <ArrowRight className="h-4 w-4 mr-1" />
+                                  Convert
+                                </Button>
+                              ) : (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => archiveLead(lead.id, 'not_qualified')}
+                                  className="text-gray-600 hover:text-gray-700"
+                                >
+                                  <Archive className="h-4 w-4 mr-1" />
+                                  Archive
+                                </Button>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
                     )}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center text-sm text-gray-500">
-                      {lead.organisationId && (
-                        <div className="flex items-center mr-2">
-                          <Building2 className="h-3 w-3 mr-1" />
-                          Org
-                        </div>
-                      )}
-                      {lead.contactId && (
-                        <div className="flex items-center">
-                          <User className="h-3 w-3 mr-1" />
-                          Contact
-                        </div>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => openConvertDialog(lead)}
-                      disabled={!lead.isTarget}
-                    >
-                      <ArrowRight className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-            </Table>
-          </div>
-        </div>
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="archive" className="space-y-4">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Contact</TableHead>
+                      <TableHead>Job Title</TableHead>
+                      <TableHead>Archived</TableHead>
+                      <TableHead>Reason</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {leads.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center py-8">
+                          <div className="flex flex-col items-center space-y-3">
+                            <Archive className="h-12 w-12 text-gray-300" />
+                            <div className="text-gray-500">
+                              {hasActiveFilters ? 'No archived leads match your filters' : 'No archived leads found'}
+                            </div>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      leads.map((lead) => (
+                        <TableRow key={lead.id}>
+                          <TableCell>
+                            <div className="flex items-center">
+                              <div>
+                                <div className="font-medium">
+                                  {lead.firstName} {lead.lastName}
+                                </div>
+                                <div className="text-sm text-gray-500">
+                                  {lead.title}
+                                </div>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="space-y-1">
+                              {lead.email && (
+                                <div className="flex items-center text-sm">
+                                  <Mail className="h-3 w-3 mr-1 text-gray-400" />
+                                  <span className="truncate max-w-xs">{lead.email}</span>
+                                </div>
+                              )}
+                              {lead.phone && (
+                                <div className="flex items-center text-sm">
+                                  <Phone className="h-3 w-3 mr-1 text-gray-400" />
+                                  <span>{lead.phone}</span>
+                                </div>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-sm">
+                              {lead.jobTitle && (
+                                <div className="font-medium">{lead.jobTitle}</div>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-sm text-gray-500">
+                              {lead.archivedAt ? new Date(lead.archivedAt).toLocaleDateString() : '-'}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="secondary">
+                              {lead.archivedReason || 'Unknown'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => restoreLead(lead.id)}
+                              className="text-blue-600 hover:text-blue-700"
+                            >
+                              <ArchiveRestore className="h-4 w-4 mr-1" />
+                              Restore
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+          </TabsContent>
+        </Tabs>
 
       <Dialog open={convertDialogOpen} onOpenChange={setConvertDialogOpen}>
         <DialogContent>
@@ -823,20 +1112,48 @@ export default function LeadsPage() {
               </div>
             </div>
             
-            <div>
-              <Label htmlFor="pipeline">Pipeline</Label>
-              <Select value={convertData.pipelineId} onValueChange={(value) => setConvertData(prev => ({ ...prev, pipelineId: value }))}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {pipelines.map(pipeline => (
-                    <SelectItem key={pipeline.id} value={pipeline.id}>
-                      {pipeline.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="pipeline">Pipeline</Label>
+                <Select
+                  value={convertData.pipelineId}
+                  onValueChange={(value) => {
+                    setConvertData(prev => ({ ...prev, pipelineId: value, stageId: '' }));
+                    loadStages(value);
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {pipelines.map(pipeline => (
+                      <SelectItem key={pipeline.id} value={pipeline.id}>
+                        {pipeline.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="stage">Stage</Label>
+                <Select
+                  value={convertData.stageId}
+                  onValueChange={(value) => setConvertData(prev => ({ ...prev, stageId: value }))}
+                  disabled={!convertData.pipelineId || stages.length === 0}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select stage" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {stages.map(stage => (
+                      <SelectItem key={stage.id} value={stage.id}>
+                        {stage.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             
             <div>

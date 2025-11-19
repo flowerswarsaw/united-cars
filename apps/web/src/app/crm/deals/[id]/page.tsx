@@ -16,6 +16,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Edit2, Save, X, Building2, DollarSign, Calendar, User, History, CheckSquare, Plus, Trophy, AlertCircle, Clock, Circle, ChevronRight, Star, Target, TrendingUp, Users, FileText, Activity, Trash2 } from 'lucide-react';
 import { Deal, Organisation, Contact, Task, Pipeline, Stage, DealStatus, TaskStatus, TaskPriority, EntityType, LossReason } from '@united-cars/crm-core';
+import { ActivityLog } from '@/components/crm/activity-log';
 import toast from 'react-hot-toast';
 import {
   Dialog,
@@ -699,23 +700,6 @@ export default function DealDetailPage() {
                     )}
                   </div>
 
-                  <div>
-                    <Label htmlFor="description">Description</Label>
-                    {editingSections.basicInfo ? (
-                      <Textarea
-                        id="description"
-                        value={basicInfoData.description}
-                        onChange={(e) => setBasicInfoData({ ...basicInfoData, description: e.target.value })}
-                        placeholder="Deal description..."
-                        rows={3}
-                        className="mt-1"
-                      />
-                    ) : (
-                      <p className="text-sm text-gray-900 mt-1">
-                        {deal.description || 'Not specified'}
-                      </p>
-                    )}
-                  </div>
                 </CardContent>
               </Card>
 
@@ -770,7 +754,7 @@ export default function DealDetailPage() {
                                 {organisation.name}
                               </p>
                               <p className="text-xs text-blue-600">
-                                Click to view details
+                                {organisation.type ? organisation.type.toLowerCase().replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Organization'} • Click to view details
                               </p>
                             </div>
                             <ChevronRight className="h-4 w-4 text-blue-500" />
@@ -1015,15 +999,13 @@ export default function DealDetailPage() {
           </TabsContent>
 
           <TabsContent value="activity" className="space-y-4">
-            <Card>
-              <CardContent className="text-center py-12">
-                <History className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-                <h4 className="text-lg font-medium mb-2">Activity tracking coming soon</h4>
-                <p className="text-sm text-muted-foreground">
-                  Deal history and timeline will be available in the next update
-                </p>
-              </CardContent>
-            </Card>
+            <ActivityLog
+              entityType={EntityType.DEAL}
+              entityId={deal.id}
+              limit={15}
+              showFilters={true}
+              showPagination={true}
+            />
           </TabsContent>
         </Tabs>
       </div>

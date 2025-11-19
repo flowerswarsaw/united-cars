@@ -2,2650 +2,2121 @@
   "organisations": [
     {
       "id": "org_1",
-      "name": "AutoMax Luxury Dealership",
-      "companyId": "AUTOMAX001",
+      "tenantId": "tenant_001",
+      "name": "AutoMax Dealership",
+      "companyId": "COMP-001",
       "type": "DEALER",
-      "description": "Premier luxury vehicle dealership specializing in European imports",
-      "website": "https://automaxluxury.com",
-      "address": "123 Luxury Auto Blvd",
-      "city": "Los Angeles",
-      "state": "CA",
-      "zipCode": "90210",
-      "country": "USA",
-      "phone": "+1-555-LUXURY",
-      "email": "info@automaxluxury.com",
       "contactMethods": [
         {
-          "id": "cm1",
+          "id": "cm_1_1",
           "type": "EMAIL_WORK",
-          "value": "info@automaxluxury.com",
-          "isPrimary": true
+          "value": "info@automax.com",
+          "isPrimary": true,
+          "label": "Main Office"
         },
         {
-          "id": "cm2",
+          "id": "cm_1_2",
+          "type": "EMAIL_WORK",
+          "value": "sales@automax.com",
+          "isPrimary": false,
+          "label": "Sales Department"
+        },
+        {
+          "id": "cm_1_3",
           "type": "PHONE_WORK",
-          "value": "+1-555-LUXURY",
-          "isPrimary": true
+          "value": "+1-555-0100",
+          "isPrimary": true,
+          "label": "Main Office"
         },
         {
-          "id": "cm3",
+          "id": "cm_1_4",
           "type": "PHONE_MOBILE",
           "value": "+1-555-0199",
-          "isPrimary": false
-        }
-      ],
-      "socialMedia": [
-        {
-          "id": "sm1",
-          "platform": "INSTAGRAM",
-          "url": "https://instagram.com/automaxluxury"
+          "isPrimary": false,
+          "label": "Emergency Line"
         },
         {
-          "id": "sm2",
-          "platform": "FACEBOOK",
-          "url": "https://facebook.com/automaxluxury"
+          "id": "cm_1_5",
+          "type": "PHONE_FAX",
+          "value": "+1-555-0101",
+          "isPrimary": false,
+          "label": "Fax"
         }
       ],
-      "customFields": {
-        "annual_revenue": 15000000,
-        "specialty": "Luxury European Vehicles",
-        "dealer_license": "CA-DL-2024-001"
+      "createdAt": "2025-11-13T15:11:30.256Z",
+      "updatedAt": "2025-11-13T15:40:23.354Z",
+      "socialMedia": [
+        {
+          "id": "sm_1_1",
+          "platform": "FACEBOOK",
+          "url": "https://facebook.com/automaxdealership",
+          "username": "automaxdealership",
+          "isActive": true
+        },
+        {
+          "id": "sm_1_2",
+          "platform": "INSTAGRAM",
+          "url": "https://instagram.com/automax_la",
+          "username": "automax_la",
+          "isActive": true
+        },
+        {
+          "id": "sm_1_3",
+          "platform": "LINKEDIN",
+          "url": "https://linkedin.com/company/automax-dealership",
+          "username": "automax-dealership",
+          "isActive": true
+        }
+      ],
+      "website": "https://automax.com",
+      "industry": "Automotive",
+      "size": "50-100",
+      "city": "Los Angeles",
+      "state": "CA",
+      "country": "USA",
+      "typeSpecificData": {
+        "dealerLicense": "CA-DL-2024-001",
+        "dealerType": "Both",
+        "lotSize": 75,
+        "monthlyVolume": 150,
+        "creditLimit": 500000,
+        "specializations": [
+          "Luxury",
+          "Import"
+        ],
+        "paymentTerms": "Net 30"
       },
-      "verified": true,
-      "createdAt": "2024-01-15T10:00:00.000Z",
-      "updatedAt": "2024-01-15T10:00:00.000Z"
+      "customFields": {
+        "baseConsolidation": "1/4",
+        "monthlyVolume": "20-50",
+        "auctionsUsed": [
+          "Copart",
+          "IAA"
+        ]
+      }
     },
     {
       "id": "org_2",
-      "name": "Premier Motors East Coast",
-      "companyId": "PREMIER001",
+      "tenantId": "tenant_001",
+      "name": "Premier Motors",
+      "companyId": "COMP-002",
       "type": "DEALER",
-      "description": "High-volume dealership serving the East Coast market",
-      "website": "https://premiermotorsec.com",
-      "address": "456 Auto Plaza Drive",
+      "contactMethods": [],
+      "createdAt": "2025-11-13T15:11:30.256Z",
+      "updatedAt": "2025-11-13T15:11:30.256Z",
+      "website": "https://premiermotors.com",
+      "industry": "Automotive",
+      "size": "100-500",
       "city": "New York",
       "state": "NY",
-      "zipCode": "10001",
       "country": "USA",
-      "phone": "+1-212-555-0100",
-      "email": "contact@premiermotorsec.com",
-      "contactMethods": [
-        {
-          "id": "cm4",
-          "type": "EMAIL_WORK",
-          "value": "contact@premiermotorsec.com",
-          "isPrimary": true
-        },
-        {
-          "id": "cm5",
-          "type": "PHONE_WORK",
-          "value": "+1-212-555-0100",
-          "isPrimary": true
-        }
-      ],
-      "customFields": {
-        "annual_revenue": 8500000,
-        "specialty": "Domestic and Import Vehicles"
-      },
-      "verified": true,
-      "createdAt": "2024-01-20T14:30:00.000Z",
-      "updatedAt": "2024-01-20T14:30:00.000Z"
+      "typeSpecificData": {
+        "dealerLicense": "NY-DL-2024-002",
+        "dealerType": "New Car",
+        "lotSize": 200,
+        "monthlyVolume": 300,
+        "creditLimit": 1000000,
+        "specializations": [
+          "Luxury",
+          "Domestic"
+        ],
+        "paymentTerms": "Net 15"
+      }
     },
     {
       "id": "org_3",
+      "tenantId": "tenant_001",
       "name": "City Cars Direct",
-      "companyId": "CCD001",
+      "companyId": "COMP-003",
       "type": "DEALER",
-      "description": "Small volume dealer focusing on pre-owned vehicles",
-      "website": "https://citycarsdirect.com",
-      "address": "789 Commerce Street",
+      "contactMethods": [],
+      "createdAt": "2025-11-13T15:11:30.256Z",
+      "updatedAt": "2025-11-13T15:11:30.256Z",
+      "industry": "Automotive",
+      "size": "10-50",
       "city": "Chicago",
       "state": "IL",
-      "zipCode": "60601",
       "country": "USA",
-      "phone": "+1-312-555-0150",
-      "email": "info@citycarsdirect.com",
-      "contactMethods": [
-        {
-          "id": "cm6",
-          "type": "EMAIL_WORK",
-          "value": "info@citycarsdirect.com",
-          "isPrimary": true
-        },
-        {
-          "id": "cm7",
-          "type": "PHONE_WORK",
-          "value": "+1-312-555-0150",
-          "isPrimary": true
-        }
-      ],
-      "customFields": {
-        "annual_revenue": 1200000,
-        "specialty": "Pre-owned Vehicles"
-      },
-      "verified": false,
-      "createdAt": "2024-02-01T09:00:00.000Z",
-      "updatedAt": "2024-02-01T09:00:00.000Z"
+      "typeSpecificData": {
+        "dealerLicense": "IL-DL-2024-003",
+        "dealerType": "Used Car",
+        "lotSize": 25,
+        "monthlyVolume": 50,
+        "creditLimit": 100000,
+        "specializations": [
+          "Commercial"
+        ],
+        "paymentTerms": "COD"
+      }
     },
     {
       "id": "org_4",
-      "name": "Copart Sacramento",
-      "companyId": "COPART-SAC",
-      "type": "AUCTION",
-      "description": "Leading salvage vehicle auction facility",
-      "website": "https://copart.com",
-      "address": "5200 Stockton Blvd",
-      "city": "Sacramento",
-      "state": "CA",
-      "zipCode": "95820",
+      "tenantId": "tenant_001",
+      "name": "Global Auto Imports",
+      "companyId": "COMP-004",
+      "type": "SHIPPER",
+      "contactMethods": [],
+      "createdAt": "2025-11-13T15:11:30.256Z",
+      "updatedAt": "2025-11-13T15:11:30.256Z",
+      "website": "https://globalauto.com",
+      "industry": "Import/Export",
+      "size": "100-500",
+      "city": "Miami",
+      "state": "FL",
       "country": "USA",
-      "phone": "+1-916-388-7859",
-      "email": "sacramento@copart.com",
-      "contactMethods": [
-        {
-          "id": "cm8",
-          "type": "EMAIL_WORK",
-          "value": "sacramento@copart.com",
-          "isPrimary": true
+      "typeSpecificData": {
+        "serviceAreas": [
+          "International",
+          "East Coast"
+        ],
+        "equipmentTypes": [
+          "Container",
+          "RoRo"
+        ],
+        "capacity": 1000,
+        "certifications": [
+          "ISO 9001",
+          "C-TPAT"
+        ],
+        "insuranceLimits": "$10M General Liability",
+        "transitTimes": {
+          "Europe": "14-21 days",
+          "Asia": "21-35 days",
+          "South America": "10-14 days"
         },
-        {
-          "id": "cm9",
-          "type": "PHONE_WORK",
-          "value": "+1-916-388-7859",
-          "isPrimary": true
-        }
-      ],
-      "customFields": {
-        "auction_type": "Salvage",
-        "weekly_sales": true,
-        "online_bidding": true
-      },
-      "verified": true,
-      "createdAt": "2024-01-10T08:00:00.000Z",
-      "updatedAt": "2024-01-10T08:00:00.000Z"
+        "specialServices": [
+          "Customs Clearance",
+          "White Glove"
+        ]
+      }
     },
     {
       "id": "org_5",
-      "name": "Manheim Pennsylvania",
-      "companyId": "MANHEIM-PA",
-      "type": "AUCTION",
-      "description": "Wholesale vehicle auction serving dealers nationwide",
-      "website": "https://manheim.com",
-      "address": "1190 Lancaster Rd",
-      "city": "Manheim",
-      "state": "PA",
-      "zipCode": "17545",
+      "tenantId": "tenant_001",
+      "name": "Westside Auto Group",
+      "companyId": "COMP-005",
+      "type": "TRANSPORTER",
+      "contactMethods": [],
+      "createdAt": "2025-11-13T15:11:30.256Z",
+      "updatedAt": "2025-11-13T15:11:30.256Z",
+      "industry": "Transportation",
+      "size": "20-50",
+      "city": "Seattle",
+      "state": "WA",
       "country": "USA",
-      "phone": "+1-717-665-3571",
-      "email": "pennsylvania@manheim.com",
-      "contactMethods": [
-        {
-          "id": "cm10",
-          "type": "EMAIL_WORK",
-          "value": "pennsylvania@manheim.com",
-          "isPrimary": true
-        },
-        {
-          "id": "cm11",
-          "type": "PHONE_WORK",
-          "value": "+1-717-665-3571",
-          "isPrimary": true
-        }
-      ],
-      "customFields": {
-        "auction_type": "Wholesale",
-        "dealer_only": true,
-        "simulcast": true
-      },
-      "verified": true,
-      "createdAt": "2024-01-05T12:00:00.000Z",
-      "updatedAt": "2024-01-05T12:00:00.000Z"
+      "typeSpecificData": {
+        "serviceAreas": [
+          "West Coast"
+        ],
+        "equipmentTypes": [
+          "Flatbed",
+          "Enclosed",
+          "Multi-car"
+        ],
+        "capacity": 50,
+        "certifications": [
+          "FMCSA",
+          "DOT"
+        ],
+        "insuranceLimits": "$2M Cargo Insurance",
+        "specialServices": [
+          "Expedited",
+          "White Glove"
+        ]
+      }
     },
     {
       "id": "org_6",
-      "name": "Express Auto Transport",
-      "companyId": "EXPRESS-AT",
-      "type": "SHIPPER",
-      "description": "Nationwide vehicle transportation and logistics",
-      "website": "https://expressautotransport.com",
-      "address": "987 Logistics Way",
-      "city": "Dallas",
-      "state": "TX",
-      "zipCode": "75201",
+      "tenantId": "tenant_001",
+      "name": "John Smith",
+      "companyId": "COMP-006",
+      "type": "RETAIL_CLIENT",
+      "contactMethods": [],
+      "createdAt": "2025-11-13T15:11:30.256Z",
+      "updatedAt": "2025-11-13T15:11:30.256Z",
+      "city": "Denver",
+      "state": "CO",
       "country": "USA",
-      "phone": "+1-214-555-SHIP",
-      "email": "dispatch@expressautotransport.com",
-      "contactMethods": [
-        {
-          "id": "cm12",
-          "type": "EMAIL_WORK",
-          "value": "dispatch@expressautotransport.com",
-          "isPrimary": true
-        },
-        {
-          "id": "cm13",
-          "type": "PHONE_WORK",
-          "value": "+1-214-555-SHIP",
-          "isPrimary": true
-        },
-        {
-          "id": "cm14",
-          "type": "EMAIL_OTHER",
-          "value": "billing@expressautotransport.com",
-          "isPrimary": false
-        }
-      ],
-      "customFields": {
-        "fleet_size": 125,
-        "service_area": "Nationwide",
-        "insurance_rating": "A+"
-      },
-      "verified": true,
-      "createdAt": "2024-01-25T16:00:00.000Z",
-      "updatedAt": "2024-01-25T16:00:00.000Z"
+      "typeSpecificData": {
+        "budgetRange": "$50k-100k",
+        "vehiclePreferences": [
+          "Luxury",
+          "SUV"
+        ],
+        "financingType": "Bank Financing",
+        "timeline": "1-3 months",
+        "deliveryLocation": "Denver, CO",
+        "previousPurchases": 2
+      }
     },
     {
       "id": "org_7",
-      "name": "Pacific Shipping Solutions",
-      "companyId": "PACIFIC-SS",
-      "type": "SHIPPER",
-      "description": "International vehicle shipping to Pacific markets",
-      "website": "https://pacificshipping.com",
-      "address": "1500 Harbor Blvd",
-      "city": "Long Beach",
+      "tenantId": "tenant_001",
+      "name": "Copart West Coast",
+      "companyId": "COMP-007",
+      "type": "AUCTION",
+      "contactMethods": [],
+      "createdAt": "2025-11-13T15:11:30.256Z",
+      "updatedAt": "2025-11-13T15:11:30.256Z",
+      "website": "https://copart.com",
+      "industry": "Vehicle Auctions",
+      "size": "500+",
+      "city": "Sacramento",
       "state": "CA",
-      "zipCode": "90802",
       "country": "USA",
-      "phone": "+1-562-555-0300",
-      "email": "operations@pacificshipping.com",
-      "contactMethods": [
-        {
-          "id": "cm15",
-          "type": "EMAIL_WORK",
-          "value": "operations@pacificshipping.com",
-          "isPrimary": true
-        },
-        {
-          "id": "cm16",
-          "type": "PHONE_WORK",
-          "value": "+1-562-555-0300",
-          "isPrimary": true
-        }
-      ],
-      "customFields": {
-        "ports_served": [
-          "Long Beach",
-          "Los Angeles",
-          "Oakland"
+      "typeSpecificData": {
+        "auctionType": "Insurance",
+        "apiAccess": true,
+        "volumePerWeek": 5000,
+        "specialtyCategories": [
+          "Salvage",
+          "Classic",
+          "Luxury"
         ],
-        "international_routes": true,
-        "container_services": true
-      },
-      "verified": true,
-      "createdAt": "2024-02-10T11:30:00.000Z",
-      "updatedAt": "2024-02-10T11:30:00.000Z"
+        "locations": [
+          "California",
+          "Nevada",
+          "Oregon",
+          "Washington"
+        ]
+      }
     },
     {
       "id": "org_8",
-      "name": "United Cars Processing Center",
-      "companyId": "UC-PROC",
-      "type": "PROCESSOR",
-      "description": "Central processing facility for title and documentation",
-      "website": "https://unitedcars.com",
-      "address": "2500 Industrial Pkwy",
-      "city": "Phoenix",
-      "state": "AZ",
-      "zipCode": "85043",
+      "tenantId": "tenant_001",
+      "name": "Express Auto Logistics",
+      "companyId": "COMP-008",
+      "type": "EXPEDITOR",
+      "contactMethods": [],
+      "createdAt": "2025-11-13T15:11:30.256Z",
+      "updatedAt": "2025-11-13T15:11:30.256Z",
+      "website": "https://expressauto.com",
+      "industry": "Logistics",
+      "size": "50-100",
+      "city": "Atlanta",
+      "state": "GA",
       "country": "USA",
-      "phone": "+1-602-555-0400",
-      "email": "processing@unitedcars.com",
-      "contactMethods": [
-        {
-          "id": "cm17",
-          "type": "EMAIL_WORK",
-          "value": "processing@unitedcars.com",
-          "isPrimary": true
-        },
-        {
-          "id": "cm18",
-          "type": "PHONE_WORK",
-          "value": "+1-602-555-0400",
-          "isPrimary": true
-        },
-        {
-          "id": "cm19",
-          "type": "EMAIL_OTHER",
-          "value": "support@unitedcars.com",
-          "isPrimary": false
-        }
-      ],
-      "customFields": {
-        "processing_capacity": "500 titles/day",
-        "operating_hours": "24/7",
-        "services": [
-          "Title Processing",
-          "Documentation",
-          "Quality Control"
+      "typeSpecificData": {
+        "serviceAreas": [
+          "South",
+          "East Coast"
+        ],
+        "equipmentTypes": [
+          "Multi-car",
+          "Enclosed"
+        ],
+        "capacity": 200,
+        "certifications": [
+          "FMCSA",
+          "DOT",
+          "ISO 9001"
+        ],
+        "insuranceLimits": "$5M Combined",
+        "specialServices": [
+          "Expedited",
+          "Warehouse Storage"
         ]
-      },
-      "verified": true,
-      "createdAt": "2024-01-01T00:00:00.000Z",
-      "updatedAt": "2024-01-01T00:00:00.000Z"
+      }
     },
     {
       "id": "org_9",
-      "name": "Johnson Family Auto",
-      "companyId": "JFA001",
-      "type": "RETAIL_CLIENT",
-      "description": "Family-owned independent lot",
-      "address": "456 Main Street",
-      "city": "Springfield",
-      "state": "MO",
-      "zipCode": "65801",
-      "country": "USA",
-      "phone": "+1-417-555-0250",
-      "email": "johnson@familyauto.com",
-      "contactMethods": [
-        {
-          "id": "cm20",
-          "type": "EMAIL_PERSONAL",
-          "value": "johnson@familyauto.com",
-          "isPrimary": true
-        },
-        {
-          "id": "cm21",
-          "type": "PHONE_MOBILE",
-          "value": "+1-417-555-0250",
-          "isPrimary": true
-        }
-      ],
-      "customFields": {
-        "lot_size": 25,
-        "years_in_business": 15,
-        "specializes_in": "Used Family Vehicles"
-      },
-      "verified": false,
-      "createdAt": "2024-02-15T13:00:00.000Z",
-      "updatedAt": "2024-02-15T13:00:00.000Z"
-    },
-    {
-      "id": "org_10",
-      "name": "Elite Collectors LLC",
-      "companyId": "ELITE001",
-      "type": "RETAIL_CLIENT",
-      "description": "High-end collector and restoration specialist",
-      "website": "https://elitecollectors.com",
-      "address": "789 Heritage Lane",
-      "city": "Scottsdale",
+      "tenantId": "tenant_001",
+      "name": "National Title Services",
+      "companyId": "COMP-009",
+      "type": "PROCESSOR",
+      "contactMethods": [],
+      "createdAt": "2025-11-13T15:11:30.256Z",
+      "updatedAt": "2025-11-13T15:11:30.256Z",
+      "website": "https://nationaltitle.com",
+      "industry": "Document Processing",
+      "size": "100-500",
+      "city": "Phoenix",
       "state": "AZ",
-      "zipCode": "85251",
       "country": "USA",
-      "phone": "+1-480-555-0350",
-      "email": "acquisitions@elitecollectors.com",
-      "contactMethods": [
-        {
-          "id": "cm22",
-          "type": "EMAIL_WORK",
-          "value": "acquisitions@elitecollectors.com",
-          "isPrimary": true
-        },
-        {
-          "id": "cm23",
-          "type": "PHONE_WORK",
-          "value": "+1-480-555-0350",
-          "isPrimary": true
-        }
-      ],
-      "socialMedia": [
-        {
-          "id": "sm3",
-          "platform": "INSTAGRAM",
-          "url": "https://instagram.com/elitecollectors"
-        }
-      ],
-      "customFields": {
-        "collection_focus": "Classic American Muscle Cars",
-        "restoration_services": true,
-        "auction_participation": true
-      },
-      "verified": true,
-      "createdAt": "2024-01-30T10:15:00.000Z",
-      "updatedAt": "2024-01-30T10:15:00.000Z"
-    },
-    {
-      "name": "Test Persistent Org",
-      "companyId": "",
-      "type": "DEALER",
-      "description": "Test Persistent Org - DEALER",
-      "website": "",
-      "address": "",
-      "city": "",
-      "state": "",
-      "zipCode": "",
-      "country": "",
-      "phone": "+1-555-TEST",
-      "email": "test@persistent.com",
-      "industry": "",
-      "size": "",
-      "contactMethods": [
-        {
-          "id": "cm_1758036282076_1",
-          "type": "EMAIL_WORK",
-          "value": "test@persistent.com",
-          "primary": true
-        },
-        {
-          "id": "cm_1758036282076_2",
-          "type": "PHONE_WORK",
-          "value": "+1-555-TEST",
-          "primary": true
-        }
-      ],
-      "socialMediaLinks": [],
-      "customFields": {},
-      "verified": false,
-      "id": "mxDz9v6Jxtue4rbR3hieq",
-      "tenantId": "tenant_001",
-      "createdAt": "2025-09-16T15:24:42.077Z",
-      "updatedAt": "2025-09-16T15:24:42.077Z"
-    },
-    {
-      "name": "Ameryka Cars",
-      "companyId": "6343008168",
-      "type": "DEALER",
-      "description": "Ameryka Cars - DEALER",
-      "website": "amerykacars.com",
-      "address": "",
-      "city": "Tychy",
-      "state": "Silesian",
-      "zipCode": "",
-      "country": "Poland",
-      "phone": "",
-      "email": "",
-      "industry": "Automotive",
-      "size": "20-50",
-      "contactMethods": [],
-      "socialMediaLinks": [],
-      "customFields": {
-        "industry": "Automotive",
-        "size": "20-50"
-      },
-      "verified": false,
-      "id": "rWhewY_RWuKuFb4FIqbeK",
-      "tenantId": "tenant_001",
-      "createdAt": "2025-09-16T15:26:34.216Z",
-      "updatedAt": "2025-09-16T15:26:34.216Z"
-    },
-    {
-      "name": "Autostany",
-      "companyId": "5214043848",
-      "type": "DEALER",
-      "description": "Autostany - DEALER",
-      "website": "autostany.pl",
-      "address": "Chorągwi Pancernej 55",
-      "city": "Warsaw",
-      "state": "masovian",
-      "zipCode": "",
-      "country": "PL",
-      "phone": "",
-      "email": "",
-      "industry": "Auto Dealer",
-      "size": "20-30",
-      "contactMethods": [],
-      "socialMediaLinks": [],
-      "customFields": {
-        "industry": "Automotive",
-        "size": "20-30",
-        "monthlyVolume": "20-50",
-        "baseConsolidation": "1/4",
-        "auctionsUsed": [
-          "Copart",
-          "IAA",
-          "Manheim"
-        ]
-      },
-      "verified": false,
-      "id": "v8M6S5bd-ZuWEMkF1ZmTZ",
-      "tenantId": "tenant_001",
-      "createdAt": "2025-09-16T15:54:31.148Z",
-      "updatedAt": "2025-09-18T07:30:20.168Z",
-      "connections": [
-        {
-          "fromOrganisationId": "nUYRuH7Mf76YW-9LbdfiA",
-          "toOrganisationId": "v8M6S5bd-ZuWEMkF1ZmTZ",
-          "type": "PARTNER",
-          "description": "",
-          "startDate": "2025-09-17T10:57:08.323Z",
-          "endDate": null,
-          "metadata": {},
-          "id": "ZKLBQTjg7GpK6dWIDe9IA",
-          "tenantId": "tenant_001",
-          "createdAt": "2025-09-17T10:57:08.323Z",
-          "updatedAt": "2025-09-17T11:06:46.791Z"
-        },
-        {
-          "fromOrganisationId": "v8M6S5bd-ZuWEMkF1ZmTZ",
-          "toOrganisationId": "N1Nr-VlL446v8XFDr_RMa",
-          "type": "PARTNER",
-          "description": "",
-          "startDate": "2025-09-17T11:06:46.783Z",
-          "endDate": null,
-          "metadata": {},
-          "id": "wh5n8cAp4EvvG2glpwyKJ",
-          "tenantId": "tenant_001",
-          "createdAt": "2025-09-17T11:06:46.783Z",
-          "updatedAt": "2025-09-17T11:06:46.783Z"
-        }
-      ],
-      "socialMedia": [
-        {
-          "id": "temp_1758110661776_k1rzlajlx",
-          "platform": "FACEBOOK",
-          "url": "facebook.com/autostany"
-        },
-        {
-          "id": "1758117523977",
-          "platform": "INSTAGRAM",
-          "url": "instagram.com/autostany.pl",
-          "username": ""
-        }
-      ],
-      "postalCode": "02- 951"
-    },
-    {
-      "name": "V&S Brothers",
-      "companyId": "VS4-1",
-      "type": "SHIPPER",
-      "description": "V&S Brothers - SHIPPER",
-      "website": "",
-      "address": "",
-      "city": "Matawan",
-      "state": "NJ",
-      "zipCode": "",
-      "country": "US",
-      "phone": "",
-      "email": "",
-      "industry": "",
-      "size": "300",
-      "contactMethods": [],
-      "socialMediaLinks": [],
-      "customFields": {
-        "size": "300",
-        "shippingPorts": [
-          "NJ",
-          "TX",
-          "CA",
-          "GA"
+      "typeSpecificData": {
+        "processingTypes": [
+          "Title Transfer",
+          "Registration",
+          "Export Documentation"
         ],
-        "destinationPorts": [
-          "Klaipeda, LT",
-          "Poti, GE",
-          "Bremerhaven, DE",
-          "Rotterdam, NL",
-          "Jebel Ali, AE"
-        ]
-      },
-      "verified": false,
-      "id": "nUYRuH7Mf76YW-9LbdfiA",
-      "tenantId": "tenant_001",
-      "createdAt": "2025-09-17T10:36:01.582Z",
-      "updatedAt": "2025-09-17T14:52:57.737Z",
-      "postalCode": ""
-    },
-    {
-      "name": "Daytona Cargo",
-      "companyId": "dawd-1",
-      "type": "BROKER",
-      "description": "Daytona Cargo - DEALER",
-      "website": "",
-      "address": "",
-      "city": "Warsaw",
-      "state": "masovian",
-      "zipCode": "",
-      "country": "PL",
-      "phone": "",
-      "email": "",
-      "industry": "",
-      "size": "",
-      "contactMethods": [],
-      "socialMediaLinks": [],
-      "customFields": {
-        "baseConsolidation": "1/4",
-        "monthlyVolume": "100+",
-        "auctionsUsed": [
-          "Copart",
-          "IAA",
-          "Manheim"
-        ]
-      },
-      "verified": false,
-      "id": "N1Nr-VlL446v8XFDr_RMa",
-      "tenantId": "tenant_001",
-      "createdAt": "2025-09-17T11:06:38.270Z",
-      "updatedAt": "2025-09-17T15:03:30.196Z",
-      "connections": [
-        {
-          "fromOrganisationId": "v8M6S5bd-ZuWEMkF1ZmTZ",
-          "toOrganisationId": "N1Nr-VlL446v8XFDr_RMa",
-          "type": "PARTNER",
-          "description": "",
-          "startDate": "2025-09-17T11:06:46.783Z",
-          "endDate": null,
-          "metadata": {},
-          "id": "wh5n8cAp4EvvG2glpwyKJ",
-          "tenantId": "tenant_001",
-          "createdAt": "2025-09-17T11:06:46.783Z",
-          "updatedAt": "2025-09-17T11:06:46.783Z"
-        }
-      ],
-      "socialMedia": [
-        {
-          "id": "temp_1758107223927_0f9yxoyy3",
-          "platform": "FACEBOOK",
-          "url": "facebook.com"
-        }
-      ],
-      "postalCode": ""
-    },
-    {
-      "name": "TRT International",
-      "companyId": "TRT-1",
-      "type": "SHIPPER",
-      "description": "TRT International - SHIPPER",
-      "website": "",
-      "address": "",
-      "city": "Newark",
-      "state": "NJ",
-      "zipCode": "",
-      "country": "US",
-      "phone": "",
-      "email": "",
-      "industry": "",
-      "size": "",
-      "contactMethods": [],
-      "socialMediaLinks": [],
-      "customFields": {
-        "destinationPorts": [
-          "Rotterdam, Netherlands",
-          "Klaipeda",
-          "Poti",
-          "Bremerhaven",
-          "Rotterdam",
-          "Jebel Ali",
-          "Klaipeda, LT",
-          "Poti, GE",
-          "Bremerhaven, DE",
-          "Rotterdam, NL",
-          "Jebel Ali, AE"
-        ],
-        "shippingPorts": [
-          "Savannah, GA",
-          "Newark, NJ",
-          "Houston, TX",
-          "Los Angeles, CA",
-          "NJ",
+        "statesCovered": [
           "CA",
           "TX",
+          "FL",
+          "NY",
+          "IL",
+          "OH",
+          "PA",
+          "MI",
           "GA",
-          "IL"
-        ]
-      },
-      "verified": false,
-      "id": "Wle_UKtJlWyVqXBLCz3Ku",
-      "tenantId": "tenant_001",
-      "createdAt": "2025-09-17T14:44:02.053Z",
-      "updatedAt": "2025-09-17T14:51:14.979Z",
-      "postalCode": ""
-    },
-    {
-      "name": "Liberty Car",
-      "companyId": "liberty-1",
-      "type": "DEALER",
-      "description": "Liberty Car - DEALER",
-      "website": "",
-      "address": "",
-      "city": "Warsaw",
-      "state": "masovian",
-      "zipCode": "",
-      "country": "PL",
-      "phone": "",
-      "email": "",
-      "industry": "",
-      "size": "",
-      "contactMethods": [],
-      "socialMediaLinks": [],
-      "customFields": {
-        "monthlyVolume": "20-50",
-        "auctionsUsed": [
-          "Copart",
-          "IAA"
+          "NC"
         ],
-        "baseConsolidation": "1/4"
-      },
-      "verified": false,
-      "id": "ZLCSUx4Us41ZGtavwIN9p",
-      "tenantId": "tenant_001",
-      "createdAt": "2025-09-17T14:56:24.056Z",
-      "updatedAt": "2025-09-17T14:56:44.175Z",
-      "postalCode": ""
-    },
-    {
-      "name": "Cargo Loop",
-      "companyId": "CL-1",
-      "type": "SHIPPER",
-      "description": "Cargo Loop - SHIPPER",
-      "website": "",
-      "address": "",
-      "city": "Savannah",
-      "state": "GA",
-      "zipCode": "",
-      "country": "US",
-      "phone": "",
-      "email": "",
-      "industry": "",
-      "size": "",
-      "contactMethods": [],
-      "socialMediaLinks": [],
-      "customFields": {
-        "shippingPorts": [
-          "NJ",
-          "CA",
-          "TX",
-          "GA"
-        ],
-        "destinationPorts": [
-          "Klaipeda, LT",
-          "Poti, GE",
-          "Bremerhaven, DE",
-          "Rotterdam, NL",
-          "Jebel Ali, AE"
-        ]
-      },
-      "verified": false,
-      "id": "483W7RRap9pG3ddcChPyG",
-      "tenantId": "tenant_001",
-      "createdAt": "2025-09-17T14:59:18.036Z",
-      "updatedAt": "2025-09-17T14:59:45.472Z",
-      "postalCode": ""
-    },
-    {
-      "name": "Zalupa ship",
-      "companyId": "jhjhg",
-      "type": "SHIPPER",
-      "description": "Zalupa ship - SHIPPER",
-      "website": "",
-      "address": "",
-      "city": "",
-      "state": "",
-      "zipCode": "",
-      "country": "Usa",
-      "phone": "+8677867",
-      "email": "",
-      "industry": "",
-      "size": "",
-      "contactMethods": [
-        {
-          "id": "cm_1758182429092_2",
-          "type": "PHONE_WORK",
-          "value": "+8677867",
-          "primary": true
-        }
-      ],
-      "socialMediaLinks": [],
-      "customFields": {},
-      "verified": false,
-      "id": "sLKKIlw_g_6_VnCNDMqBI",
-      "tenantId": "tenant_001",
-      "createdAt": "2025-09-18T08:00:29.092Z",
-      "updatedAt": "2025-09-18T08:00:29.092Z"
-    },
-    {
-      "name": "West Coast Shipping",
-      "companyId": "WCS-1",
-      "type": "SHIPPER",
-      "description": "West Coast Shipping - SHIPPER",
-      "website": "",
-      "address": "",
-      "city": "Miami",
-      "state": "FL",
-      "zipCode": "",
-      "country": "US",
-      "phone": "",
-      "email": "",
-      "industry": "",
-      "size": "50-100",
-      "contactMethods": [],
-      "socialMediaLinks": [],
-      "customFields": {
-        "size": "50-100"
-      },
-      "verified": false,
-      "id": "qYOLXAI4Ytcb-yueKnRyK",
-      "tenantId": "tenant_001",
-      "createdAt": "2025-09-18T14:48:25.278Z",
-      "updatedAt": "2025-09-18T14:48:25.278Z"
-    },
-    {
-      "name": "Ankaja TSL",
-      "companyId": "tsl-1",
-      "type": "BROKER",
-      "description": "Ankaja TSL - BROKER",
-      "website": "",
-      "address": "",
-      "city": "Białystok",
-      "state": "podlaskie",
-      "zipCode": "",
-      "country": "PL",
-      "phone": "",
-      "email": "",
-      "industry": "",
-      "size": "50-80",
-      "contactMethods": [],
-      "socialMediaLinks": [],
-      "customFields": {
-        "size": "50-80",
-        "monthlyVolume": "500+",
-        "auctionsUsed": [
-          "Copart",
-          "IAA",
-          "Manheim"
-        ],
-        "baseConsolidation": "1/4"
-      },
-      "verified": false,
-      "id": "SuZZlWcz5D_wd1pauJBAW",
-      "tenantId": "tenant_001",
-      "createdAt": "2025-09-18T14:49:19.814Z",
-      "updatedAt": "2025-09-18T15:11:16.554Z",
-      "postalCode": ""
-    },
-    {
-      "name": "Kameleon",
-      "companyId": "9661307823",
-      "type": "DEALER",
-      "description": "Kameleon - DEALER",
-      "website": "",
-      "address": "",
-      "city": "Białystok",
-      "state": "podlaskie",
-      "zipCode": "",
-      "country": "PL",
-      "phone": "",
-      "email": "",
-      "industry": "",
-      "size": "20-50",
-      "contactMethods": [],
-      "socialMediaLinks": [],
-      "customFields": {
-        "size": "20-50",
-        "baseConsolidation": "1/3",
-        "monthlyVolume": "50-100",
-        "auctionsUsed": [
-          "IAA",
-          "Copart",
-          "Manheim"
-        ]
-      },
-      "verified": false,
-      "id": "IXAedRJ3MEcTRUrH70jYK",
-      "tenantId": "tenant_001",
-      "createdAt": "2025-09-19T12:15:03.066Z",
-      "updatedAt": "2025-09-19T12:15:26.059Z"
-    },
-    {
-      "name": "Aaron PB",
-      "companyId": "aaron-1",
-      "type": "SHIPPER",
-      "description": "Aaron PB - SHIPPER",
-      "website": "",
-      "address": "1 Nixon Ln",
-      "city": "Edison",
-      "state": "NJ",
-      "zipCode": "",
-      "country": "US",
-      "phone": "",
-      "email": "",
-      "industry": "",
-      "size": "20-50",
-      "contactMethods": [],
-      "socialMediaLinks": [],
-      "customFields": {
-        "size": "20-50",
-        "shippingPorts": [
-          "NJ"
-        ],
-        "destinationPorts": [
-          "Rotterdam, NL"
-        ]
-      },
-      "verified": false,
-      "id": "vwbeLzr8fE3Wr7U4z_eBH",
-      "tenantId": "tenant_001",
-      "createdAt": "2025-09-19T12:17:56.526Z",
-      "updatedAt": "2025-09-19T12:18:47.120Z",
-      "postalCode": "08837-3808"
-    },
-    {
-      "name": "Caucasus",
-      "companyId": "Cauc-1",
-      "type": "BROKER",
-      "description": "Caucasus - BROKER",
-      "website": "",
-      "address": "",
-      "city": "Tbilisi",
-      "state": "",
-      "zipCode": "",
-      "country": "GE",
-      "phone": "",
-      "email": "",
-      "industry": "",
-      "size": "",
-      "contactMethods": [],
-      "socialMediaLinks": [],
-      "customFields": {
-        "baseConsolidation": "1/4",
-        "monthlyVolume": "500+",
-        "auctionsUsed": [
-          "Copart",
-          "IAA"
-        ]
-      },
-      "verified": false,
-      "id": "8yysPyIE-e9t7a5RkyTpr",
-      "tenantId": "tenant_001",
-      "createdAt": "2025-09-19T12:20:59.138Z",
-      "updatedAt": "2025-09-19T12:21:11.456Z"
+        "turnaroundTime": "3-7 days",
+        "capacity": 1000
+      }
     }
   ],
   "organisationConnections": [
     {
+      "id": "conn_1",
+      "tenantId": "default-tenant",
+      "fromOrganisationId": "org_1",
+      "toOrganisationId": "org_4",
+      "type": "SHIPPER_DEALER",
+      "description": "Primary shipping partner for all vehicle deliveries to AutoMax",
+      "isActive": true,
+      "startDate": "2024-01-15T00:00:00.000Z",
+      "metadata": {
+        "shippingDiscount": "15%",
+        "preferredRoutes": [
+          "CA-NV",
+          "CA-AZ",
+          "CA-TX"
+        ],
+        "averageDeliveryTime": "3-5 days"
+      },
+      "createdAt": "2024-01-15T00:00:00.000Z",
+      "updatedAt": "2024-01-15T00:00:00.000Z"
+    },
+    {
+      "id": "conn_2",
+      "tenantId": "default-tenant",
+      "fromOrganisationId": "org_2",
+      "toOrganisationId": "org_6",
+      "type": "AUCTION_DEALER",
+      "description": "Preferred dealer status with exclusive access to pre-sale inspections",
+      "isActive": true,
+      "startDate": "2023-08-01T00:00:00.000Z",
+      "metadata": {
+        "dealerTier": "Gold",
+        "bidLimit": 2000000,
+        "exclusivePreviewAccess": true,
+        "monthlyPurchaseVolume": 50
+      },
+      "createdAt": "2023-08-01T00:00:00.000Z",
+      "updatedAt": "2024-09-01T00:00:00.000Z"
+    },
+    {
+      "id": "conn_3",
+      "tenantId": "default-tenant",
       "fromOrganisationId": "org_1",
       "toOrganisationId": "org_2",
       "type": "PARTNER",
-      "description": "",
-      "startDate": "2025-09-17T10:50:34.800Z",
-      "endDate": null,
-      "metadata": {},
-      "id": "LJSnmTlMWGrzK2OTzn63w",
-      "tenantId": "tenant_001",
-      "createdAt": "2025-09-17T10:50:34.800Z",
-      "updatedAt": "2025-09-17T10:50:34.800Z"
+      "description": "Cross-referral partnership for customers outside each others primary markets",
+      "isActive": true,
+      "startDate": "2024-03-01T00:00:00.000Z",
+      "metadata": {
+        "referralCommission": "2%",
+        "territoryAgreement": "West Coast vs East Coast",
+        "monthlyReferrals": 5
+      },
+      "createdAt": "2024-03-01T00:00:00.000Z",
+      "updatedAt": "2024-03-01T00:00:00.000Z"
     },
     {
-      "fromOrganisationId": "org_1",
-      "toOrganisationId": "org_2",
-      "type": "PARTNER",
-      "description": "",
-      "startDate": "2025-09-17T10:54:24.534Z",
-      "endDate": null,
-      "metadata": {},
-      "id": "DzooBIQoDCZ4oYpL52q6M",
-      "tenantId": "tenant_001",
-      "createdAt": "2025-09-17T10:54:24.534Z",
-      "updatedAt": "2025-09-17T10:54:24.534Z"
+      "id": "conn_4",
+      "tenantId": "default-tenant",
+      "fromOrganisationId": "org_3",
+      "toOrganisationId": "org_5",
+      "type": "VENDOR",
+      "description": "Title processing and expediting services",
+      "isActive": true,
+      "startDate": "2024-02-15T00:00:00.000Z",
+      "metadata": {
+        "serviceTypes": [
+          "title processing",
+          "document expediting",
+          "DMV liaison"
+        ],
+        "averageTurnaroundTime": "2-4 days",
+        "monthlyVolume": 25
+      },
+      "createdAt": "2024-02-15T00:00:00.000Z",
+      "updatedAt": "2024-02-15T00:00:00.000Z"
     },
     {
-      "fromOrganisationId": "nUYRuH7Mf76YW-9LbdfiA",
-      "toOrganisationId": "rWhewY_RWuKuFb4FIqbeK",
-      "type": "PARTNER",
-      "description": "",
-      "startDate": "2025-09-17T10:56:59.634Z",
-      "endDate": null,
-      "metadata": {},
-      "id": "xLXO3LROeF0OTS2pjEQMY",
-      "tenantId": "tenant_001",
-      "createdAt": "2025-09-17T10:56:59.636Z",
-      "updatedAt": "2025-09-17T10:57:08.336Z"
-    },
-    {
-      "fromOrganisationId": "v8M6S5bd-ZuWEMkF1ZmTZ",
-      "toOrganisationId": "N1Nr-VlL446v8XFDr_RMa",
-      "type": "PARTNER",
-      "description": "",
-      "startDate": "2025-09-17T14:20:23.792Z",
-      "endDate": null,
-      "metadata": {},
-      "id": "Lk8VDBiM0U_WOmGcNQkOP",
-      "tenantId": "tenant_001",
-      "createdAt": "2025-09-17T14:20:23.792Z",
-      "updatedAt": "2025-09-17T14:20:23.792Z"
-    },
-    {
-      "fromOrganisationId": "Wle_UKtJlWyVqXBLCz3Ku",
-      "toOrganisationId": "N1Nr-VlL446v8XFDr_RMa",
-      "type": "PARTNER",
-      "description": "",
-      "startDate": "2025-09-17T14:46:12.543Z",
-      "endDate": null,
-      "metadata": {},
-      "id": "Y4DjJhJy8xk9DKagAQZZb",
-      "tenantId": "tenant_001",
-      "createdAt": "2025-09-17T14:46:12.543Z",
-      "updatedAt": "2025-09-17T14:46:12.543Z"
-    },
-    {
-      "fromOrganisationId": "nUYRuH7Mf76YW-9LbdfiA",
-      "toOrganisationId": "v8M6S5bd-ZuWEMkF1ZmTZ",
-      "type": "PARTNER",
-      "description": "",
-      "startDate": "2025-09-17T14:53:07.815Z",
-      "endDate": null,
-      "metadata": {},
-      "id": "Br0iPj2XMulyVYArmUslb",
-      "tenantId": "tenant_001",
-      "createdAt": "2025-09-17T14:53:07.816Z",
-      "updatedAt": "2025-09-17T14:53:07.816Z"
-    },
-    {
-      "fromOrganisationId": "ZLCSUx4Us41ZGtavwIN9p",
-      "toOrganisationId": "nUYRuH7Mf76YW-9LbdfiA",
-      "type": "PARTNER",
-      "description": "",
-      "startDate": "2025-09-17T14:57:21.853Z",
-      "endDate": null,
-      "metadata": {},
-      "id": "-V4N_8ObJnDbHcu1njZyO",
-      "tenantId": "tenant_001",
-      "createdAt": "2025-09-17T14:57:21.853Z",
-      "updatedAt": "2025-09-17T14:57:21.853Z"
-    },
-    {
-      "fromOrganisationId": "483W7RRap9pG3ddcChPyG",
-      "toOrganisationId": "ZLCSUx4Us41ZGtavwIN9p",
-      "type": "PARTNER",
-      "description": "",
-      "startDate": "2025-09-17T15:01:56.104Z",
-      "endDate": null,
-      "metadata": {},
-      "id": "JJptBFepM5ascsOjzB5IS",
-      "tenantId": "tenant_001",
-      "createdAt": "2025-09-17T15:01:56.105Z",
-      "updatedAt": "2025-09-17T15:01:56.105Z"
-    },
-    {
-      "fromOrganisationId": "SuZZlWcz5D_wd1pauJBAW",
-      "toOrganisationId": "qYOLXAI4Ytcb-yueKnRyK",
-      "type": "PARTNER",
-      "description": "",
-      "startDate": "2025-09-18T14:57:39.764Z",
-      "endDate": null,
-      "metadata": {},
-      "id": "k0eGRLl37A8ZnDKMpt6Do",
-      "tenantId": "tenant_001",
-      "createdAt": "2025-09-18T14:57:39.764Z",
-      "updatedAt": "2025-09-18T14:57:39.764Z"
-    },
-    {
-      "fromOrganisationId": "SuZZlWcz5D_wd1pauJBAW",
-      "toOrganisationId": "rWhewY_RWuKuFb4FIqbeK",
-      "type": "PARTNER",
-      "description": "",
-      "startDate": "2025-09-18T14:57:48.442Z",
-      "endDate": null,
-      "metadata": {},
-      "id": "nWR8Vn6TgLYvFrkwCvc5Z",
-      "tenantId": "tenant_001",
-      "createdAt": "2025-09-18T14:57:48.442Z",
-      "updatedAt": "2025-09-18T14:57:48.442Z"
-    },
-    {
-      "fromOrganisationId": "SuZZlWcz5D_wd1pauJBAW",
-      "toOrganisationId": "nUYRuH7Mf76YW-9LbdfiA",
-      "type": "PARTNER",
-      "description": "",
-      "startDate": "2025-09-18T14:57:56.567Z",
-      "endDate": null,
-      "metadata": {},
-      "id": "gM8x8HD7F09xwSXtw0nNF",
-      "tenantId": "tenant_001",
-      "createdAt": "2025-09-18T14:57:56.567Z",
-      "updatedAt": "2025-09-18T14:57:56.567Z"
-    },
-    {
-      "fromOrganisationId": "SuZZlWcz5D_wd1pauJBAW",
-      "toOrganisationId": "483W7RRap9pG3ddcChPyG",
-      "type": "PARTNER",
-      "description": "",
-      "startDate": "2025-09-18T14:58:06.892Z",
-      "endDate": null,
-      "metadata": {},
-      "id": "li966DWtq5G0nT36HRjuY",
-      "tenantId": "tenant_001",
-      "createdAt": "2025-09-18T14:58:06.892Z",
-      "updatedAt": "2025-09-18T14:58:06.892Z"
-    },
-    {
-      "fromOrganisationId": "vwbeLzr8fE3Wr7U4z_eBH",
-      "toOrganisationId": "IXAedRJ3MEcTRUrH70jYK",
-      "type": "PARTNER",
-      "description": "",
-      "startDate": "2025-09-19T12:19:24.111Z",
-      "endDate": null,
-      "metadata": {},
-      "id": "dgVnuGhPAIB2dj3PWbi46",
-      "tenantId": "tenant_001",
-      "createdAt": "2025-09-19T12:19:24.112Z",
-      "updatedAt": "2025-09-19T12:19:24.112Z"
-    },
-    {
-      "fromOrganisationId": "vwbeLzr8fE3Wr7U4z_eBH",
-      "toOrganisationId": "SuZZlWcz5D_wd1pauJBAW",
-      "type": "PARTNER",
-      "description": "",
-      "startDate": "2025-09-19T12:19:29.469Z",
-      "endDate": null,
-      "metadata": {},
-      "id": "zwutE0e0PcWIfHkdedNe5",
-      "tenantId": "tenant_001",
-      "createdAt": "2025-09-19T12:19:29.469Z",
-      "updatedAt": "2025-09-19T12:19:29.469Z"
-    },
-    {
-      "fromOrganisationId": "8yysPyIE-e9t7a5RkyTpr",
-      "toOrganisationId": "IXAedRJ3MEcTRUrH70jYK",
-      "type": "PARTNER",
-      "description": "",
-      "startDate": "2025-09-19T12:21:20.411Z",
-      "endDate": null,
-      "metadata": {},
-      "id": "R2XCuHix90wsPSYc1EpH-",
-      "tenantId": "tenant_001",
-      "createdAt": "2025-09-19T12:21:20.411Z",
-      "updatedAt": "2025-09-19T12:21:20.411Z"
+      "id": "conn_5",
+      "tenantId": "default-tenant",
+      "fromOrganisationId": "org_9",
+      "toOrganisationId": "org_1",
+      "type": "CLIENT",
+      "description": "Title processing services for AutoMax inventory",
+      "isActive": true,
+      "startDate": "2023-11-01T00:00:00.000Z",
+      "metadata": {
+        "serviceLevel": "Premium",
+        "monthlyRetainer": 2500,
+        "processingVolume": 100,
+        "turnaroundGuarantee": "48 hours"
+      },
+      "createdAt": "2023-11-01T00:00:00.000Z",
+      "updatedAt": "2024-01-01T00:00:00.000Z"
     }
   ],
   "contacts": [
     {
+      "id": "contact_1",
+      "tenantId": "tenant_001",
       "firstName": "John",
-      "lastName": "Doe",
-      "title": "Sales Manager",
-      "organisationId": "org_1",
-      "department": "Sales",
+      "lastName": "Smith",
       "contactMethods": [
         {
+          "id": "cc_1_1",
           "type": "EMAIL_WORK",
-          "value": "john.doe@automax.com",
-          "primary": true
+          "value": "j.smith@automax.com",
+          "isPrimary": true,
+          "label": "Work Email"
+        },
+        {
+          "id": "cc_1_2",
+          "type": "EMAIL_PERSONAL",
+          "value": "john.smith.personal@gmail.com",
+          "isPrimary": false,
+          "label": "Personal Email"
+        },
+        {
+          "id": "cc_1_3",
+          "type": "PHONE_WORK",
+          "value": "+1-555-0200",
+          "isPrimary": true,
+          "label": "Office Direct"
+        },
+        {
+          "id": "cc_1_4",
+          "type": "PHONE_MOBILE",
+          "value": "+1-555-0299",
+          "isPrimary": false,
+          "label": "Mobile"
         }
       ],
-      "socialMediaLinks": [],
-      "customFields": {},
-      "id": "4Xz9DY46a-kwdAZwKR8WT",
-      "tenantId": "tenant_001",
-      "createdAt": "2025-09-16T15:28:48.204Z",
-      "updatedAt": "2025-09-18T14:26:06.220Z",
-      "notes": "eblan",
-      "type": "ADMINISTRATION"
-    },
-    {
-      "id": "contact_1",
-      "firstName": "Marcus",
-      "lastName": "Rodriguez",
+      "createdAt": "2025-11-13T15:11:30.256Z",
+      "updatedAt": "2025-11-13T15:11:30.256Z",
       "title": "General Manager",
       "organisationId": "org_1",
-      "department": "Management",
-      "contactMethods": [
-        {
-          "id": "cm_c1",
-          "type": "EMAIL_WORK",
-          "value": "marcus.rodriguez@automaxluxury.com",
-          "isPrimary": true
-        },
-        {
-          "id": "cm_c2",
-          "type": "PHONE_WORK",
-          "value": "+1-555-0101",
-          "isPrimary": true
-        },
-        {
-          "id": "cm_c3",
-          "type": "PHONE_MOBILE",
-          "value": "+1-555-0102",
-          "isPrimary": false
-        },
-        {
-          "id": "cm_c4",
-          "type": "EMAIL_PERSONAL",
-          "value": "marcus.r.personal@gmail.com",
-          "isPrimary": false
-        }
-      ],
-      "socialMediaLinks": [
-        {
-          "id": "sm_c1",
-          "platform": "LINKEDIN",
-          "url": "https://linkedin.com/in/marcusrodriguez"
-        }
-      ],
-      "customFields": {
-        "hire_date": "2020-03-15",
-        "years_experience": 15,
-        "languages": [
-          "English",
-          "Spanish"
-        ],
-        "preferred_contact": "Email"
-      },
-      "tenantId": "tenant_001",
-      "createdAt": "2024-01-15T10:00:00.000Z",
-      "updatedAt": "2024-01-15T10:00:00.000Z"
+      "address": "123 Main Street, Suite 100",
+      "city": "Los Angeles",
+      "state": "CA",
+      "country": "United States",
+      "postalCode": "90210",
+      "notes": "Key decision maker for luxury vehicle imports. Prefers BMW and Mercedes-Benz models. Very responsive to email communication."
     },
     {
       "id": "contact_2",
-      "firstName": "Jennifer",
-      "lastName": "Chen",
+      "tenantId": "tenant_001",
+      "firstName": "Sarah",
+      "lastName": "Johnson",
+      "contactMethods": [],
+      "createdAt": "2025-11-13T15:11:30.256Z",
+      "updatedAt": "2025-11-13T15:11:30.256Z",
       "title": "Sales Director",
       "organisationId": "org_1",
-      "department": "Sales",
-      "contactMethods": [
-        {
-          "id": "cm_c5",
-          "type": "EMAIL_WORK",
-          "value": "jennifer.chen@automaxluxury.com",
-          "isPrimary": true
-        },
-        {
-          "id": "cm_c6",
-          "type": "PHONE_WORK",
-          "value": "+1-555-0103",
-          "isPrimary": true
-        },
-        {
-          "id": "cm_c7",
-          "type": "PHONE_MOBILE",
-          "value": "+1-555-0104",
-          "isPrimary": false
-        }
-      ],
-      "socialMediaLinks": [
-        {
-          "id": "sm_c2",
-          "platform": "LINKEDIN",
-          "url": "https://linkedin.com/in/jenniferchenautosales"
-        }
-      ],
-      "customFields": {
-        "hire_date": "2021-07-01",
-        "sales_territory": "West Coast",
-        "quota_2024": 5000000
-      },
-      "tenantId": "tenant_001",
-      "createdAt": "2024-01-16T14:30:00.000Z",
-      "updatedAt": "2024-01-16T14:30:00.000Z"
+      "address": "456 Oak Avenue",
+      "city": "Beverly Hills",
+      "state": "CA",
+      "country": "United States",
+      "postalCode": "90211",
+      "notes": "Experienced sales professional specializing in high-volume dealer relationships. Excellent at coordinating complex multi-vehicle shipments and logistics."
     },
     {
       "id": "contact_3",
-      "firstName": "Robert",
-      "lastName": "Thompson",
-      "title": "Owner/President",
-      "organisationId": "org_2",
-      "department": "Executive",
-      "contactMethods": [
-        {
-          "id": "cm_c8",
-          "type": "EMAIL_WORK",
-          "value": "robert.thompson@premiermotorsec.com",
-          "isPrimary": true
-        },
-        {
-          "id": "cm_c9",
-          "type": "PHONE_WORK",
-          "value": "+1-212-555-0105",
-          "isPrimary": true
-        },
-        {
-          "id": "cm_c10",
-          "type": "PHONE_MOBILE",
-          "value": "+1-212-555-0106",
-          "isPrimary": false
-        },
-        {
-          "id": "cm_c11",
-          "type": "EMAIL_PERSONAL",
-          "value": "rthompson.autos@gmail.com",
-          "isPrimary": false
-        }
-      ],
-      "customFields": {
-        "ownership_percentage": 100,
-        "founded_year": 1998,
-        "family_business": true
-      },
       "tenantId": "tenant_001",
-      "createdAt": "2024-01-20T14:30:00.000Z",
-      "updatedAt": "2024-01-20T14:30:00.000Z"
+      "firstName": "Michael",
+      "lastName": "Brown",
+      "contactMethods": [],
+      "createdAt": "2025-11-13T15:11:30.256Z",
+      "updatedAt": "2025-11-13T15:11:30.256Z",
+      "title": "CEO",
+      "organisationId": "org_2",
+      "address": "789 Business Plaza, Floor 15",
+      "city": "New York",
+      "state": "NY",
+      "country": "United States",
+      "postalCode": "10001",
+      "notes": "CEO of Premium Motors with 20+ years in luxury automotive. Focus on European imports and high-end collector vehicles. Prefers phone calls for urgent matters."
     },
     {
       "id": "contact_4",
-      "firstName": "Lisa",
-      "lastName": "Martinez",
-      "title": "Finance Manager",
-      "organisationId": "org_2",
-      "department": "Finance",
-      "contactMethods": [
-        {
-          "id": "cm_c12",
-          "type": "EMAIL_WORK",
-          "value": "lisa.martinez@premiermotorsec.com",
-          "isPrimary": true
-        },
-        {
-          "id": "cm_c13",
-          "type": "PHONE_WORK",
-          "value": "+1-212-555-0107",
-          "isPrimary": true
-        }
-      ],
-      "customFields": {
-        "certifications": [
-          "F&I Manager",
-          "Automotive Finance"
-        ],
-        "hire_date": "2019-04-12"
-      },
       "tenantId": "tenant_001",
-      "createdAt": "2024-01-21T09:15:00.000Z",
-      "updatedAt": "2024-01-21T09:15:00.000Z"
+      "firstName": "Emily",
+      "lastName": "Davis",
+      "contactMethods": [],
+      "createdAt": "2025-11-13T15:11:30.256Z",
+      "updatedAt": "2025-11-13T15:11:30.256Z",
+      "title": "Operations Manager",
+      "organisationId": "org_3",
+      "address": "321 Industrial Way",
+      "city": "Chicago",
+      "state": "IL",
+      "country": "United States",
+      "postalCode": "60601",
+      "notes": "Detail-oriented operations manager handling inventory and logistics. Expertise in commercial vehicle procurement and fleet management solutions."
     },
     {
       "id": "contact_5",
-      "firstName": "David",
-      "lastName": "Wilson",
-      "title": "General Manager",
-      "organisationId": "org_3",
-      "department": "Management",
-      "contactMethods": [
-        {
-          "id": "cm_c14",
-          "type": "EMAIL_WORK",
-          "value": "david.wilson@citycarsdirect.com",
-          "isPrimary": true
-        },
-        {
-          "id": "cm_c15",
-          "type": "PHONE_WORK",
-          "value": "+1-312-555-0108",
-          "isPrimary": true
-        },
-        {
-          "id": "cm_c16",
-          "type": "PHONE_MOBILE",
-          "value": "+1-312-555-0109",
-          "isPrimary": false
-        }
-      ],
-      "customFields": {
-        "hire_date": "2022-01-15",
-        "previous_experience": "CarMax, 8 years"
-      },
       "tenantId": "tenant_001",
-      "createdAt": "2024-02-01T09:00:00.000Z",
-      "updatedAt": "2024-02-01T09:00:00.000Z"
+      "firstName": "Robert",
+      "lastName": "Wilson",
+      "contactMethods": [],
+      "createdAt": "2025-11-13T15:11:30.256Z",
+      "updatedAt": "2025-11-13T15:11:30.256Z",
+      "title": "Import Specialist",
+      "organisationId": "org_4",
+      "address": "555 Harbor Boulevard",
+      "city": "Miami",
+      "state": "FL",
+      "country": "United States",
+      "postalCode": "33101",
+      "notes": "International shipping expert with extensive knowledge of customs regulations and documentation. Handles complex multi-country vehicle imports efficiently."
     },
     {
       "id": "contact_6",
-      "firstName": "Amanda",
-      "lastName": "Foster",
-      "title": "Operations Manager",
-      "organisationId": "org_4",
-      "department": "Operations",
-      "contactMethods": [
-        {
-          "id": "cm_c17",
-          "type": "EMAIL_WORK",
-          "value": "amanda.foster@copart.com",
-          "isPrimary": true
-        },
-        {
-          "id": "cm_c18",
-          "type": "PHONE_WORK",
-          "value": "+1-916-388-7860",
-          "isPrimary": true
-        }
-      ],
-      "customFields": {
-        "auction_experience": 12,
-        "specialties": [
-          "Salvage Operations",
-          "Inventory Management"
-        ]
-      },
       "tenantId": "tenant_001",
-      "createdAt": "2024-01-10T08:00:00.000Z",
-      "updatedAt": "2024-01-10T08:00:00.000Z"
+      "firstName": "Lisa",
+      "lastName": "Anderson",
+      "contactMethods": [],
+      "createdAt": "2025-11-13T15:11:30.256Z",
+      "updatedAt": "2025-11-13T15:11:30.256Z",
+      "title": "Independent Dealer",
+      "address": "777 Maple Street",
+      "city": "Austin",
+      "state": "TX",
+      "country": "United States",
+      "postalCode": "73301",
+      "notes": "Independent dealer with a focus on affordable domestic vehicles. Strong relationships with auction houses and quick decision-making process."
     },
     {
       "id": "contact_7",
-      "firstName": "Michael",
-      "lastName": "O'Brien",
-      "title": "Sales Representative",
-      "organisationId": "org_5",
-      "department": "Sales",
-      "contactMethods": [
-        {
-          "id": "cm_c19",
-          "type": "EMAIL_WORK",
-          "value": "michael.obrien@manheim.com",
-          "isPrimary": true
-        },
-        {
-          "id": "cm_c20",
-          "type": "PHONE_WORK",
-          "value": "+1-717-665-3572",
-          "isPrimary": true
-        },
-        {
-          "id": "cm_c21",
-          "type": "PHONE_MOBILE",
-          "value": "+1-717-555-0200",
-          "isPrimary": false
-        }
-      ],
-      "socialMediaLinks": [
-        {
-          "id": "sm_c3",
-          "platform": "LINKEDIN",
-          "url": "https://linkedin.com/in/michaelobrienmanheim"
-        }
-      ],
-      "customFields": {
-        "territory": "Northeast Region",
-        "dealer_relationships": 150,
-        "years_at_manheim": 8
-      },
       "tenantId": "tenant_001",
-      "createdAt": "2024-01-05T12:00:00.000Z",
-      "updatedAt": "2024-01-05T12:00:00.000Z"
+      "firstName": "James",
+      "lastName": "Taylor",
+      "contactMethods": [],
+      "createdAt": "2025-11-13T15:11:30.256Z",
+      "updatedAt": "2025-11-13T15:11:30.256Z",
+      "title": "Purchasing Manager",
+      "organisationId": "org_5",
+      "address": "888 Sunset Drive",
+      "city": "Seattle",
+      "state": "WA",
+      "country": "United States",
+      "postalCode": "98101",
+      "notes": "Strategic purchasing manager focused on inventory optimization. Specializes in Japanese imports and hybrid vehicles for the Pacific Northwest market."
     },
     {
       "id": "contact_8",
-      "firstName": "Carlos",
-      "lastName": "Vasquez",
-      "title": "Dispatch Manager",
-      "organisationId": "org_6",
-      "department": "Operations",
-      "contactMethods": [
-        {
-          "id": "cm_c22",
-          "type": "EMAIL_WORK",
-          "value": "carlos.vasquez@expressautotransport.com",
-          "isPrimary": true
-        },
-        {
-          "id": "cm_c23",
-          "type": "PHONE_WORK",
-          "value": "+1-214-555-7447",
-          "isPrimary": true
-        },
-        {
-          "id": "cm_c24",
-          "type": "PHONE_MOBILE",
-          "value": "+1-214-555-0301",
-          "isPrimary": false
-        }
-      ],
-      "customFields": {
-        "shift": "Day Dispatch",
-        "routes_managed": [
-          "TX-CA",
-          "TX-NY",
-          "TX-FL"
-        ],
-        "languages": [
-          "English",
-          "Spanish"
-        ]
-      },
       "tenantId": "tenant_001",
-      "createdAt": "2024-01-25T16:00:00.000Z",
-      "updatedAt": "2024-01-25T16:00:00.000Z"
-    },
-    {
-      "id": "contact_9",
-      "firstName": "Jessica",
-      "lastName": "Kumar",
-      "title": "Customer Service Manager",
-      "organisationId": "org_6",
-      "department": "Customer Service",
-      "contactMethods": [
-        {
-          "id": "cm_c25",
-          "type": "EMAIL_WORK",
-          "value": "jessica.kumar@expressautotransport.com",
-          "isPrimary": true
-        },
-        {
-          "id": "cm_c26",
-          "type": "PHONE_WORK",
-          "value": "+1-214-555-7448",
-          "isPrimary": true
-        }
-      ],
-      "customFields": {
-        "team_size": 8,
-        "customer_satisfaction_rating": 4.8,
-        "languages": [
-          "English",
-          "Hindi"
-        ]
-      },
-      "tenantId": "tenant_001",
-      "createdAt": "2024-01-26T10:30:00.000Z",
-      "updatedAt": "2024-01-26T10:30:00.000Z"
-    },
-    {
-      "id": "contact_10",
-      "firstName": "James",
-      "lastName": "Nakamura",
-      "title": "International Operations Director",
-      "organisationId": "org_7",
-      "department": "Operations",
-      "contactMethods": [
-        {
-          "id": "cm_c27",
-          "type": "EMAIL_WORK",
-          "value": "james.nakamura@pacificshipping.com",
-          "isPrimary": true
-        },
-        {
-          "id": "cm_c28",
-          "type": "PHONE_WORK",
-          "value": "+1-562-555-0302",
-          "isPrimary": true
-        },
-        {
-          "id": "cm_c29",
-          "type": "PHONE_MOBILE",
-          "value": "+1-562-555-0303",
-          "isPrimary": false
-        }
-      ],
-      "socialMediaLinks": [
-        {
-          "id": "sm_c4",
-          "platform": "LINKEDIN",
-          "url": "https://linkedin.com/in/jamesnakamurashipping"
-        }
-      ],
-      "customFields": {
-        "languages": [
-          "English",
-          "Japanese",
-          "Mandarin"
-        ],
-        "ports_expertise": [
-          "Long Beach",
-          "Los Angeles",
-          "Tokyo",
-          "Shanghai"
-        ],
-        "international_experience": 15
-      },
-      "tenantId": "tenant_001",
-      "createdAt": "2024-02-10T11:30:00.000Z",
-      "updatedAt": "2024-02-10T11:30:00.000Z"
-    },
-    {
-      "id": "contact_11",
-      "firstName": "Sarah",
-      "lastName": "Johnson",
-      "title": "Processing Supervisor",
-      "organisationId": "org_8",
-      "department": "Processing",
-      "contactMethods": [
-        {
-          "id": "cm_c30",
-          "type": "EMAIL_WORK",
-          "value": "sarah.johnson@unitedcars.com",
-          "isPrimary": true
-        },
-        {
-          "id": "cm_c31",
-          "type": "PHONE_WORK",
-          "value": "+1-602-555-0401",
-          "isPrimary": true
-        },
-        {
-          "id": "cm_c32",
-          "type": "PHONE_MOBILE",
-          "value": "+1-602-555-0402",
-          "isPrimary": false
-        }
-      ],
-      "customFields": {
-        "shift": "Day Shift",
-        "team_size": 15,
-        "processing_specialties": [
-          "Title Transfers",
-          "Documentation Review"
-        ]
-      },
-      "tenantId": "tenant_001",
-      "createdAt": "2024-01-01T00:00:00.000Z",
-      "updatedAt": "2024-01-01T00:00:00.000Z"
-    },
-    {
-      "id": "contact_12",
-      "firstName": "Kevin",
-      "lastName": "Park",
-      "title": "Quality Assurance Manager",
-      "organisationId": "org_8",
-      "department": "Quality Control",
-      "contactMethods": [
-        {
-          "id": "cm_c33",
-          "type": "EMAIL_WORK",
-          "value": "kevin.park@unitedcars.com",
-          "isPrimary": true
-        },
-        {
-          "id": "cm_c34",
-          "type": "PHONE_WORK",
-          "value": "+1-602-555-0403",
-          "isPrimary": true
-        }
-      ],
-      "customFields": {
-        "certifications": [
-          "Six Sigma Green Belt",
-          "Quality Management"
-        ],
-        "audit_frequency": "Daily",
-        "error_rate_target": "0.5%"
-      },
-      "tenantId": "tenant_001",
-      "createdAt": "2024-01-02T08:00:00.000Z",
-      "updatedAt": "2024-01-02T08:00:00.000Z"
-    },
-    {
-      "id": "contact_13",
-      "firstName": "Tom",
-      "lastName": "Johnson",
-      "title": "Owner",
-      "organisationId": "org_9",
-      "department": "Owner",
-      "contactMethods": [
-        {
-          "id": "cm_c35",
-          "type": "EMAIL_PERSONAL",
-          "value": "tom@johnsonfamilyauto.com",
-          "isPrimary": true
-        },
-        {
-          "id": "cm_c36",
-          "type": "PHONE_MOBILE",
-          "value": "+1-417-555-0251",
-          "isPrimary": true
-        },
-        {
-          "id": "cm_c37",
-          "type": "PHONE_HOME",
-          "value": "+1-417-555-0252",
-          "isPrimary": false
-        }
-      ],
-      "customFields": {
-        "years_in_business": 15,
-        "family_members_involved": 3,
-        "specializes_in": "Family-friendly vehicles"
-      },
-      "tenantId": "tenant_001",
-      "createdAt": "2024-02-15T13:00:00.000Z",
-      "updatedAt": "2024-02-15T13:00:00.000Z"
-    },
-    {
-      "id": "contact_14",
-      "firstName": "Victoria",
-      "lastName": "Sterling",
-      "title": "Chief Acquisitions Officer",
-      "organisationId": "org_10",
-      "department": "Acquisitions",
-      "contactMethods": [
-        {
-          "id": "cm_c38",
-          "type": "EMAIL_WORK",
-          "value": "victoria.sterling@elitecollectors.com",
-          "isPrimary": true
-        },
-        {
-          "id": "cm_c39",
-          "type": "PHONE_WORK",
-          "value": "+1-480-555-0351",
-          "isPrimary": true
-        },
-        {
-          "id": "cm_c40",
-          "type": "PHONE_MOBILE",
-          "value": "+1-480-555-0352",
-          "isPrimary": false
-        }
-      ],
-      "socialMediaLinks": [
-        {
-          "id": "sm_c5",
-          "platform": "INSTAGRAM",
-          "url": "https://instagram.com/victoriaclassiccars"
-        },
-        {
-          "id": "sm_c6",
-          "platform": "LINKEDIN",
-          "url": "https://linkedin.com/in/victoriasterlingcollector"
-        }
-      ],
-      "customFields": {
-        "collection_expertise": [
-          "American Muscle Cars",
-          "European Classics",
-          "Rare Prototypes"
-        ],
-        "auction_houses": [
-          "Barrett-Jackson",
-          "RM Sothebys",
-          "Bonhams"
-        ],
-        "years_collecting": 20
-      },
-      "tenantId": "tenant_001",
-      "createdAt": "2024-01-30T10:15:00.000Z",
-      "updatedAt": "2024-01-30T10:15:00.000Z"
-    },
-    {
-      "id": "contact_15",
-      "firstName": "Andrew",
-      "lastName": "Mitchell",
-      "title": "Restoration Manager",
-      "organisationId": "org_10",
-      "department": "Restoration",
-      "contactMethods": [
-        {
-          "id": "cm_c41",
-          "type": "EMAIL_WORK",
-          "value": "andrew.mitchell@elitecollectors.com",
-          "isPrimary": true
-        },
-        {
-          "id": "cm_c42",
-          "type": "PHONE_WORK",
-          "value": "+1-480-555-0353",
-          "isPrimary": true
-        }
-      ],
-      "customFields": {
-        "specialties": [
-          "Engine Rebuilds",
-          "Frame Restoration",
-          "Paint & Body"
-        ],
-        "certifications": [
-          "ASE Master Technician",
-          "Classic Car Specialist"
-        ],
-        "projects_completed": 85
-      },
-      "tenantId": "tenant_001",
-      "createdAt": "2024-01-31T15:45:00.000Z",
-      "updatedAt": "2024-01-31T15:45:00.000Z"
-    },
-    {
-      "firstName": "Test",
-      "lastName": "User",
-      "title": "Manager",
-      "organisationId": "org_1",
-      "department": "Sales",
-      "contactMethods": [
-        {
-          "type": "EMAIL_WORK",
-          "value": "test.user@company.com",
-          "primary": true
-        }
-      ],
-      "socialMediaLinks": [],
-      "customFields": {},
-      "id": "SP27SA8S-Q8hk6Kjhk2BI",
-      "tenantId": "tenant_001",
-      "createdAt": "2025-09-16T15:33:26.549Z",
-      "updatedAt": "2025-09-16T15:33:26.549Z"
-    },
-    {
-      "firstName": "Jane",
-      "lastName": "Smith",
-      "title": "Director",
-      "organisationId": "org_2",
-      "department": "Marketing",
-      "contactMethods": [
-        {
-          "id": "cm_1758036903930_1",
-          "type": "EMAIL_WORK",
-          "value": "jane.smith@company.com",
-          "primary": true
-        }
-      ],
-      "socialMediaLinks": [],
-      "customFields": {},
-      "id": "vh2hi70zC9UfwmAofkXLz",
-      "tenantId": "tenant_001",
-      "createdAt": "2025-09-16T15:35:03.930Z",
-      "updatedAt": "2025-09-16T15:35:03.930Z"
-    },
-    {
-      "firstName": "Bartek",
-      "lastName": "Pawełek",
-      "title": "CEO",
-      "organisationId": "rWhewY_RWuKuFb4FIqbeK",
-      "department": "",
-      "contactMethods": [
-        {
-          "id": "cm_1758037725098_1",
-          "type": "PHONE_WORK",
-          "value": "+48421414124",
-          "primary": true
-        }
-      ],
-      "socialMediaLinks": [],
-      "customFields": {},
-      "id": "T_9QfH_8losz8iQW81tGw",
-      "tenantId": "tenant_001",
-      "createdAt": "2025-09-16T15:48:45.098Z",
-      "updatedAt": "2025-09-16T15:50:06.304Z",
-      "address": "",
-      "city": "Tychy",
-      "state": "Silesian",
-      "country": "Poland",
-      "postalCode": ""
-    },
-    {
-      "firstName": "Michał",
-      "lastName": "Sadcza",
-      "title": "CEO",
-      "organisationId": "v8M6S5bd-ZuWEMkF1ZmTZ",
-      "department": "",
-      "contactMethods": [
-        {
-          "id": "temp_1758121636973_07azkmelr",
-          "type": "EMAIL_WORK",
-          "value": "michal@autostany.pl",
-          "isPrimary": false
-        },
-        {
-          "id": "temp_1758180635188_6jhkmfqhk",
-          "type": "PHONE_WORK",
-          "value": "+48 777 777 777",
-          "isPrimary": false
-        }
-      ],
-      "socialMediaLinks": [],
-      "customFields": {},
-      "city": "Warsaw",
-      "state": "masovian",
-      "country": "PL",
-      "id": "XNvegjmAEf85OA9r2WvaQ",
-      "tenantId": "tenant_001",
-      "createdAt": "2025-09-16T15:52:03.502Z",
-      "updatedAt": "2025-09-18T07:38:06.952Z",
-      "notes": "Chetkiy chuvak",
-      "type": "CEO",
-      "address": "",
-      "postalCode": ""
-    },
-    {
-      "firstName": "Dominik",
-      "lastName": "Grzowski",
-      "title": "Marketing Director",
-      "organisationId": "v8M6S5bd-ZuWEMkF1ZmTZ",
-      "department": "",
-      "contactMethods": [
-        {
-          "id": "cm_1758117428601_1",
-          "type": "PHONE_WORK",
-          "value": "+48 777 777 777",
-          "primary": true
-        }
-      ],
-      "socialMediaLinks": [],
-      "customFields": {},
-      "city": "",
-      "state": "",
-      "country": "",
-      "id": "bQ_pr4xfB2ubNyenwViH3",
-      "tenantId": "tenant_001",
-      "createdAt": "2025-09-17T13:57:08.601Z",
-      "updatedAt": "2025-09-17T13:57:08.601Z"
-    },
-    {
-      "firstName": "Paweł ",
-      "lastName": "Kania",
-      "title": "CEO",
-      "organisationId": "N1Nr-VlL446v8XFDr_RMa",
-      "department": "",
-      "contactMethods": [
-        {
-          "id": "cm_1758118844273_1",
-          "type": "PHONE_WORK",
-          "value": "+48 888 888 888",
-          "primary": true
-        }
-      ],
-      "socialMediaLinks": [],
-      "customFields": {},
-      "city": "",
-      "state": "",
-      "country": "Poland",
-      "id": "FrYgvlvZM5VLtclSJh6bi",
-      "tenantId": "tenant_001",
-      "createdAt": "2025-09-17T14:20:44.279Z",
-      "updatedAt": "2025-09-17T14:20:44.279Z"
-    },
-    {
-      "firstName": "Mr.",
-      "lastName": "Sam",
-      "title": "CEO",
-      "organisationId": "nUYRuH7Mf76YW-9LbdfiA",
-      "department": "",
-      "contactMethods": [
-        {
-          "id": "cm_1758120810399_1",
-          "type": "PHONE_WORK",
-          "value": "+155555555",
-          "primary": true
-        }
-      ],
-      "socialMediaLinks": [],
-      "customFields": {},
-      "city": "",
-      "state": "",
-      "country": "US",
-      "id": "O349-W_qa5lhKDzs05JOR",
-      "tenantId": "tenant_001",
-      "createdAt": "2025-09-17T14:53:30.400Z",
-      "updatedAt": "2025-09-18T14:22:10.815Z",
-      "type": "CEO",
-      "address": "",
-      "postalCode": ""
-    },
-    {
-      "firstName": "Kate",
-      "lastName": "Roy",
-      "title": "CEO",
-      "organisationId": "ZLCSUx4Us41ZGtavwIN9p",
-      "department": "",
-      "contactMethods": [
-        {
-          "id": "cm_1758121019175_1",
-          "type": "PHONE_WORK",
-          "value": "+48 17381231",
-          "primary": true
-        }
-      ],
-      "socialMediaLinks": [],
-      "customFields": {},
-      "city": "",
-      "state": "",
-      "country": "PL",
-      "id": "aS4c7dDsh-5MiIZdGO74t",
-      "tenantId": "tenant_001",
-      "createdAt": "2025-09-17T14:56:59.178Z",
-      "updatedAt": "2025-09-18T14:23:49.871Z",
-      "type": "CEO",
-      "address": "",
-      "postalCode": ""
-    },
-    {
-      "firstName": "Piotr",
-      "lastName": "Żurawski",
-      "title": "",
-      "organisationId": "SuZZlWcz5D_wd1pauJBAW",
-      "department": "",
-      "contactMethods": [
-        {
-          "id": "cm_1758207443263_1",
-          "type": "PHONE_WORK",
-          "value": "+48 787 142 124",
-          "primary": true
-        }
-      ],
-      "socialMediaLinks": [],
-      "customFields": {},
-      "city": "Białystok",
-      "state": "podlaskie",
-      "country": "PL",
-      "id": "-8WQhfFyQcVFwiEJ70ADW",
-      "tenantId": "tenant_001",
-      "createdAt": "2025-09-18T14:57:23.263Z",
-      "updatedAt": "2025-09-18T15:11:57.961Z",
-      "address": "",
-      "postalCode": "",
-      "type": "CEO"
-    },
-    {
-      "firstName": "Sebastian",
-      "lastName": "Puczkowski",
-      "title": "",
-      "organisationId": "IXAedRJ3MEcTRUrH70jYK",
-      "department": "",
-      "contactMethods": [
-        {
-          "id": "cm_1758284175947_1",
-          "type": "EMAIL_WORK",
-          "value": "Sebastian.puckowski@gmail.com",
-          "primary": true
-        }
-      ],
-      "socialMediaLinks": [],
-      "customFields": {},
-      "city": "Białystok",
-      "state": "podlaskie",
-      "country": "PL",
-      "id": "TldvBH_NZ369vEpwvcFQD",
-      "tenantId": "tenant_001",
-      "createdAt": "2025-09-19T12:16:15.949Z",
-      "updatedAt": "2025-09-19T12:16:15.949Z"
-    },
-    {
-      "firstName": "Czeslaw ",
-      "lastName": "Golaszewski",
-      "title": "",
-      "organisationId": "vwbeLzr8fE3Wr7U4z_eBH",
-      "department": "",
-      "contactMethods": [
-        {
-          "id": "cm_1758284357413_1",
-          "type": "PHONE_WORK",
-          "value": "+142142",
-          "primary": true
-        }
-      ],
-      "socialMediaLinks": [],
-      "customFields": {},
-      "city": "Edison",
-      "state": "NJ",
-      "country": "US",
-      "id": "sZpZePwOuF1FZr3MMfivA",
-      "tenantId": "tenant_001",
-      "createdAt": "2025-09-19T12:19:17.413Z",
-      "updatedAt": "2025-09-19T12:19:17.413Z"
+      "firstName": "Patricia",
+      "lastName": "Martinez",
+      "contactMethods": [],
+      "createdAt": "2025-11-13T15:11:30.256Z",
+      "updatedAt": "2025-11-13T15:11:30.256Z",
+      "title": "Solo Trader",
+      "address": "999 Phoenix Plaza",
+      "city": "Phoenix",
+      "state": "AZ",
+      "country": "United States",
+      "postalCode": "85001",
+      "notes": "Independent vehicle trader specializing in vintage and classic cars. Excellent network of collectors and restoration specialists throughout the Southwest."
     }
   ],
-  "leads": [],
+  "leads": [
+    {
+      "id": "lead_1",
+      "tenantId": "tenant_001",
+      "title": "Luxury Auto Dealers - Expansion",
+      "isTarget": true,
+      "createdAt": "2025-11-13T15:11:30.257Z",
+      "updatedAt": "2025-11-13T15:11:30.257Z",
+      "source": "Website",
+      "organisationId": "org_1",
+      "score": 85,
+      "notes": "Looking to expand their inventory with imported vehicles"
+    },
+    {
+      "id": "lead_2",
+      "tenantId": "tenant_001",
+      "title": "East Coast Motors Interest",
+      "isTarget": true,
+      "createdAt": "2025-11-13T15:11:30.257Z",
+      "updatedAt": "2025-11-13T15:11:30.257Z",
+      "source": "Referral",
+      "contactId": "contact_6",
+      "score": 70,
+      "notes": "Referred by existing client, high potential"
+    },
+    {
+      "id": "lead_3",
+      "tenantId": "tenant_001",
+      "title": "Small Dealer Inquiry",
+      "isTarget": false,
+      "createdAt": "2025-11-13T15:11:30.257Z",
+      "updatedAt": "2025-11-13T15:11:30.257Z",
+      "source": "Cold Call",
+      "organisationId": "org_3",
+      "score": 30,
+      "notes": "Not ready yet, follow up in 6 months"
+    },
+    {
+      "id": "lead_4",
+      "tenantId": "tenant_001",
+      "title": "Premium Imports Partnership",
+      "isTarget": true,
+      "createdAt": "2025-11-13T15:11:30.257Z",
+      "updatedAt": "2025-11-13T15:11:30.257Z",
+      "source": "Trade Show",
+      "organisationId": "org_4",
+      "score": 90,
+      "notes": "Met at auto trade show, very interested"
+    },
+    {
+      "id": "lead_5",
+      "tenantId": "tenant_001",
+      "title": "Individual Buyer",
+      "isTarget": false,
+      "createdAt": "2025-11-13T15:11:30.257Z",
+      "updatedAt": "2025-11-13T15:11:30.257Z",
+      "source": "Website",
+      "contactId": "contact_8",
+      "score": 20,
+      "notes": "Individual buyer, not our target market"
+    },
+    {
+      "id": "lead_6",
+      "tenantId": "tenant_001",
+      "title": "Regional Dealer Network",
+      "isTarget": false,
+      "createdAt": "2025-11-13T15:11:30.257Z",
+      "updatedAt": "2025-11-13T15:11:30.257Z",
+      "source": "LinkedIn",
+      "organisationId": "org_5",
+      "score": 45,
+      "notes": "Interested but needs more information"
+    }
+  ],
   "deals": [
     {
-      "id": "deal-1",
-      "title": "AutoMax Luxury Partnership",
-      "description": "Partnership opportunity with premier luxury dealership",
+      "id": "deal_1",
+      "tenantId": "tenant_001",
+      "title": "AutoMax Fleet Expansion - Q1 2025",
+      "status": "OPEN",
+      "createdAt": "2025-11-13T15:11:30.253Z",
+      "updatedAt": "2025-11-13T15:11:30.253Z",
       "value": 250000,
+      "amount": 250000,
       "currency": "USD",
-      "status": "OPEN",
-      "pipelineId": "pipeline-dealer",
-      "stageId": "stage-da-proposal",
-      "contactId": "contact-1",
       "organisationId": "org_1",
-      "assignedTo": null,
-      "expectedCloseDate": "2024-03-15T00:00:00.000Z",
-      "probability": 50,
-      "notes": "Strong interest in luxury vehicle logistics solutions",
-      "tenantId": "tenant-1",
-      "createdAt": "2024-01-15T00:00:00.000Z",
-      "updatedAt": "2025-09-16T15:58:34.649Z",
-      "customFields": {}
+      "contactId": "contact_1",
+      "probability": 65,
+      "notes": "Large fleet expansion for Q1, interested in 50+ vehicles from Japan auctions",
+      "currentStages": [
+        {
+          "id": "Rix_K-RMTVGAUHYZ-WyLC",
+          "tenantId": "tenant_001",
+          "dealId": "deal_1",
+          "pipelineId": "dealer-acquisition",
+          "stageId": "stage_da_3",
+          "enteredAt": "2025-11-13T15:11:30.253Z",
+          "createdAt": "2025-11-13T15:11:30.253Z",
+          "updatedAt": "2025-11-13T15:11:30.253Z"
+        }
+      ],
+      "stageHistory": [
+        {
+          "id": "YPuAg-3OczibjbnfvFK7s",
+          "tenantId": "tenant_001",
+          "dealId": "deal_1",
+          "pipelineId": "dealer-acquisition",
+          "toStageId": "stage_da_1",
+          "movedAt": "2025-11-13T15:11:30.254Z",
+          "createdAt": "2025-11-13T15:11:30.254Z",
+          "updatedAt": "2025-11-13T15:11:30.254Z"
+        },
+        {
+          "id": "-l0VWTT4CFvrAxGktvq9r",
+          "tenantId": "tenant_001",
+          "dealId": "deal_1",
+          "pipelineId": "dealer-acquisition",
+          "toStageId": "stage_da_2",
+          "movedAt": "2025-11-13T15:11:30.254Z",
+          "createdAt": "2025-11-13T15:11:30.254Z",
+          "updatedAt": "2025-11-13T15:11:30.254Z",
+          "fromStageId": "stage_da_1"
+        },
+        {
+          "id": "3VRqFdb2xqyJYmmeeI0m-",
+          "tenantId": "tenant_001",
+          "dealId": "deal_1",
+          "pipelineId": "dealer-acquisition",
+          "toStageId": "stage_da_3",
+          "movedAt": "2025-11-13T15:11:30.254Z",
+          "createdAt": "2025-11-13T15:11:30.254Z",
+          "updatedAt": "2025-11-13T15:11:30.254Z",
+          "fromStageId": "stage_da_2"
+        }
+      ]
     },
     {
-      "id": "deal-2",
-      "title": "CarHub Direct Integration",
-      "description": "Technical integration for existing CarHub Direct dealer",
-      "value": 150000,
-      "currency": "USD",
+      "id": "deal_2",
+      "tenantId": "tenant_001",
+      "title": "Premier Motors Luxury Import Deal",
       "status": "OPEN",
-      "pipelineId": "pipeline-integration",
-      "stageId": "stage-int-integration",
-      "contactId": "contact-2",
+      "createdAt": "2025-11-13T15:11:30.253Z",
+      "updatedAt": "2025-11-13T15:11:30.253Z",
+      "value": 450000,
+      "amount": 450000,
+      "currency": "USD",
       "organisationId": "org_2",
-      "assignedTo": null,
-      "expectedCloseDate": "2024-02-28T00:00:00.000Z",
-      "probability": 60,
-      "notes": "Integration work in progress, good communication with tech team",
-      "tenantId": "tenant-1",
-      "createdAt": "2024-01-10T00:00:00.000Z",
-      "updatedAt": "2025-09-16T15:58:34.649Z",
-      "customFields": {}
+      "contactId": "contact_2",
+      "probability": 80,
+      "notes": "High-end luxury vehicles from German auctions, focus on BMW and Mercedes",
+      "currentStages": [
+        {
+          "id": "NatzvIm-Jsp3omAE9S6VX",
+          "tenantId": "tenant_001",
+          "dealId": "deal_2",
+          "pipelineId": "dealer-acquisition",
+          "stageId": "stage_da_6",
+          "enteredAt": "2025-11-13T15:11:30.254Z",
+          "createdAt": "2025-11-13T15:11:30.254Z",
+          "updatedAt": "2025-11-13T15:11:30.254Z"
+        }
+      ],
+      "stageHistory": [
+        {
+          "id": "WTz1Ic_cVNYTS6esR-eVv",
+          "tenantId": "tenant_001",
+          "dealId": "deal_2",
+          "pipelineId": "dealer-acquisition",
+          "toStageId": "stage_da_1",
+          "movedAt": "2025-11-13T15:11:30.254Z",
+          "createdAt": "2025-11-13T15:11:30.254Z",
+          "updatedAt": "2025-11-13T15:11:30.254Z"
+        },
+        {
+          "id": "qjp7AfFR40oOa8ssFvZzD",
+          "tenantId": "tenant_001",
+          "dealId": "deal_2",
+          "pipelineId": "dealer-acquisition",
+          "toStageId": "stage_da_2",
+          "movedAt": "2025-11-13T15:11:30.254Z",
+          "createdAt": "2025-11-13T15:11:30.254Z",
+          "updatedAt": "2025-11-13T15:11:30.254Z",
+          "fromStageId": "stage_da_1"
+        },
+        {
+          "id": "We6eh1eE5z2zOaSrtt83G",
+          "tenantId": "tenant_001",
+          "dealId": "deal_2",
+          "pipelineId": "dealer-acquisition",
+          "toStageId": "stage_da_3",
+          "movedAt": "2025-11-13T15:11:30.254Z",
+          "createdAt": "2025-11-13T15:11:30.254Z",
+          "updatedAt": "2025-11-13T15:11:30.254Z",
+          "fromStageId": "stage_da_2"
+        },
+        {
+          "id": "Q-NQKn0bJ9Unyq269eokD",
+          "tenantId": "tenant_001",
+          "dealId": "deal_2",
+          "pipelineId": "dealer-acquisition",
+          "toStageId": "stage_da_4",
+          "movedAt": "2025-11-13T15:11:30.254Z",
+          "createdAt": "2025-11-13T15:11:30.254Z",
+          "updatedAt": "2025-11-13T15:11:30.254Z",
+          "fromStageId": "stage_da_3"
+        },
+        {
+          "id": "0WOGXRZK7ju0iroRkOXqa",
+          "tenantId": "tenant_001",
+          "dealId": "deal_2",
+          "pipelineId": "dealer-acquisition",
+          "toStageId": "stage_da_5",
+          "movedAt": "2025-11-13T15:11:30.254Z",
+          "createdAt": "2025-11-13T15:11:30.254Z",
+          "updatedAt": "2025-11-13T15:11:30.254Z",
+          "fromStageId": "stage_da_4"
+        },
+        {
+          "id": "H4mrno-p6GvQnD9oGy387",
+          "tenantId": "tenant_001",
+          "dealId": "deal_2",
+          "pipelineId": "dealer-acquisition",
+          "toStageId": "stage_da_6",
+          "movedAt": "2025-11-13T15:11:30.254Z",
+          "createdAt": "2025-11-13T15:11:30.254Z",
+          "updatedAt": "2025-11-13T15:11:30.254Z",
+          "fromStageId": "stage_da_5"
+        }
+      ]
     },
     {
-      "id": "deal-3",
-      "title": "Copart Auction House Partnership",
-      "description": "Expanding services with major auction house",
-      "value": 500000,
-      "currency": "USD",
+      "id": "deal_3",
+      "tenantId": "tenant_001",
+      "title": "City Cars Economy Fleet",
       "status": "OPEN",
-      "pipelineId": "pipeline-dealer",
-      "stageId": "stage-da-qualified",
-      "contactId": "contact-3",
+      "createdAt": "2025-11-13T15:11:30.253Z",
+      "updatedAt": "2025-11-13T15:11:30.253Z",
+      "value": 150000,
+      "amount": 150000,
+      "currency": "USD",
       "organisationId": "org_3",
-      "assignedTo": null,
-      "expectedCloseDate": "2024-04-30T00:00:00.000Z",
-      "probability": 25,
-      "notes": "Initial conversations very positive, awaiting formal proposal request",
-      "tenantId": "tenant-1",
-      "createdAt": "2024-01-20T00:00:00.000Z",
-      "updatedAt": "2025-09-18T07:59:17.265Z",
-      "customFields": {}
+      "contactId": "contact_3",
+      "probability": 40,
+      "notes": "Budget-friendly compact cars for city dealership",
+      "currentStages": [
+        {
+          "id": "M_1-mDEQXHNj6LHHSF00S",
+          "tenantId": "tenant_001",
+          "dealId": "deal_3",
+          "pipelineId": "dealer-acquisition",
+          "stageId": "stage_da_2",
+          "enteredAt": "2025-11-13T15:11:30.254Z",
+          "createdAt": "2025-11-13T15:11:30.254Z",
+          "updatedAt": "2025-11-13T15:11:30.254Z"
+        }
+      ],
+      "stageHistory": [
+        {
+          "id": "fpoGTt3C1ZzLCf3pxaBa_",
+          "tenantId": "tenant_001",
+          "dealId": "deal_3",
+          "pipelineId": "dealer-acquisition",
+          "toStageId": "stage_da_1",
+          "movedAt": "2025-11-13T15:11:30.254Z",
+          "createdAt": "2025-11-13T15:11:30.254Z",
+          "updatedAt": "2025-11-13T15:11:30.254Z"
+        },
+        {
+          "id": "xA40JgR0bUiyCqVLVImp7",
+          "tenantId": "tenant_001",
+          "dealId": "deal_3",
+          "pipelineId": "dealer-acquisition",
+          "toStageId": "stage_da_2",
+          "movedAt": "2025-11-13T15:11:30.254Z",
+          "createdAt": "2025-11-13T15:11:30.254Z",
+          "updatedAt": "2025-11-13T15:11:30.254Z",
+          "fromStageId": "stage_da_1"
+        }
+      ]
     },
     {
-      "id": "deal-4",
-      "title": "Pacific Shipping Lines Contract",
-      "description": "Major shipping contract for west coast operations",
-      "value": 750000,
-      "currency": "USD",
-      "status": "OPEN",
-      "pipelineId": "pipeline-dealer",
-      "stageId": "stage-da-negotiation",
-      "contactId": "contact-4",
-      "organisationId": "org_4",
-      "assignedTo": null,
-      "expectedCloseDate": "2024-03-01T00:00:00.000Z",
-      "probability": 75,
-      "notes": "In final negotiations, pricing almost agreed",
-      "tenantId": "tenant-1",
-      "createdAt": "2024-01-05T00:00:00.000Z",
-      "updatedAt": "2025-09-16T16:10:52.021Z",
-      "customFields": {}
-    },
-    {
-      "id": "deal-5",
-      "title": "Elite Motors Integration Complete",
-      "description": "Successfully completed technical integration",
-      "value": 200000,
-      "currency": "USD",
+      "id": "deal_4",
+      "tenantId": "tenant_001",
+      "title": "Global Auto Partnership - ACTIVE",
       "status": "WON",
-      "pipelineId": "pipeline-integration",
-      "stageId": "stage-int-live",
-      "contactId": "contact-5",
+      "createdAt": "2025-11-13T15:11:30.253Z",
+      "updatedAt": "2025-11-13T15:11:30.253Z",
+      "value": 750000,
+      "amount": 750000,
+      "currency": "USD",
+      "organisationId": "org_4",
+      "contactId": "contact_4",
+      "probability": 100,
+      "closeDate": "2024-12-15T00:00:00.000Z",
+      "notes": "Major partnership signed, now in integration phase",
+      "currentStages": [
+        {
+          "id": "wBVgrqlFilnI9uFiXzK3o",
+          "tenantId": "tenant_001",
+          "dealId": "deal_4",
+          "pipelineId": "dealer-acquisition",
+          "stageId": "stage_da_10",
+          "enteredAt": "2025-11-13T15:11:30.254Z",
+          "createdAt": "2025-11-13T15:11:30.254Z",
+          "updatedAt": "2025-11-13T15:11:30.254Z"
+        },
+        {
+          "id": "209ZbAskJ4AtFM1LNRdQv",
+          "tenantId": "tenant_001",
+          "dealId": "deal_4",
+          "pipelineId": "dealer-integration",
+          "stageId": "stage_di_3",
+          "enteredAt": "2025-11-13T15:11:30.254Z",
+          "createdAt": "2025-11-13T15:11:30.254Z",
+          "updatedAt": "2025-11-13T15:11:30.254Z"
+        }
+      ],
+      "stageHistory": [
+        {
+          "id": "ZURxZpXBQCp1swiZBBQ-d",
+          "tenantId": "tenant_001",
+          "dealId": "deal_4",
+          "pipelineId": "dealer-acquisition",
+          "toStageId": "stage_da_1",
+          "movedAt": "2025-11-13T15:11:30.254Z",
+          "createdAt": "2025-11-13T15:11:30.254Z",
+          "updatedAt": "2025-11-13T15:11:30.254Z"
+        },
+        {
+          "id": "479YjwDPTjROX7-iGI-el",
+          "tenantId": "tenant_001",
+          "dealId": "deal_4",
+          "pipelineId": "dealer-acquisition",
+          "toStageId": "stage_da_2",
+          "movedAt": "2025-11-13T15:11:30.254Z",
+          "createdAt": "2025-11-13T15:11:30.254Z",
+          "updatedAt": "2025-11-13T15:11:30.254Z",
+          "fromStageId": "stage_da_1"
+        },
+        {
+          "id": "dF_wan1y9aMLstV5T-o3B",
+          "tenantId": "tenant_001",
+          "dealId": "deal_4",
+          "pipelineId": "dealer-acquisition",
+          "toStageId": "stage_da_3",
+          "movedAt": "2025-11-13T15:11:30.254Z",
+          "createdAt": "2025-11-13T15:11:30.254Z",
+          "updatedAt": "2025-11-13T15:11:30.254Z",
+          "fromStageId": "stage_da_2"
+        },
+        {
+          "id": "5nEe9bgwetOoP8WSHYqWr",
+          "tenantId": "tenant_001",
+          "dealId": "deal_4",
+          "pipelineId": "dealer-acquisition",
+          "toStageId": "stage_da_4",
+          "movedAt": "2025-11-13T15:11:30.254Z",
+          "createdAt": "2025-11-13T15:11:30.254Z",
+          "updatedAt": "2025-11-13T15:11:30.254Z",
+          "fromStageId": "stage_da_3"
+        },
+        {
+          "id": "kovtLr0HO2vWiTvdZ3Rac",
+          "tenantId": "tenant_001",
+          "dealId": "deal_4",
+          "pipelineId": "dealer-acquisition",
+          "toStageId": "stage_da_5",
+          "movedAt": "2025-11-13T15:11:30.254Z",
+          "createdAt": "2025-11-13T15:11:30.254Z",
+          "updatedAt": "2025-11-13T15:11:30.254Z",
+          "fromStageId": "stage_da_4"
+        },
+        {
+          "id": "DDYYLIBh-SR7pmpExrOlS",
+          "tenantId": "tenant_001",
+          "dealId": "deal_4",
+          "pipelineId": "dealer-acquisition",
+          "toStageId": "stage_da_6",
+          "movedAt": "2025-11-13T15:11:30.254Z",
+          "createdAt": "2025-11-13T15:11:30.254Z",
+          "updatedAt": "2025-11-13T15:11:30.254Z",
+          "fromStageId": "stage_da_5"
+        },
+        {
+          "id": "JiJ6mteHTQVS4qTcEB-ce",
+          "tenantId": "tenant_001",
+          "dealId": "deal_4",
+          "pipelineId": "dealer-acquisition",
+          "toStageId": "stage_da_7",
+          "movedAt": "2025-11-13T15:11:30.254Z",
+          "createdAt": "2025-11-13T15:11:30.254Z",
+          "updatedAt": "2025-11-13T15:11:30.254Z",
+          "fromStageId": "stage_da_6"
+        },
+        {
+          "id": "HbX4uf-TLhneDlRaomoZ9",
+          "tenantId": "tenant_001",
+          "dealId": "deal_4",
+          "pipelineId": "dealer-acquisition",
+          "toStageId": "stage_da_8",
+          "movedAt": "2025-11-13T15:11:30.254Z",
+          "createdAt": "2025-11-13T15:11:30.254Z",
+          "updatedAt": "2025-11-13T15:11:30.254Z",
+          "fromStageId": "stage_da_7"
+        },
+        {
+          "id": "d5B0EZ81nk8bYM317WV6S",
+          "tenantId": "tenant_001",
+          "dealId": "deal_4",
+          "pipelineId": "dealer-acquisition",
+          "toStageId": "stage_da_9",
+          "movedAt": "2025-11-13T15:11:30.254Z",
+          "createdAt": "2025-11-13T15:11:30.254Z",
+          "updatedAt": "2025-11-13T15:11:30.254Z",
+          "fromStageId": "stage_da_8"
+        },
+        {
+          "id": "OtoCmjTTi3fqLvemZVlrr",
+          "tenantId": "tenant_001",
+          "dealId": "deal_4",
+          "pipelineId": "dealer-acquisition",
+          "toStageId": "stage_da_10",
+          "movedAt": "2025-11-13T15:11:30.254Z",
+          "createdAt": "2025-11-13T15:11:30.254Z",
+          "updatedAt": "2025-11-13T15:11:30.254Z",
+          "fromStageId": "stage_da_9"
+        },
+        {
+          "id": "t0L5pIjEK10btpx0kSTIt",
+          "tenantId": "tenant_001",
+          "dealId": "deal_4",
+          "pipelineId": "dealer-integration",
+          "toStageId": "stage_di_1",
+          "movedAt": "2025-11-13T15:11:30.254Z",
+          "createdAt": "2025-11-13T15:11:30.254Z",
+          "updatedAt": "2025-11-13T15:11:30.254Z"
+        },
+        {
+          "id": "P3YAjik-Lw1jJHgVzx1tx",
+          "tenantId": "tenant_001",
+          "dealId": "deal_4",
+          "pipelineId": "dealer-integration",
+          "toStageId": "stage_di_2",
+          "movedAt": "2025-11-13T15:11:30.254Z",
+          "createdAt": "2025-11-13T15:11:30.254Z",
+          "updatedAt": "2025-11-13T15:11:30.254Z",
+          "fromStageId": "stage_di_1"
+        },
+        {
+          "id": "IdhXSSQHbQlNVha6OIEME",
+          "tenantId": "tenant_001",
+          "dealId": "deal_4",
+          "pipelineId": "dealer-integration",
+          "toStageId": "stage_di_3",
+          "movedAt": "2025-11-13T15:11:30.254Z",
+          "createdAt": "2025-11-13T15:11:30.254Z",
+          "updatedAt": "2025-11-13T15:11:30.254Z",
+          "fromStageId": "stage_di_2"
+        }
+      ]
+    },
+    {
+      "id": "deal_5",
+      "tenantId": "tenant_001",
+      "title": "John Smith - BMW X5 Import",
+      "status": "OPEN",
+      "createdAt": "2025-11-13T15:11:30.253Z",
+      "updatedAt": "2025-11-13T15:11:30.253Z",
+      "value": 85000,
+      "amount": 85000,
+      "currency": "USD",
+      "organisationId": "org_6",
+      "contactId": "contact_7",
+      "probability": 70,
+      "notes": "Individual buyer looking for 2024 BMW X5",
+      "currentStages": [
+        {
+          "id": "axkUwBmhbi0Ixmek26fZU",
+          "tenantId": "tenant_001",
+          "dealId": "deal_5",
+          "pipelineId": "retail-sales",
+          "stageId": "stage_rs_3",
+          "enteredAt": "2025-11-13T15:11:30.254Z",
+          "createdAt": "2025-11-13T15:11:30.254Z",
+          "updatedAt": "2025-11-13T15:11:30.254Z"
+        }
+      ],
+      "stageHistory": [
+        {
+          "id": "37sv9u3ojbMbbE2KtFfAw",
+          "tenantId": "tenant_001",
+          "dealId": "deal_5",
+          "pipelineId": "retail-sales",
+          "toStageId": "stage_rs_1",
+          "movedAt": "2025-11-13T15:11:30.254Z",
+          "createdAt": "2025-11-13T15:11:30.254Z",
+          "updatedAt": "2025-11-13T15:11:30.254Z"
+        },
+        {
+          "id": "ZflfSOJAdKbMLked8iqlB",
+          "tenantId": "tenant_001",
+          "dealId": "deal_5",
+          "pipelineId": "retail-sales",
+          "toStageId": "stage_rs_2",
+          "movedAt": "2025-11-13T15:11:30.254Z",
+          "createdAt": "2025-11-13T15:11:30.254Z",
+          "updatedAt": "2025-11-13T15:11:30.254Z",
+          "fromStageId": "stage_rs_1"
+        },
+        {
+          "id": "sVatWs91YCGNicp47eS3s",
+          "tenantId": "tenant_001",
+          "dealId": "deal_5",
+          "pipelineId": "retail-sales",
+          "toStageId": "stage_rs_3",
+          "movedAt": "2025-11-13T15:11:30.254Z",
+          "createdAt": "2025-11-13T15:11:30.254Z",
+          "updatedAt": "2025-11-13T15:11:30.254Z",
+          "fromStageId": "stage_rs_2"
+        }
+      ]
+    },
+    {
+      "id": "deal_6",
+      "tenantId": "tenant_001",
+      "title": "Express Logistics Partnership",
+      "status": "OPEN",
+      "createdAt": "2025-11-13T15:11:30.253Z",
+      "updatedAt": "2025-11-13T15:11:30.253Z",
+      "value": 125000,
+      "amount": 125000,
+      "currency": "USD",
       "organisationId": "org_5",
-      "assignedTo": null,
-      "expectedCloseDate": "2024-01-31T00:00:00.000Z",
-      "probability": 100,
-      "notes": "Integration completed successfully, client very satisfied",
-      "tenantId": "tenant-1",
-      "createdAt": "2023-12-01T00:00:00.000Z",
-      "updatedAt": "2024-01-31T00:00:00.000Z",
-      "customFields": {}
+      "contactId": "contact_5",
+      "probability": 60,
+      "notes": "New shipping partner for East Coast routes",
+      "currentStages": [
+        {
+          "id": "HX0sGXBmE4LFGiCieZ8jK",
+          "tenantId": "tenant_001",
+          "dealId": "deal_6",
+          "pipelineId": "vendor-onboarding",
+          "stageId": "stage_vo_4",
+          "enteredAt": "2025-11-13T15:11:30.254Z",
+          "createdAt": "2025-11-13T15:11:30.254Z",
+          "updatedAt": "2025-11-13T15:11:30.254Z"
+        }
+      ],
+      "stageHistory": [
+        {
+          "id": "t_rnLKbgJT7ApCZiICe3q",
+          "tenantId": "tenant_001",
+          "dealId": "deal_6",
+          "pipelineId": "vendor-onboarding",
+          "toStageId": "stage_vo_1",
+          "movedAt": "2025-11-13T15:11:30.254Z",
+          "createdAt": "2025-11-13T15:11:30.254Z",
+          "updatedAt": "2025-11-13T15:11:30.254Z"
+        },
+        {
+          "id": "-3hK2G9ZWwmO0rk_Mgvu8",
+          "tenantId": "tenant_001",
+          "dealId": "deal_6",
+          "pipelineId": "vendor-onboarding",
+          "toStageId": "stage_vo_2",
+          "movedAt": "2025-11-13T15:11:30.254Z",
+          "createdAt": "2025-11-13T15:11:30.254Z",
+          "updatedAt": "2025-11-13T15:11:30.254Z",
+          "fromStageId": "stage_vo_1"
+        },
+        {
+          "id": "Sg2vuvvWOwf0ZuVVLdo9W",
+          "tenantId": "tenant_001",
+          "dealId": "deal_6",
+          "pipelineId": "vendor-onboarding",
+          "toStageId": "stage_vo_3",
+          "movedAt": "2025-11-13T15:11:30.254Z",
+          "createdAt": "2025-11-13T15:11:30.254Z",
+          "updatedAt": "2025-11-13T15:11:30.254Z",
+          "fromStageId": "stage_vo_2"
+        },
+        {
+          "id": "JkJnnMdHJboKuoRIN0Gjz",
+          "tenantId": "tenant_001",
+          "dealId": "deal_6",
+          "pipelineId": "vendor-onboarding",
+          "toStageId": "stage_vo_4",
+          "movedAt": "2025-11-13T15:11:30.254Z",
+          "createdAt": "2025-11-13T15:11:30.254Z",
+          "updatedAt": "2025-11-13T15:11:30.254Z",
+          "fromStageId": "stage_vo_3"
+        }
+      ]
     },
     {
-      "title": "Deal with Autostany - Sep 17, 25",
-      "description": "",
-      "value": 5000,
-      "currency": "USD",
-      "status": "ACTIVE",
-      "pipelineId": "pipeline-dealer",
-      "stageId": "stage-da-prospect",
-      "contactId": "XNvegjmAEf85OA9r2WvaQ",
-      "organisationId": "v8M6S5bd-ZuWEMkF1ZmTZ",
-      "assignedTo": null,
-      "expectedCloseDate": null,
-      "probability": 100,
-      "notes": "",
-      "customFields": {},
-      "id": "BPbwqaXhDyooHIUK4Hgzh",
+      "id": "deal_7",
       "tenantId": "tenant_001",
-      "createdAt": "2025-09-17T12:18:33.452Z",
-      "updatedAt": "2025-09-18T07:42:02.156Z"
+      "title": "Sunshine Auto Group Expansion",
+      "status": "OPEN",
+      "createdAt": "2025-11-13T15:11:30.253Z",
+      "updatedAt": "2025-11-13T15:11:30.253Z",
+      "value": 320000,
+      "amount": 320000,
+      "currency": "USD",
+      "probability": 90,
+      "notes": "Existing client expanding to new location",
+      "currentStages": [
+        {
+          "id": "YTk2cqmNrfz5buB6A-a4Y",
+          "tenantId": "tenant_001",
+          "dealId": "deal_7",
+          "pipelineId": "dealer-acquisition",
+          "stageId": "stage_da_7",
+          "enteredAt": "2025-11-13T15:11:30.254Z",
+          "createdAt": "2025-11-13T15:11:30.254Z",
+          "updatedAt": "2025-11-13T15:11:30.254Z"
+        }
+      ],
+      "stageHistory": [
+        {
+          "id": "WG28r-dCh9wl--Rob-dzW",
+          "tenantId": "tenant_001",
+          "dealId": "deal_7",
+          "pipelineId": "dealer-acquisition",
+          "toStageId": "stage_da_1",
+          "movedAt": "2025-11-13T15:11:30.254Z",
+          "createdAt": "2025-11-13T15:11:30.254Z",
+          "updatedAt": "2025-11-13T15:11:30.254Z"
+        },
+        {
+          "id": "dCpC-rNLmA-WP4HDA2uB5",
+          "tenantId": "tenant_001",
+          "dealId": "deal_7",
+          "pipelineId": "dealer-acquisition",
+          "toStageId": "stage_da_2",
+          "movedAt": "2025-11-13T15:11:30.254Z",
+          "createdAt": "2025-11-13T15:11:30.254Z",
+          "updatedAt": "2025-11-13T15:11:30.254Z",
+          "fromStageId": "stage_da_1"
+        },
+        {
+          "id": "oQsaKMaR-OV1zmM9T-HB2",
+          "tenantId": "tenant_001",
+          "dealId": "deal_7",
+          "pipelineId": "dealer-acquisition",
+          "toStageId": "stage_da_3",
+          "movedAt": "2025-11-13T15:11:30.254Z",
+          "createdAt": "2025-11-13T15:11:30.254Z",
+          "updatedAt": "2025-11-13T15:11:30.254Z",
+          "fromStageId": "stage_da_2"
+        },
+        {
+          "id": "kHj5FJRVVAq16LcF7WZgC",
+          "tenantId": "tenant_001",
+          "dealId": "deal_7",
+          "pipelineId": "dealer-acquisition",
+          "toStageId": "stage_da_4",
+          "movedAt": "2025-11-13T15:11:30.254Z",
+          "createdAt": "2025-11-13T15:11:30.254Z",
+          "updatedAt": "2025-11-13T15:11:30.254Z",
+          "fromStageId": "stage_da_3"
+        },
+        {
+          "id": "1LQ_qRPx7Kus_gsFVNqG-",
+          "tenantId": "tenant_001",
+          "dealId": "deal_7",
+          "pipelineId": "dealer-acquisition",
+          "toStageId": "stage_da_5",
+          "movedAt": "2025-11-13T15:11:30.254Z",
+          "createdAt": "2025-11-13T15:11:30.254Z",
+          "updatedAt": "2025-11-13T15:11:30.254Z",
+          "fromStageId": "stage_da_4"
+        },
+        {
+          "id": "4urhSLc8Wd006MMVUV93V",
+          "tenantId": "tenant_001",
+          "dealId": "deal_7",
+          "pipelineId": "dealer-acquisition",
+          "toStageId": "stage_da_6",
+          "movedAt": "2025-11-13T15:11:30.254Z",
+          "createdAt": "2025-11-13T15:11:30.254Z",
+          "updatedAt": "2025-11-13T15:11:30.254Z",
+          "fromStageId": "stage_da_5"
+        },
+        {
+          "id": "em-PiWgsrEqP2dYMDTe3X",
+          "tenantId": "tenant_001",
+          "dealId": "deal_7",
+          "pipelineId": "dealer-acquisition",
+          "toStageId": "stage_da_7",
+          "movedAt": "2025-11-13T15:11:30.254Z",
+          "createdAt": "2025-11-13T15:11:30.254Z",
+          "updatedAt": "2025-11-13T15:11:30.254Z",
+          "fromStageId": "stage_da_6"
+        }
+      ]
     },
     {
-      "title": "Deal with Autostany - Sep 17, 25",
-      "description": "",
-      "value": 5000,
-      "currency": "USD",
-      "status": "ACTIVE",
-      "pipelineId": "pipeline-dealer",
-      "stageId": "stage-da-negotiation",
-      "contactId": "XNvegjmAEf85OA9r2WvaQ",
-      "organisationId": "v8M6S5bd-ZuWEMkF1ZmTZ",
-      "assignedTo": null,
-      "expectedCloseDate": null,
-      "probability": 100,
-      "notes": "",
-      "customFields": {},
-      "id": "6i05V58Zep23hZcgm0AS9",
+      "id": "deal_8",
       "tenantId": "tenant_001",
-      "createdAt": "2025-09-17T12:18:51.138Z",
-      "updatedAt": "2025-09-17T12:19:21.004Z"
-    },
-    {
-      "title": "Deal with Jessica Kumar - Sep 17, 25",
-      "description": "",
-      "value": 0,
+      "title": "Budget Cars Network",
+      "status": "LOST",
+      "createdAt": "2025-11-13T15:11:30.253Z",
+      "updatedAt": "2025-11-13T15:11:30.253Z",
+      "value": 95000,
+      "amount": 95000,
       "currency": "USD",
-      "status": "ACTIVE",
-      "pipelineId": "pipeline-dealer",
-      "stageId": "stage-da-prospect",
-      "contactId": "contact_9",
-      "organisationId": null,
-      "assignedTo": null,
-      "expectedCloseDate": null,
       "probability": 0,
-      "notes": "",
-      "customFields": {},
-      "id": "-DMRgr9iNFdMxvXPaZlsK",
-      "tenantId": "tenant_001",
-      "createdAt": "2025-09-17T13:38:01.535Z",
-      "updatedAt": "2025-09-17T13:38:01.535Z"
-    },
-    {
-      "title": "New Deal - Prospect",
-      "description": "",
-      "value": 0,
-      "currency": "USD",
-      "status": "ACTIVE",
-      "pipelineId": "pipeline-dealer",
-      "stageId": "stage-da-prospect",
-      "contactId": "XNvegjmAEf85OA9r2WvaQ",
-      "organisationId": "v8M6S5bd-ZuWEMkF1ZmTZ",
-      "assignedTo": null,
-      "expectedCloseDate": null,
-      "probability": 0,
-      "notes": "",
-      "customFields": {},
-      "id": "syucoXBGnM78F3duyPnp4",
-      "tenantId": "tenant_001",
-      "createdAt": "2025-09-17T13:38:04.994Z",
-      "updatedAt": "2025-09-18T07:42:35.784Z"
-    },
-    {
-      "title": "New Deal - Qualified",
-      "description": "",
-      "value": 0,
-      "currency": "USD",
-      "status": "ACTIVE",
-      "pipelineId": "pipeline-dealer",
-      "stageId": "stage-da-qualified",
-      "contactId": null,
-      "organisationId": null,
-      "assignedTo": null,
-      "expectedCloseDate": null,
-      "probability": 0,
-      "notes": "",
-      "customFields": {},
-      "id": "8YtMTDxMX4zdv6dS1fFb5",
-      "tenantId": "tenant_001",
-      "createdAt": "2025-09-17T13:39:03.213Z",
-      "updatedAt": "2025-09-17T13:39:03.213Z"
-    },
-    {
-      "title": "dwadadawd",
-      "description": "",
-      "value": 0,
-      "currency": "USD",
-      "status": "ACTIVE",
-      "pipelineId": "pipeline-dealer",
-      "stageId": "stage-da-proposal",
-      "contactId": "-8WQhfFyQcVFwiEJ70ADW",
-      "organisationId": "SuZZlWcz5D_wd1pauJBAW",
-      "assignedTo": null,
-      "expectedCloseDate": null,
-      "probability": 0,
-      "notes": "",
-      "customFields": {},
-      "id": "xh8jJ97jL1lYisw3TSBFH",
-      "tenantId": "tenant_001",
-      "createdAt": "2025-09-18T15:39:42.499Z",
-      "updatedAt": "2025-09-18T15:39:58.202Z"
+      "lossReason": "REJECTION",
+      "notes": "Lost to competitor due to pricing",
+      "currentStages": [
+        {
+          "id": "V71ojhhdLRMMTec0Jq6-S",
+          "tenantId": "tenant_001",
+          "dealId": "deal_8",
+          "pipelineId": "dealer-acquisition",
+          "stageId": "stage_da_lost",
+          "enteredAt": "2025-11-13T15:11:30.254Z",
+          "createdAt": "2025-11-13T15:11:30.254Z",
+          "updatedAt": "2025-11-13T15:11:30.254Z"
+        }
+      ],
+      "stageHistory": [
+        {
+          "id": "OzVk50CqVesavqYXxJYqS",
+          "tenantId": "tenant_001",
+          "dealId": "deal_8",
+          "pipelineId": "dealer-acquisition",
+          "toStageId": "stage_da_1",
+          "movedAt": "2025-11-13T15:11:30.254Z",
+          "createdAt": "2025-11-13T15:11:30.254Z",
+          "updatedAt": "2025-11-13T15:11:30.254Z"
+        },
+        {
+          "id": "gAlyFG2s-dB1vJbsuEffr",
+          "tenantId": "tenant_001",
+          "dealId": "deal_8",
+          "pipelineId": "dealer-acquisition",
+          "toStageId": "stage_da_2",
+          "movedAt": "2025-11-13T15:11:30.254Z",
+          "createdAt": "2025-11-13T15:11:30.254Z",
+          "updatedAt": "2025-11-13T15:11:30.254Z",
+          "fromStageId": "stage_da_1"
+        },
+        {
+          "id": "mIrYlgzEZ8y5_Y6jN58gl",
+          "tenantId": "tenant_001",
+          "dealId": "deal_8",
+          "pipelineId": "dealer-acquisition",
+          "toStageId": "stage_da_lost",
+          "movedAt": "2025-11-13T15:11:30.254Z",
+          "createdAt": "2025-11-13T15:11:30.254Z",
+          "updatedAt": "2025-11-13T15:11:30.254Z",
+          "fromStageId": "stage_da_2"
+        }
+      ]
     }
   ],
   "pipelines": [
     {
-      "id": "pipeline-dealer",
-      "name": "Dealer Pipeline",
-      "description": "Main sales pipeline for dealer prospects",
-      "isActive": true,
-      "tenantId": "tenant-1",
-      "createdAt": "2025-09-16T15:58:34.646Z",
-      "updatedAt": "2025-09-16T15:58:34.649Z",
-      "customFields": {}
-    },
-    {
-      "id": "pipeline-integration",
-      "name": "Integration Pipeline",
-      "description": "Technical integration pipeline for existing dealers",
-      "isActive": true,
-      "tenantId": "tenant-1",
-      "createdAt": "2025-09-16T15:58:34.649Z",
-      "updatedAt": "2025-09-16T15:58:34.649Z",
-      "customFields": {}
-    },
-    {
-      "name": "eblan",
-      "description": "",
-      "isDefault": false,
-      "order": 1,
-      "color": "#3B82F6",
-      "applicableTypes": [],
-      "isTypeSpecific": false,
-      "id": "w_6R25ry0KHk_SrAYCT7r",
+      "id": "dealer-acquisition",
       "tenantId": "tenant_001",
-      "createdAt": "2025-09-19T13:47:49.687Z",
-      "updatedAt": "2025-09-19T13:47:49.687Z"
+      "name": "Dealer Acquisition",
+      "order": 0,
+      "applicableTypes": [
+        "DEALER"
+      ],
+      "isTypeSpecific": true,
+      "createdAt": "2025-11-13T15:11:30.257Z",
+      "updatedAt": "2025-11-13T15:11:44.940Z",
+      "description": "Main dealer acquisition pipeline",
+      "isDefault": true,
+      "color": "#3B82F6",
+      "isActive": true
+    },
+    {
+      "id": "dealer-integration",
+      "tenantId": "tenant_001",
+      "name": "Dealer Integration",
+      "order": 1,
+      "applicableTypes": [
+        "DEALER"
+      ],
+      "isTypeSpecific": true,
+      "createdAt": "2025-11-13T15:11:30.257Z",
+      "updatedAt": "2025-11-13T15:33:37.847Z",
+      "description": "Post-sale dealer integration pipeline",
+      "color": "#10B981",
+      "isActive": true
+    },
+    {
+      "id": "retail-sales",
+      "tenantId": "tenant_001",
+      "name": "Retail Sales",
+      "order": 2,
+      "applicableTypes": [
+        "RETAIL_CLIENT"
+      ],
+      "isTypeSpecific": true,
+      "createdAt": "2025-11-13T15:11:30.257Z",
+      "updatedAt": "2025-11-13T15:11:30.257Z",
+      "description": "Individual customer purchase pipeline",
+      "color": "#8B5CF6"
+    },
+    {
+      "id": "vendor-onboarding",
+      "tenantId": "tenant_001",
+      "name": "Vendor Onboarding",
+      "order": 3,
+      "applicableTypes": [
+        "EXPEDITOR",
+        "SHIPPER",
+        "TRANSPORTER"
+      ],
+      "isTypeSpecific": true,
+      "createdAt": "2025-11-13T15:11:30.257Z",
+      "updatedAt": "2025-11-13T15:38:25.142Z",
+      "description": "New logistics partner acquisition",
+      "color": "#F59E0B",
+      "isActive": true
+    },
+    {
+      "id": "auction-integration",
+      "tenantId": "tenant_001",
+      "name": "Auction Integration",
+      "order": 4,
+      "applicableTypes": [
+        "AUCTION"
+      ],
+      "isTypeSpecific": true,
+      "createdAt": "2025-11-13T15:11:30.257Z",
+      "updatedAt": "2025-11-13T15:11:30.257Z",
+      "description": "API partnerships with auction houses",
+      "color": "#EC4899"
     }
   ],
   "stages": [
     {
-      "id": "stage-da-prospect",
-      "name": "Prospect",
-      "description": "Initial prospect identification",
-      "pipelineId": "pipeline-dealer",
+      "id": "stage_da_1",
+      "tenantId": "tenant_001",
+      "pipelineId": "dealer-acquisition",
+      "name": "Investigation",
+      "order": 0,
+      "createdAt": "2025-11-13T15:11:30.257Z",
+      "updatedAt": "2025-11-13T15:11:30.257Z",
+      "color": "#94A3B8"
+    },
+    {
+      "id": "stage_da_2",
+      "tenantId": "tenant_001",
+      "pipelineId": "dealer-acquisition",
+      "name": "Contact Established",
       "order": 1,
-      "probability": 10,
-      "color": "#94a3b8",
-      "isActive": true,
-      "tenantId": "tenant-1",
-      "createdAt": "2025-09-16T15:58:34.649Z",
-      "updatedAt": "2025-09-16T15:58:34.649Z",
-      "customFields": {}
+      "createdAt": "2025-11-13T15:11:30.257Z",
+      "updatedAt": "2025-11-13T15:11:30.257Z",
+      "color": "#64748B"
     },
     {
-      "id": "stage-da-qualified",
-      "name": "Qualified",
-      "description": "Qualified prospect with confirmed interest",
-      "pipelineId": "pipeline-dealer",
+      "id": "stage_da_3",
+      "tenantId": "tenant_001",
+      "pipelineId": "dealer-acquisition",
+      "name": "Qualification",
       "order": 2,
-      "probability": 25,
-      "color": "#3b82f6",
-      "isActive": true,
-      "tenantId": "tenant-1",
-      "createdAt": "2025-09-16T15:58:34.649Z",
-      "updatedAt": "2025-09-16T15:58:34.649Z",
-      "customFields": {}
+      "createdAt": "2025-11-13T15:11:30.257Z",
+      "updatedAt": "2025-11-13T15:11:30.257Z",
+      "color": "#475569"
     },
     {
-      "id": "stage-da-proposal",
-      "name": "Proposal",
-      "description": "Proposal sent to prospect",
-      "pipelineId": "pipeline-dealer",
+      "id": "stage_da_4",
+      "tenantId": "tenant_001",
+      "pipelineId": "dealer-acquisition",
+      "name": "Meeting Set",
       "order": 3,
-      "probability": 50,
-      "color": "#f59e0b",
-      "isActive": true,
-      "tenantId": "tenant-1",
-      "createdAt": "2025-09-16T15:58:34.649Z",
-      "updatedAt": "2025-09-16T15:58:34.649Z",
-      "customFields": {}
+      "createdAt": "2025-11-13T15:11:30.257Z",
+      "updatedAt": "2025-11-13T15:11:30.257Z",
+      "color": "#3B82F6"
     },
     {
-      "id": "stage-da-negotiation",
+      "id": "stage_da_5",
+      "tenantId": "tenant_001",
+      "pipelineId": "dealer-acquisition",
+      "name": "Meeting Confirmed",
+      "order": 4,
+      "createdAt": "2025-11-13T15:11:30.257Z",
+      "updatedAt": "2025-11-13T15:11:30.257Z",
+      "color": "#2563EB"
+    },
+    {
+      "id": "stage_da_6",
+      "tenantId": "tenant_001",
+      "pipelineId": "dealer-acquisition",
       "name": "Negotiation",
-      "description": "Active negotiation phase",
-      "pipelineId": "pipeline-dealer",
-      "order": 4,
-      "probability": 75,
-      "color": "#f97316",
-      "isActive": true,
-      "tenantId": "tenant-1",
-      "createdAt": "2025-09-16T15:58:34.649Z",
-      "updatedAt": "2025-09-16T15:58:34.649Z",
-      "customFields": {}
-    },
-    {
-      "id": "stage-da-won",
-      "name": "Won",
-      "description": "Deal successfully closed",
-      "pipelineId": "pipeline-dealer",
       "order": 5,
-      "probability": 100,
-      "color": "#10b981",
-      "isActive": true,
-      "tenantId": "tenant-1",
-      "createdAt": "2025-09-16T15:58:34.649Z",
-      "updatedAt": "2025-09-16T15:58:34.649Z",
-      "customFields": {}
+      "createdAt": "2025-11-13T15:11:30.257Z",
+      "updatedAt": "2025-11-13T15:11:30.257Z",
+      "color": "#1D4ED8"
     },
     {
-      "id": "stage-int-discovery",
-      "name": "Discovery",
-      "description": "Technical discovery and requirements gathering",
-      "pipelineId": "pipeline-integration",
-      "order": 1,
-      "probability": 20,
-      "color": "#6366f1",
-      "isActive": true,
-      "tenantId": "tenant-1",
-      "createdAt": "2025-09-16T15:58:34.649Z",
-      "updatedAt": "2025-09-16T15:58:34.649Z",
-      "customFields": {}
+      "id": "stage_da_7",
+      "tenantId": "tenant_001",
+      "pipelineId": "dealer-acquisition",
+      "name": "Contract Sent",
+      "order": 6,
+      "createdAt": "2025-11-13T15:11:30.257Z",
+      "updatedAt": "2025-11-13T15:11:30.257Z",
+      "color": "#F59E0B"
     },
     {
-      "id": "stage-int-integration",
+      "id": "stage_da_8",
+      "tenantId": "tenant_001",
+      "pipelineId": "dealer-acquisition",
+      "name": "Contract Signed",
+      "order": 7,
+      "createdAt": "2025-11-13T15:11:30.257Z",
+      "updatedAt": "2025-11-13T15:11:30.257Z",
+      "color": "#EF4444"
+    },
+    {
+      "id": "stage_da_9",
+      "tenantId": "tenant_001",
+      "pipelineId": "dealer-acquisition",
+      "name": "Deposit Paid",
+      "order": 8,
+      "createdAt": "2025-11-13T15:11:30.257Z",
+      "updatedAt": "2025-11-13T15:11:30.257Z",
+      "color": "#10B981"
+    },
+    {
+      "id": "stage_da_10",
+      "tenantId": "tenant_001",
+      "pipelineId": "dealer-acquisition",
+      "name": "Close Won",
+      "order": 9,
+      "createdAt": "2025-11-13T15:11:30.257Z",
+      "updatedAt": "2025-11-13T15:11:30.257Z",
+      "color": "#059669",
+      "isClosing": true
+    },
+    {
+      "id": "stage_da_lost",
+      "tenantId": "tenant_001",
+      "pipelineId": "dealer-acquisition",
+      "name": "Lost",
+      "order": 10,
+      "createdAt": "2025-11-13T15:11:30.257Z",
+      "updatedAt": "2025-11-13T15:11:30.257Z",
+      "color": "#DC2626",
+      "isLost": true
+    },
+    {
+      "id": "stage_di_1",
+      "tenantId": "tenant_001",
+      "pipelineId": "dealer-integration",
       "name": "Integration",
-      "description": "Active technical integration work",
-      "pipelineId": "pipeline-integration",
+      "order": 0,
+      "createdAt": "2025-11-13T15:11:30.257Z",
+      "updatedAt": "2025-11-13T15:11:30.257Z",
+      "color": "#94A3B8"
+    },
+    {
+      "id": "stage_di_2",
+      "tenantId": "tenant_001",
+      "pipelineId": "dealer-integration",
+      "name": "Support Created",
+      "order": 1,
+      "createdAt": "2025-11-13T15:11:30.257Z",
+      "updatedAt": "2025-11-13T15:11:30.257Z",
+      "color": "#64748B"
+    },
+    {
+      "id": "stage_di_3",
+      "tenantId": "tenant_001",
+      "pipelineId": "dealer-integration",
+      "name": "Instructions Provided",
       "order": 2,
-      "probability": 60,
-      "color": "#8b5cf6",
-      "isActive": true,
-      "tenantId": "tenant-1",
-      "createdAt": "2025-09-16T15:58:34.649Z",
-      "updatedAt": "2025-09-16T15:58:34.649Z",
-      "customFields": {}
+      "createdAt": "2025-11-13T15:11:30.257Z",
+      "updatedAt": "2025-11-13T15:11:30.257Z",
+      "color": "#3B82F6"
     },
     {
-      "id": "stage-int-testing",
-      "name": "Testing",
-      "description": "Integration testing and validation",
-      "pipelineId": "pipeline-integration",
+      "id": "stage_di_4",
+      "tenantId": "tenant_001",
+      "pipelineId": "dealer-integration",
+      "name": "First Car Won",
       "order": 3,
-      "probability": 80,
-      "color": "#06b6d4",
-      "isActive": true,
-      "tenantId": "tenant-1",
-      "createdAt": "2025-09-16T15:58:34.649Z",
-      "updatedAt": "2025-09-16T15:58:34.649Z",
-      "customFields": {}
+      "createdAt": "2025-11-13T15:11:30.257Z",
+      "updatedAt": "2025-11-13T15:11:30.257Z",
+      "color": "#8B5CF6"
     },
     {
-      "id": "stage-int-live",
-      "name": "Live",
-      "description": "Successfully integrated and live",
-      "pipelineId": "pipeline-integration",
+      "id": "stage_di_5",
+      "tenantId": "tenant_001",
+      "pipelineId": "dealer-integration",
+      "name": "Cabinet Created",
       "order": 4,
-      "probability": 100,
-      "color": "#10b981",
-      "isActive": true,
-      "tenantId": "tenant-1",
-      "createdAt": "2025-09-16T15:58:34.649Z",
-      "updatedAt": "2025-09-16T15:58:34.649Z",
-      "customFields": {}
+      "createdAt": "2025-11-13T15:11:30.257Z",
+      "updatedAt": "2025-11-13T15:11:30.257Z",
+      "color": "#EC4899"
     },
     {
-      "id": "IMeZL7-AKHntgQ_o9NsV_",
+      "id": "stage_di_6",
       "tenantId": "tenant_001",
-      "pipelineId": "CoHxHCyKRDT2ywBRMcTsw",
-      "name": "dwaddwads",
+      "pipelineId": "dealer-integration",
+      "name": "Close Integrated",
+      "order": 5,
+      "createdAt": "2025-11-13T15:11:30.257Z",
+      "updatedAt": "2025-11-13T15:11:30.257Z",
+      "color": "#10B981",
+      "isClosing": true
+    },
+    {
+      "id": "stage_rs_1",
+      "tenantId": "tenant_001",
+      "pipelineId": "retail-sales",
+      "name": "Inquiry",
       "order": 0,
-      "createdAt": "2025-09-19T13:37:48.553Z",
-      "updatedAt": "2025-09-19T13:37:48.553Z",
-      "description": "",
-      "isClosing": false,
-      "isLost": false
+      "createdAt": "2025-11-13T15:11:30.257Z",
+      "updatedAt": "2025-11-13T15:11:30.257Z",
+      "color": "#94A3B8"
     },
     {
-      "id": "oykywtB7CL52OzFphsS31",
+      "id": "stage_rs_2",
       "tenantId": "tenant_001",
-      "pipelineId": "CoHxHCyKRDT2ywBRMcTsw",
-      "name": "dawds",
+      "pipelineId": "retail-sales",
+      "name": "Budget Qualification",
       "order": 1,
-      "createdAt": "2025-09-19T13:38:01.265Z",
-      "updatedAt": "2025-09-19T13:38:01.265Z",
-      "description": "",
-      "isClosing": false,
-      "isLost": false
+      "createdAt": "2025-11-13T15:11:30.257Z",
+      "updatedAt": "2025-11-13T15:11:30.257Z",
+      "color": "#64748B"
     },
     {
-      "id": "HZ0kDSyxyCjSHvdZHJXo2",
+      "id": "stage_rs_3",
       "tenantId": "tenant_001",
-      "pipelineId": "CoHxHCyKRDT2ywBRMcTsw",
-      "name": "dawds",
-      "order": 1,
-      "createdAt": "2025-09-19T13:40:10.733Z",
-      "updatedAt": "2025-09-19T13:40:10.733Z",
-      "description": "",
-      "isClosing": false,
-      "isLost": false
+      "pipelineId": "retail-sales",
+      "name": "Vehicle Selection",
+      "order": 2,
+      "createdAt": "2025-11-13T15:11:30.257Z",
+      "updatedAt": "2025-11-13T15:11:30.257Z",
+      "color": "#3B82F6"
     },
     {
-      "id": "b_IAqMURz_2vuw4hhjCiK",
+      "id": "stage_rs_4",
       "tenantId": "tenant_001",
-      "pipelineId": "CoHxHCyKRDT2ywBRMcTsw",
-      "name": "dawds",
-      "order": 1,
-      "createdAt": "2025-09-19T13:40:37.814Z",
-      "updatedAt": "2025-09-19T13:40:37.814Z",
-      "description": "",
-      "isClosing": false,
-      "isLost": false
+      "pipelineId": "retail-sales",
+      "name": "Financing",
+      "order": 3,
+      "createdAt": "2025-11-13T15:11:30.257Z",
+      "updatedAt": "2025-11-13T15:11:30.257Z",
+      "color": "#8B5CF6"
     },
     {
-      "id": "NapXpZmim5PWVVHFHntKB",
+      "id": "stage_rs_5",
       "tenantId": "tenant_001",
-      "pipelineId": "CoHxHCyKRDT2ywBRMcTsw",
-      "name": "dwad",
+      "pipelineId": "retail-sales",
+      "name": "Purchase Agreement",
       "order": 4,
-      "createdAt": "2025-09-19T13:40:46.307Z",
-      "updatedAt": "2025-09-19T13:40:46.307Z",
-      "description": "",
-      "isClosing": false,
-      "isLost": false
+      "createdAt": "2025-11-13T15:11:30.257Z",
+      "updatedAt": "2025-11-13T15:11:30.257Z",
+      "color": "#F59E0B"
     },
     {
-      "id": "rEEz54MrfWVj4s8Vv0NuG",
+      "id": "stage_rs_6",
       "tenantId": "tenant_001",
-      "pipelineId": "w_6R25ry0KHk_SrAYCT7r",
-      "name": "dwads",
+      "pipelineId": "retail-sales",
+      "name": "Payment Processing",
+      "order": 5,
+      "createdAt": "2025-11-13T15:11:30.257Z",
+      "updatedAt": "2025-11-13T15:11:30.257Z",
+      "color": "#EF4444"
+    },
+    {
+      "id": "stage_rs_7",
+      "tenantId": "tenant_001",
+      "pipelineId": "retail-sales",
+      "name": "Delivery Scheduled",
+      "order": 6,
+      "createdAt": "2025-11-13T15:11:30.257Z",
+      "updatedAt": "2025-11-13T15:11:30.257Z",
+      "color": "#10B981"
+    },
+    {
+      "id": "stage_rs_8",
+      "tenantId": "tenant_001",
+      "pipelineId": "retail-sales",
+      "name": "Delivered",
+      "order": 7,
+      "createdAt": "2025-11-13T15:11:30.257Z",
+      "updatedAt": "2025-11-13T15:11:30.257Z",
+      "color": "#059669",
+      "isClosing": true
+    },
+    {
+      "id": "stage_rs_lost",
+      "tenantId": "tenant_001",
+      "pipelineId": "retail-sales",
+      "name": "Cancelled",
+      "order": 8,
+      "createdAt": "2025-11-13T15:11:30.257Z",
+      "updatedAt": "2025-11-13T15:11:30.257Z",
+      "color": "#DC2626",
+      "isLost": true
+    },
+    {
+      "id": "stage_vo_1",
+      "tenantId": "tenant_001",
+      "pipelineId": "vendor-onboarding",
+      "name": "Inquiry",
       "order": 0,
-      "createdAt": "2025-09-19T13:47:55.284Z",
-      "updatedAt": "2025-09-19T13:47:55.284Z",
-      "description": "",
-      "isClosing": false,
-      "isLost": false
+      "createdAt": "2025-11-13T15:11:30.257Z",
+      "updatedAt": "2025-11-13T15:11:30.257Z",
+      "color": "#94A3B8"
     },
     {
-      "id": "tlhCFvitJ-cs8db4u2sZX",
+      "id": "stage_vo_2",
       "tenantId": "tenant_001",
-      "pipelineId": "w_6R25ry0KHk_SrAYCT7r",
-      "name": "dasdaw",
+      "pipelineId": "vendor-onboarding",
+      "name": "Capability Review",
       "order": 1,
-      "createdAt": "2025-09-19T13:47:58.168Z",
-      "updatedAt": "2025-09-19T13:47:58.168Z",
-      "description": "",
-      "isClosing": false,
-      "isLost": false
+      "createdAt": "2025-11-13T15:11:30.257Z",
+      "updatedAt": "2025-11-13T15:11:30.257Z",
+      "color": "#64748B"
+    },
+    {
+      "id": "stage_vo_3",
+      "tenantId": "tenant_001",
+      "pipelineId": "vendor-onboarding",
+      "name": "Compliance Check",
+      "order": 2,
+      "createdAt": "2025-11-13T15:11:30.257Z",
+      "updatedAt": "2025-11-13T15:11:30.257Z",
+      "color": "#3B82F6"
+    },
+    {
+      "id": "stage_vo_4",
+      "tenantId": "tenant_001",
+      "pipelineId": "vendor-onboarding",
+      "name": "Rate Negotiation",
+      "order": 3,
+      "createdAt": "2025-11-13T15:11:30.257Z",
+      "updatedAt": "2025-11-13T15:11:30.257Z",
+      "color": "#8B5CF6"
+    },
+    {
+      "id": "stage_vo_5",
+      "tenantId": "tenant_001",
+      "pipelineId": "vendor-onboarding",
+      "name": "Contract Review",
+      "order": 4,
+      "createdAt": "2025-11-13T15:11:30.257Z",
+      "updatedAt": "2025-11-13T15:11:30.257Z",
+      "color": "#F59E0B"
+    },
+    {
+      "id": "stage_vo_6",
+      "tenantId": "tenant_001",
+      "pipelineId": "vendor-onboarding",
+      "name": "Contract Signed",
+      "order": 5,
+      "createdAt": "2025-11-13T15:11:30.257Z",
+      "updatedAt": "2025-11-13T15:11:30.257Z",
+      "color": "#10B981"
+    },
+    {
+      "id": "stage_vo_7",
+      "tenantId": "tenant_001",
+      "pipelineId": "vendor-onboarding",
+      "name": "Active Partnership",
+      "order": 6,
+      "createdAt": "2025-11-13T15:11:30.257Z",
+      "updatedAt": "2025-11-13T15:11:30.257Z",
+      "color": "#059669",
+      "isClosing": true
+    },
+    {
+      "id": "stage_vo_lost",
+      "tenantId": "tenant_001",
+      "pipelineId": "vendor-onboarding",
+      "name": "Rejected",
+      "order": 7,
+      "createdAt": "2025-11-13T15:11:30.257Z",
+      "updatedAt": "2025-11-13T15:11:30.257Z",
+      "color": "#DC2626",
+      "isLost": true
+    },
+    {
+      "id": "stage_ai_1",
+      "tenantId": "tenant_001",
+      "pipelineId": "auction-integration",
+      "name": "Partnership Inquiry",
+      "order": 0,
+      "createdAt": "2025-11-13T15:11:30.257Z",
+      "updatedAt": "2025-11-13T15:11:30.257Z",
+      "color": "#94A3B8"
+    },
+    {
+      "id": "stage_ai_2",
+      "tenantId": "tenant_001",
+      "pipelineId": "auction-integration",
+      "name": "Technical Assessment",
+      "order": 1,
+      "createdAt": "2025-11-13T15:11:30.257Z",
+      "updatedAt": "2025-11-13T15:11:30.257Z",
+      "color": "#64748B"
+    },
+    {
+      "id": "stage_ai_3",
+      "tenantId": "tenant_001",
+      "pipelineId": "auction-integration",
+      "name": "API Integration",
+      "order": 2,
+      "createdAt": "2025-11-13T15:11:30.257Z",
+      "updatedAt": "2025-11-13T15:11:30.257Z",
+      "color": "#3B82F6"
+    },
+    {
+      "id": "stage_ai_4",
+      "tenantId": "tenant_001",
+      "pipelineId": "auction-integration",
+      "name": "Testing Phase",
+      "order": 3,
+      "createdAt": "2025-11-13T15:11:30.257Z",
+      "updatedAt": "2025-11-13T15:11:30.257Z",
+      "color": "#8B5CF6"
+    },
+    {
+      "id": "stage_ai_5",
+      "tenantId": "tenant_001",
+      "pipelineId": "auction-integration",
+      "name": "Volume Agreement",
+      "order": 4,
+      "createdAt": "2025-11-13T15:11:30.257Z",
+      "updatedAt": "2025-11-13T15:11:30.257Z",
+      "color": "#F59E0B"
+    },
+    {
+      "id": "stage_ai_6",
+      "tenantId": "tenant_001",
+      "pipelineId": "auction-integration",
+      "name": "Live Integration",
+      "order": 5,
+      "createdAt": "2025-11-13T15:11:30.257Z",
+      "updatedAt": "2025-11-13T15:11:30.257Z",
+      "color": "#10B981",
+      "isClosing": true
+    },
+    {
+      "id": "stage_ai_lost",
+      "tenantId": "tenant_001",
+      "pipelineId": "auction-integration",
+      "name": "Integration Failed",
+      "order": 6,
+      "createdAt": "2025-11-13T15:11:30.257Z",
+      "updatedAt": "2025-11-13T15:11:30.257Z",
+      "color": "#DC2626",
+      "isLost": true
     }
   ],
-  "tasks": [],
+  "tasks": [
+    {
+      "id": "task_1",
+      "tenantId": "tenant_001",
+      "title": "Prepare import documentation",
+      "status": "IN_PROGRESS",
+      "priority": "HIGH",
+      "targetType": "DEAL",
+      "targetId": "deal_1",
+      "createdAt": "2025-11-13T15:11:30.257Z",
+      "updatedAt": "2025-11-13T15:11:30.257Z",
+      "description": "Gather all necessary import documents for AutoMax",
+      "dueDate": "2024-02-15T00:00:00.000Z"
+    },
+    {
+      "id": "task_2",
+      "tenantId": "tenant_001",
+      "title": "Schedule negotiation meeting",
+      "status": "TODO",
+      "priority": "URGENT",
+      "targetType": "DEAL",
+      "targetId": "deal_2",
+      "createdAt": "2025-11-13T15:11:30.257Z",
+      "updatedAt": "2025-11-13T15:11:30.257Z",
+      "description": "Set up final negotiation meeting with Premier Motors",
+      "dueDate": "2024-02-10T00:00:00.000Z"
+    },
+    {
+      "id": "task_3",
+      "tenantId": "tenant_001",
+      "title": "Send company brochure",
+      "status": "DONE",
+      "priority": "MEDIUM",
+      "targetType": "ORGANISATION",
+      "targetId": "org_3",
+      "createdAt": "2025-11-13T15:11:30.257Z",
+      "updatedAt": "2025-11-13T15:11:30.257Z",
+      "description": "Email updated company brochure to City Cars",
+      "completedAt": "2024-01-25T00:00:00.000Z"
+    },
+    {
+      "id": "task_4",
+      "tenantId": "tenant_001",
+      "title": "Follow up call",
+      "status": "TODO",
+      "priority": "LOW",
+      "targetType": "CONTACT",
+      "targetId": "contact_6",
+      "createdAt": "2025-11-13T15:11:30.257Z",
+      "updatedAt": "2025-11-13T15:11:30.257Z",
+      "description": "Check in on their interest level",
+      "dueDate": "2024-02-20T00:00:00.000Z"
+    },
+    {
+      "id": "task_5",
+      "tenantId": "tenant_001",
+      "title": "Onboarding checklist",
+      "status": "IN_PROGRESS",
+      "priority": "HIGH",
+      "targetType": "DEAL",
+      "targetId": "deal_4",
+      "createdAt": "2025-11-13T15:11:30.257Z",
+      "updatedAt": "2025-11-13T15:11:30.257Z",
+      "description": "Complete onboarding process for Global Auto"
+    }
+  ],
   "customFields": {
-    "fieldDefs": [],
-    "fieldValues": []
+    "fieldDefs": [
+      {
+        "id": "field_def_1",
+        "tenantId": "tenant_001",
+        "entityType": "ORGANISATION",
+        "name": "Annual Revenue",
+        "fieldKey": "annual_revenue",
+        "type": "NUMBER",
+        "order": 0,
+        "isActive": true,
+        "createdAt": "2025-11-13T15:11:30.257Z",
+        "updatedAt": "2025-11-13T15:11:30.257Z"
+      },
+      {
+        "id": "field_def_2",
+        "tenantId": "tenant_001",
+        "entityType": "ORGANISATION",
+        "name": "Preferred Communication",
+        "fieldKey": "preferred_comm",
+        "type": "SELECT",
+        "order": 1,
+        "isActive": true,
+        "createdAt": "2025-11-13T15:11:30.257Z",
+        "updatedAt": "2025-11-13T15:11:30.257Z",
+        "options": [
+          "Email",
+          "Phone",
+          "SMS",
+          "WhatsApp"
+        ]
+      },
+      {
+        "id": "field_def_3",
+        "tenantId": "tenant_001",
+        "entityType": "CONTACT",
+        "name": "Birthday",
+        "fieldKey": "birthday",
+        "type": "DATE",
+        "order": 0,
+        "isActive": true,
+        "createdAt": "2025-11-13T15:11:30.257Z",
+        "updatedAt": "2025-11-13T15:11:30.257Z"
+      },
+      {
+        "id": "field_def_4",
+        "tenantId": "tenant_001",
+        "entityType": "DEAL",
+        "name": "Competitor",
+        "fieldKey": "competitor",
+        "type": "TEXT",
+        "order": 0,
+        "isActive": true,
+        "createdAt": "2025-11-13T15:11:30.257Z",
+        "updatedAt": "2025-11-13T15:11:30.257Z"
+      },
+      {
+        "id": "field_def_5",
+        "tenantId": "tenant_001",
+        "entityType": "DEAL",
+        "name": "Decision Criteria",
+        "fieldKey": "decision_criteria",
+        "type": "MULTISELECT",
+        "order": 1,
+        "isActive": true,
+        "createdAt": "2025-11-13T15:11:30.257Z",
+        "updatedAt": "2025-11-13T15:11:30.257Z",
+        "options": [
+          "Price",
+          "Quality",
+          "Service",
+          "Delivery Time",
+          "Payment Terms"
+        ]
+      }
+    ],
+    "fieldValues": [
+      {
+        "id": "Gr5rLmPPxmzzKZhDcsFQz",
+        "tenantId": "tenant_001",
+        "fieldDefId": "field_def_1",
+        "entityId": "org_1",
+        "value": 5000000,
+        "createdAt": "2025-11-13T15:11:30.257Z",
+        "updatedAt": "2025-11-13T15:11:30.257Z"
+      },
+      {
+        "id": "Jn1S89KqmAmfrgBmtNX7h",
+        "tenantId": "tenant_001",
+        "fieldDefId": "field_def_1",
+        "entityId": "org_2",
+        "value": 12000000,
+        "createdAt": "2025-11-13T15:11:30.257Z",
+        "updatedAt": "2025-11-13T15:11:30.257Z"
+      },
+      {
+        "id": "m9oxJU2peUlYDzGN5-09H",
+        "tenantId": "tenant_001",
+        "fieldDefId": "field_def_2",
+        "entityId": "org_1",
+        "value": "Email",
+        "createdAt": "2025-11-13T15:11:30.257Z",
+        "updatedAt": "2025-11-13T15:11:30.257Z"
+      },
+      {
+        "id": "pmqQVRD1dgFKwRFgsP_ZN",
+        "tenantId": "tenant_001",
+        "fieldDefId": "field_def_2",
+        "entityId": "org_2",
+        "value": "Phone",
+        "createdAt": "2025-11-13T15:11:30.257Z",
+        "updatedAt": "2025-11-13T15:11:30.257Z"
+      },
+      {
+        "id": "jaoxVzYMkLUAfNsWgGgtQ",
+        "tenantId": "tenant_001",
+        "fieldDefId": "field_def_3",
+        "entityId": "contact_1",
+        "value": "1975-03-15",
+        "createdAt": "2025-11-13T15:11:30.257Z",
+        "updatedAt": "2025-11-13T15:11:30.257Z"
+      },
+      {
+        "id": "hZKq83wysVNWZcVHBc7uJ",
+        "tenantId": "tenant_001",
+        "fieldDefId": "field_def_3",
+        "entityId": "contact_3",
+        "value": "1968-09-22",
+        "createdAt": "2025-11-13T15:11:30.257Z",
+        "updatedAt": "2025-11-13T15:11:30.257Z"
+      },
+      {
+        "id": "rQmuQRyFiNuQah4jYJ14l",
+        "tenantId": "tenant_001",
+        "fieldDefId": "field_def_4",
+        "entityId": "deal_1",
+        "value": "CompetitorX",
+        "createdAt": "2025-11-13T15:11:30.257Z",
+        "updatedAt": "2025-11-13T15:11:30.257Z"
+      },
+      {
+        "id": "UnIAQgIH1BCD8rLrfsNsF",
+        "tenantId": "tenant_001",
+        "fieldDefId": "field_def_4",
+        "entityId": "deal_2",
+        "value": "ImportCo",
+        "createdAt": "2025-11-13T15:11:30.257Z",
+        "updatedAt": "2025-11-13T15:11:30.257Z"
+      },
+      {
+        "id": "TNbr8PR76_j-xUSS3jx24",
+        "tenantId": "tenant_001",
+        "fieldDefId": "field_def_5",
+        "entityId": "deal_1",
+        "value": [
+          "Price",
+          "Service"
+        ],
+        "createdAt": "2025-11-13T15:11:30.257Z",
+        "updatedAt": "2025-11-13T15:11:30.257Z"
+      },
+      {
+        "id": "EAtK6Y8dLG50RZoWpf6zI",
+        "tenantId": "tenant_001",
+        "fieldDefId": "field_def_5",
+        "entityId": "deal_2",
+        "value": [
+          "Quality",
+          "Delivery Time",
+          "Service"
+        ],
+        "createdAt": "2025-11-13T15:11:30.257Z",
+        "updatedAt": "2025-11-13T15:11:30.257Z"
+      }
+    ]
   },
   "activities": [],
-  "changeLogs": [
-    {
-      "id": "fA6vvJf-VCfY78o2VauB1",
-      "tenantId": "tenant_001",
-      "entityType": "DEAL",
-      "entityId": "BPbwqaXhDyooHIUK4Hgzh",
-      "action": "CREATED",
-      "summary": "deal \"Deal with Autostany - Sep 17, 25\" was created",
-      "changes": [],
-      "userId": "system",
-      "createdAt": "2025-09-17T12:18:33.452Z",
-      "updatedAt": "2025-09-17T12:18:33.452Z",
-      "userName": "system",
-      "createdBy": "system",
-      "updatedBy": "system"
-    },
-    {
-      "id": "jtw65UrANFsO9GLE3bTNI",
-      "tenantId": "tenant_001",
-      "entityType": "DEAL",
-      "entityId": "6i05V58Zep23hZcgm0AS9",
-      "action": "CREATED",
-      "summary": "deal \"Deal with Autostany - Sep 17, 25\" was created",
-      "changes": [],
-      "userId": "system",
-      "createdAt": "2025-09-17T12:18:51.138Z",
-      "updatedAt": "2025-09-17T12:18:51.138Z",
-      "userName": "system",
-      "createdBy": "system",
-      "updatedBy": "system"
-    },
-    {
-      "id": "24A00h6aBXslCEVkgGrHL",
-      "tenantId": "tenant_001",
-      "entityType": "DEAL",
-      "entityId": "-DMRgr9iNFdMxvXPaZlsK",
-      "action": "CREATED",
-      "summary": "deal \"Deal with Jessica Kumar - Sep 17, 25\" was created",
-      "changes": [],
-      "userId": "system",
-      "createdAt": "2025-09-17T13:38:01.535Z",
-      "updatedAt": "2025-09-17T13:38:01.535Z",
-      "userName": "system",
-      "createdBy": "system",
-      "updatedBy": "system"
-    },
-    {
-      "id": "HEyC1gZspJNDzHLxdV9G5",
-      "tenantId": "tenant_001",
-      "entityType": "DEAL",
-      "entityId": "syucoXBGnM78F3duyPnp4",
-      "action": "CREATED",
-      "summary": "deal \"New Deal - Prospect\" was created",
-      "changes": [],
-      "userId": "system",
-      "createdAt": "2025-09-17T13:38:04.994Z",
-      "updatedAt": "2025-09-17T13:38:04.994Z",
-      "userName": "system",
-      "createdBy": "system",
-      "updatedBy": "system"
-    },
-    {
-      "id": "kICYDUk-tNOAQn1MZYM_0",
-      "tenantId": "tenant_001",
-      "entityType": "DEAL",
-      "entityId": "8YtMTDxMX4zdv6dS1fFb5",
-      "action": "CREATED",
-      "summary": "deal \"New Deal - Qualified\" was created",
-      "changes": [],
-      "userId": "system",
-      "createdAt": "2025-09-17T13:39:03.213Z",
-      "updatedAt": "2025-09-17T13:39:03.213Z",
-      "userName": "system",
-      "createdBy": "system",
-      "updatedBy": "system"
-    },
-    {
-      "id": "unDbAoNNN0H4A8Ayet7sn",
-      "tenantId": "tenant_001",
-      "entityType": "DEAL",
-      "entityId": "UARPkQTHfVRJ4SYrH1NzY",
-      "action": "CREATED",
-      "summary": "deal \"dawkdkansdawdsa\" was created",
-      "changes": [],
-      "userId": "system",
-      "createdAt": "2025-09-18T15:34:54.588Z",
-      "updatedAt": "2025-09-18T15:34:54.588Z",
-      "userName": "system",
-      "createdBy": "system",
-      "updatedBy": "system"
-    },
-    {
-      "id": "Kjs8L9o2tGXLBCBziPh_g",
-      "tenantId": "tenant_001",
-      "entityType": "DEAL",
-      "entityId": "xh8jJ97jL1lYisw3TSBFH",
-      "action": "CREATED",
-      "summary": "deal \"dwadadawd\" was created",
-      "changes": [],
-      "userId": "system",
-      "createdAt": "2025-09-18T15:39:42.500Z",
-      "updatedAt": "2025-09-18T15:39:42.500Z",
-      "userName": "system",
-      "createdBy": "system",
-      "updatedBy": "system"
-    }
-  ]
+  "changeLogs": []
 }

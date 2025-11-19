@@ -19,6 +19,8 @@ import {
   X,
   ChevronRight,
   ChevronLeft,
+  ChevronDown,
+  ChevronUp,
   Inbox,
   DollarSign,
   UserCheck,
@@ -147,6 +149,7 @@ export function Sidebar({ user: userProp, isCollapsed = false, onToggleCollapse 
   const pathname = usePathname()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [isClient, setIsClient] = useState(false)
+  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({})
   const navRef = useRef<HTMLDivElement>(null)
   const mobileNavRef = useRef<HTMLDivElement>(null)
   const { user: authUser, isAuthenticated } = useAuth()
@@ -161,10 +164,10 @@ export function Sidebar({ user: userProp, isCollapsed = false, onToggleCollapse 
     return section.roles.some(role => userRoles.includes(role))
   })
 
-  // Initialize client-side and restore scroll position
+  // Initialize client-side and restore scroll position and collapsed sections
   useEffect(() => {
     setIsClient(true)
-    
+
     const restoreScrollPosition = () => {
       if (navRef.current) {
         const savedScrollPosition = localStorage.getItem('sidebar-scroll-position')
@@ -174,6 +177,19 @@ export function Sidebar({ user: userProp, isCollapsed = false, onToggleCollapse 
       }
     }
 
+    // Restore collapsed sections state
+    const restoreCollapsedSections = () => {
+      try {
+        const savedCollapsedSections = localStorage.getItem('sidebar-collapsed-sections')
+        if (savedCollapsedSections) {
+          setCollapsedSections(JSON.parse(savedCollapsedSections))
+        }
+      } catch (error) {
+        console.error('Error loading collapsed sections from localStorage:', error)
+      }
+    }
+
+    restoreCollapsedSections()
     // Restore scroll position after component mounts
     setTimeout(restoreScrollPosition, 100)
   }, [])
@@ -214,6 +230,21 @@ export function Sidebar({ user: userProp, isCollapsed = false, onToggleCollapse 
     }
     // For all other routes, use startsWith
     return pathname.startsWith(href)
+  }
+
+  const toggleSectionCollapse = (sectionTitle: string) => {
+    const newCollapsedSections = {
+      ...collapsedSections,
+      [sectionTitle]: !collapsedSections[sectionTitle]
+    }
+    setCollapsedSections(newCollapsedSections)
+
+    // Save to localStorage
+    try {
+      localStorage.setItem('sidebar-collapsed-sections', JSON.stringify(newCollapsedSections))
+    } catch (error) {
+      console.error('Error saving collapsed sections to localStorage:', error)
+    }
   }
 
   const NavContent = ({ collapsed = false, navRef }: { collapsed?: boolean, navRef?: React.RefObject<HTMLDivElement> }) => (
@@ -268,71 +299,126 @@ export function Sidebar({ user: userProp, isCollapsed = false, onToggleCollapse 
           collapsed ? "px-2 py-3 space-y-2" : "px-3 py-4 space-y-6"
         )}
       >
-        {filteredNavigation.map((section, sectionIndex) => (
-          <div key={section.title}>
-            {!collapsed && (
-              <h3 className="px-3 text-xs font-semibold text-text-tertiary uppercase tracking-wider">
-                {section.title}
-              </h3>
-            )}
-            {collapsed && sectionIndex > 0 && (
-              <div className="mx-3 mb-2 border-t border-border/50" />
-            )}
-            <div className={clsx("space-y-1", !collapsed && "mt-2")}>
-              {section.items.map((item) => {
-                const Icon = item.icon
-                const isActive = isActiveRoute(item.href)
-                
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    prefetch={true}
-                    className={clsx(
-                      'group flex items-center text-sm font-medium rounded-lg transition-colors duration-150 relative will-change-auto',
-                      collapsed 
-                        ? 'p-3 justify-center' 
-                        : 'px-3 py-2',
-                      isActive
-                        ? collapsed
-                          ? 'bg-primary/10 text-primary shadow-sm'
-                          : 'bg-primary/5 text-primary border-l-2 border-primary'
-                        : 'text-text-secondary hover:bg-hover-overlay hover:text-foreground'
+        {filteredNavigation.map((section, sectionIndex) => {
+          const isSectionCollapsed = collapsedSections[section.title]
+
+          return (
+            <div key={section.title}>
+              {!collapsed && (
+                <div
+                  className="flex items-center justify-between px-3 py-1 cursor-pointer hover:bg-hover-overlay rounded-lg transition-colors group"
+                  onClick={() => toggleSectionCollapse(section.title)}
+                >
+                  <h3 className="text-xs font-semibold text-text-tertiary uppercase tracking-wider">
+                    {section.title}
+                  </h3>
+                  <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                    {isSectionCollapsed ? (
+                      <ChevronDown className="h-3 w-3 text-text-tertiary" />
+                    ) : (
+                      <ChevronUp className="h-3 w-3 text-text-tertiary" />
                     )}
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    title={collapsed ? item.label : undefined}
-                  >
-                    <Icon 
-                      className={clsx(
-                        'h-5 w-5 transition-colors duration-150 flex-shrink-0',
-                        !collapsed && 'mr-3',
-                        isActive
-                          ? 'text-primary'
-                          : 'text-text-tertiary group-hover:text-foreground'
-                      )}
-                    />
-                    {!collapsed && (
-                      <>
-                        {item.label}
-                        {item.badge && (
-                          <span className="ml-auto bg-primary/10 text-primary py-0.5 px-2 rounded-full text-xs font-medium">
-                            {item.badge}
-                          </span>
+                  </div>
+                </div>
+              )}
+              {collapsed && sectionIndex > 0 && (
+                <div className="mx-3 mb-2 border-t border-border/50" />
+              )}
+              {(!collapsed && !isSectionCollapsed) && (
+                <div className={clsx("space-y-1", !collapsed && "mt-2")}>
+                  {section.items.map((item) => {
+                    const Icon = item.icon
+                    const isActive = isActiveRoute(item.href)
+
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        prefetch={true}
+                        className={clsx(
+                          'group flex items-center text-sm font-medium rounded-lg transition-colors duration-150 relative will-change-auto',
+                          collapsed
+                            ? 'p-3 justify-center'
+                            : 'px-3 py-2',
+                          isActive
+                            ? collapsed
+                              ? 'bg-primary/10 text-primary shadow-sm'
+                              : 'bg-primary/5 text-primary border-l-2 border-primary'
+                            : 'text-text-secondary hover:bg-hover-overlay hover:text-foreground'
                         )}
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        title={collapsed ? item.label : undefined}
+                      >
+                        <Icon
+                          className={clsx(
+                            'h-5 w-5 transition-colors duration-150 flex-shrink-0',
+                            !collapsed && 'mr-3',
+                            isActive
+                              ? 'text-primary'
+                              : 'text-text-tertiary group-hover:text-foreground'
+                          )}
+                        />
+                        {!collapsed && (
+                          <>
+                            {item.label}
+                            {item.badge && (
+                              <span className="ml-auto bg-primary/10 text-primary py-0.5 px-2 rounded-full text-xs font-medium">
+                                {item.badge}
+                              </span>
+                            )}
+                            {isActive && (
+                              <ChevronRight className="ml-auto h-4 w-4 text-primary flex-shrink-0" />
+                            )}
+                          </>
+                        )}
+                        {collapsed && isActive && (
+                          <div className="absolute -right-1 top-1/2 transform -translate-y-1/2 w-1 h-8 bg-primary rounded-full" />
+                        )}
+                      </Link>
+                    )
+                  })}
+                </div>
+              )}
+              {collapsed && (
+                <div className="space-y-1">
+                  {section.items.map((item) => {
+                    const Icon = item.icon
+                    const isActive = isActiveRoute(item.href)
+
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        prefetch={true}
+                        className={clsx(
+                          'group flex items-center text-sm font-medium rounded-lg transition-colors duration-150 relative will-change-auto',
+                          'p-3 justify-center',
+                          isActive
+                            ? 'bg-primary/10 text-primary shadow-sm'
+                            : 'text-text-secondary hover:bg-hover-overlay hover:text-foreground'
+                        )}
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        title={item.label}
+                      >
+                        <Icon
+                          className={clsx(
+                            'h-5 w-5 transition-colors duration-150 flex-shrink-0',
+                            isActive
+                              ? 'text-primary'
+                              : 'text-text-tertiary group-hover:text-foreground'
+                          )}
+                        />
                         {isActive && (
-                          <ChevronRight className="ml-auto h-4 w-4 text-primary flex-shrink-0" />
+                          <div className="absolute -right-1 top-1/2 transform -translate-y-1/2 w-1 h-8 bg-primary rounded-full" />
                         )}
-                      </>
-                    )}
-                    {collapsed && isActive && (
-                      <div className="absolute -right-1 top-1/2 transform -translate-y-1/2 w-1 h-8 bg-primary rounded-full" />
-                    )}
-                  </Link>
-                )
-              })}
+                      </Link>
+                    )
+                  })}
+                </div>
+              )}
             </div>
-          </div>
-        ))}
+          )
+        })}
       </nav>
 
       {/* Footer */}

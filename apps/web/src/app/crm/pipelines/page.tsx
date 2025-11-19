@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { AppLayout } from '@/components/layout/app-layout';
 import { PageHeader } from '@/components/layout/page-header';
 import { LoadingState } from '@/components/ui/loading-state';
@@ -8,6 +8,7 @@ import { useSession } from '@/hooks/useSession';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import {
   Table,
   TableBody,
@@ -25,7 +26,7 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, GitBranch, Settings, Eye, Edit2, Trash2, Move, Save, X, GripVertical } from 'lucide-react';
+import { Plus, GitBranch, Settings, Eye, Edit2, Trash2, Move, Save, GripVertical, Copy, Layers } from 'lucide-react';
 import { Pipeline, Stage, createStageSchema } from '@united-cars/crm-core';
 import toast from 'react-hot-toast';
 import {
@@ -48,9 +49,12 @@ import { InlineColorPicker, ColorSelector, STAGE_COLORS } from '@/components/ui/
 export default function PipelinesPage() {
   const { user, loading: sessionLoading } = useSession();
   const [pipelines, setPipelines] = useState<Pipeline[]>([]);
+  const [templates, setTemplates] = useState<Pipeline[]>([]);
   const [selectedPipeline, setSelectedPipeline] = useState<Pipeline | null>(null);
+  const [isManagingTemplate, setIsManagingTemplate] = useState(false);
   const [isManageOpen, setIsManageOpen] = useState(false);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<'pipelines' | 'templates'>('pipelines');
   const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState({
     name: '',
@@ -71,8 +75,8 @@ export default function PipelinesPage() {
     slaTarget: '',
     slaUnit: 'hours'
   });
-  const [editingStageId, setEditingStageId] = useState<string | null>(null);
   const [editingColorStageId, setEditingColorStageId] = useState<string | null>(null);
+  const [editingStageId, setEditingStageId] = useState<string | null>(null); // For modal editing only
   const [isAddingStage, setIsAddingStage] = useState(false);
   const [isEditingStage, setIsEditingStage] = useState(false);
   const [editStageFormData, setEditStageFormData] = useState({
@@ -96,6 +100,7 @@ export default function PipelinesPage() {
 
   useEffect(() => {
     loadPipelines();
+    loadTemplates();
   }, []);
 
   useEffect(() => {
@@ -137,13 +142,42 @@ export default function PipelinesPage() {
     }
   };
 
+  const loadTemplates = async () => {
+    try {
+      // Load templates from localStorage for now (can be replaced with API later)
+      const stored = localStorage.getItem('pipeline-templates');
+      if (stored) {
+        const templateData = JSON.parse(stored);
+        if (Array.isArray(templateData)) {
+          setTemplates(templateData);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load templates:', error);
+      setTemplates([]);
+    }
+  };
+
   const openPipelineManagement = (pipeline: Pipeline) => {
     setSelectedPipeline(pipeline);
+    setIsManagingTemplate(false);
     setLocalStages([...(pipeline.stages || [])]);
     setManagePipelineData({
       name: pipeline.name || '',
       description: pipeline.description || '',
       color: pipeline.color || '#3B82F6'
+    });
+    setIsManageOpen(true);
+  };
+
+  const openTemplateManagement = (template: Pipeline) => {
+    setSelectedPipeline(template);
+    setIsManagingTemplate(true);
+    setLocalStages([...(template.stages || [])]);
+    setManagePipelineData({
+      name: template.name || '',
+      description: template.description || '',
+      color: template.color || '#3B82F6'
     });
     setIsManageOpen(true);
   };
@@ -164,6 +198,18 @@ export default function PipelinesPage() {
     if (!selectedPipeline?.id) return;
 
     try {
+      // If managing a template, save order locally
+      if (isManagingTemplate) {
+        const updatedTemplate = { ...selectedPipeline, stages: localStages, updatedAt: new Date() };
+        setSelectedPipeline(updatedTemplate);
+        const updatedTemplates = templates.map(t => t.id === selectedPipeline.id ? updatedTemplate : t);
+        setTemplates(updatedTemplates);
+        localStorage.setItem('pipeline-templates', JSON.stringify(updatedTemplates));
+        toast.success('Template stage order updated successfully');
+        return;
+      }
+
+      // Otherwise, save via API
       const stageIds = localStages.map(stage => stage.id);
       const response = await fetch(`/api/crm/pipelines/${selectedPipeline.id}/stages/reorder`, {
         method: 'PATCH',
@@ -188,7 +234,7 @@ export default function PipelinesPage() {
       }
     } catch (error) {
       console.error('Failed to reorder stages:', error);
-      toast.error('Failed to reorder stages');
+      toast.error(`Failed to reorder ${isManagingTemplate ? 'template' : 'pipeline'} stages`);
       setLocalStages([...(selectedPipeline.stages || [])]);
     }
   };
@@ -197,6 +243,38 @@ export default function PipelinesPage() {
     if (!formData.name) return;
 
     try {
+      // If creating a template, save to localStorage
+      if (activeTab === 'templates') {
+        const newTemplate: Pipeline = {
+          id: `template_${Date.now()}`,
+          tenantId: 'tenant_001',
+          name: formData.name,
+          description: formData.description || '',
+          color: formData.color,
+          order: templates.length,
+          isDefault: false,
+          stages: [],
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          applicableTypes: [],
+          isTypeSpecific: false
+        };
+
+        const updatedTemplates = [...templates, newTemplate];
+        setTemplates(updatedTemplates);
+        localStorage.setItem('pipeline-templates', JSON.stringify(updatedTemplates));
+
+        setIsCreateOpen(false);
+        setFormData({
+          name: '',
+          description: '',
+          color: '#3B82F6'
+        });
+        toast.success(`Template Created: ${newTemplate.name} has been created successfully.`);
+        return;
+      }
+
+      // Otherwise, create a regular pipeline via API
       const response = await fetch('/api/crm/pipelines', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -223,8 +301,8 @@ export default function PipelinesPage() {
         toast.error(error.error || 'Failed to create pipeline');
       }
     } catch (error) {
-      console.error('Failed to create pipeline:', error);
-      toast.error('Failed to create pipeline');
+      console.error('Failed to create pipeline/template:', error);
+      toast.error(`Failed to create ${activeTab === 'templates' ? 'template' : 'pipeline'}`);
     }
   };
 
@@ -232,6 +310,25 @@ export default function PipelinesPage() {
     if (!selectedPipeline?.id || !managePipelineData.name) return;
 
     try {
+      // If managing a template, update in localStorage
+      if (isManagingTemplate) {
+        const updatedTemplate: Pipeline = {
+          ...selectedPipeline,
+          name: managePipelineData.name,
+          description: managePipelineData.description || '',
+          color: managePipelineData.color,
+          updatedAt: new Date()
+        };
+
+        setSelectedPipeline(updatedTemplate);
+        const updatedTemplates = templates.map(t => t.id === updatedTemplate.id ? updatedTemplate : t);
+        setTemplates(updatedTemplates);
+        localStorage.setItem('pipeline-templates', JSON.stringify(updatedTemplates));
+        toast.success(`Template Updated: ${updatedTemplate.name} has been updated successfully.`);
+        return;
+      }
+
+      // Otherwise, update via API
       const response = await fetch(`/api/crm/pipelines/${selectedPipeline.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -254,8 +351,43 @@ export default function PipelinesPage() {
         toast.error(error.error || 'Failed to update pipeline');
       }
     } catch (error) {
-      console.error('Failed to update pipeline:', error);
-      toast.error('Failed to update pipeline');
+      console.error('Failed to update pipeline/template:', error);
+      toast.error(`Failed to update ${isManagingTemplate ? 'template' : 'pipeline'}`);
+    }
+  };
+
+  const handleTogglePipelineStatus = async (pipeline: Pipeline) => {
+    try {
+      const newStatus = !pipeline.isActive;
+
+      // Warn if deactivating
+      if (!newStatus) {
+        const confirmed = confirm(
+          `Are you sure you want to deactivate "${pipeline.name}"?\n\n` +
+          `This will hide it from the kanban board and prevent new deals from being added to it.`
+        );
+        if (!confirmed) return;
+      }
+
+      const response = await fetch(`/api/crm/pipelines/${pipeline.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          isActive: newStatus
+        })
+      });
+
+      if (response.ok) {
+        const updatedPipeline = await response.json();
+        setPipelines(prev => prev.map(p => p.id === pipeline.id ? updatedPipeline : p));
+        toast.success(`Pipeline ${updatedPipeline.isActive ? 'activated' : 'deactivated'}: ${updatedPipeline.name}`);
+      } else {
+        const error = await response.json();
+        toast.error(error.error || 'Failed to update pipeline status');
+      }
+    } catch (error) {
+      console.error('Failed to toggle pipeline status:', error);
+      toast.error('Failed to update pipeline status');
     }
   };
 
@@ -282,10 +414,147 @@ export default function PipelinesPage() {
     }
   };
 
+  const handleSaveAsTemplate = async (pipeline: Pipeline) => {
+    try {
+      const template = {
+        id: `template-${Date.now()}`,
+        name: `${pipeline.name} Template`,
+        description: pipeline.description || `Template based on ${pipeline.name} pipeline`,
+        color: pipeline.color,
+        stages: pipeline.stages || [],
+        isTemplate: true,
+        createdAt: new Date().toISOString(),
+        originalPipelineId: pipeline.id
+      };
+
+      const currentTemplates = [...templates];
+      currentTemplates.push(template);
+      setTemplates(currentTemplates);
+
+      // Save to localStorage
+      localStorage.setItem('pipeline-templates', JSON.stringify(currentTemplates));
+
+      toast.success(`Template Saved: "${template.name}" has been saved as a template.`);
+    } catch (error) {
+      console.error('Failed to save template:', error);
+      toast.error('Failed to save template');
+    }
+  };
+
+  const handleCreateFromTemplate = async (template: Pipeline) => {
+    try {
+      const newPipelineName = `${template.name.replace(' Template', '')} Copy`;
+
+      const response = await fetch('/api/crm/pipelines', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newPipelineName,
+          description: template.description || undefined,
+          color: template.color,
+          order: pipelines.length
+        })
+      });
+
+      if (response.ok) {
+        const newPipeline = await response.json();
+
+        // Create stages from template
+        if (template.stages && template.stages.length > 0) {
+          for (const stage of template.stages) {
+            await fetch(`/api/crm/pipelines/${newPipeline.id}/stages`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                name: stage.name,
+                color: stage.color,
+                isClosing: stage.isClosing,
+                isLost: stage.isLost,
+                wipLimit: stage.wipLimit,
+                slaTarget: stage.slaTarget,
+                slaUnit: (stage as any).slaUnit || 'hours',
+                order: stage.order || 0
+              })
+            });
+          }
+        }
+
+        // Reload pipelines to show the new one with stages
+        await loadPipelines();
+        setActiveTab('pipelines');
+        toast.success(`Pipeline Created: "${newPipelineName}" has been created from template.`);
+      } else {
+        const error = await response.json();
+        toast.error(error.error || 'Failed to create pipeline from template');
+      }
+    } catch (error) {
+      console.error('Failed to create from template:', error);
+      toast.error('Failed to create pipeline from template');
+    }
+  };
+
+  const handleDeleteTemplate = (template: Pipeline) => {
+    if (!confirm(`Are you sure you want to delete the "${template.name}" template? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      const updatedTemplates = templates.filter(t => t.id !== template.id);
+      setTemplates(updatedTemplates);
+      localStorage.setItem('pipeline-templates', JSON.stringify(updatedTemplates));
+      toast.success(`Template Deleted: "${template.name}" has been deleted.`);
+    } catch (error) {
+      console.error('Failed to delete template:', error);
+      toast.error('Failed to delete template');
+    }
+  };
+
   const handleAddStage = async (pipelineId: string) => {
     if (!stageFormData.name) return;
 
     try {
+      // If managing a template, add stage locally
+      if (isManagingTemplate) {
+        const newStage: Stage = {
+          id: `stage_${Date.now()}`,
+          tenantId: 'tenant_001',
+          pipelineId: pipelineId,
+          name: stageFormData.name,
+          order: localStages.length,
+          color: stageFormData.color,
+          isClosing: stageFormData.isClosing,
+          isLost: stageFormData.isLost,
+          wipLimit: stageFormData.wipLimit ? parseInt(stageFormData.wipLimit) : undefined,
+          slaTarget: stageFormData.slaTarget ? parseInt(stageFormData.slaTarget) : undefined,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        };
+
+        const updatedStages = [...localStages, newStage];
+        setLocalStages(updatedStages);
+
+        // Update template with new stages
+        const updatedTemplate = { ...selectedPipeline!, stages: updatedStages };
+        setSelectedPipeline(updatedTemplate);
+        const updatedTemplates = templates.map(t => t.id === pipelineId ? updatedTemplate : t);
+        setTemplates(updatedTemplates);
+        localStorage.setItem('pipeline-templates', JSON.stringify(updatedTemplates));
+
+        setIsAddingStage(false);
+        setStageFormData({
+          name: '',
+          color: '#6B7280',
+          isClosing: false,
+          isLost: false,
+          wipLimit: '',
+          slaTarget: '',
+          slaUnit: 'hours'
+        });
+        toast.success(`Stage Added: ${newStage.name} has been added to the template.`);
+        return;
+      }
+
+      // Otherwise, add via API
       const response = await fetch(`/api/crm/pipelines/${pipelineId}/stages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -327,7 +596,7 @@ export default function PipelinesPage() {
       }
     } catch (error) {
       console.error('Failed to add stage:', error);
-      toast.error('Failed to add stage');
+      toast.error(`Failed to add stage to ${isManagingTemplate ? 'template' : 'pipeline'}`);
     }
   };
 
@@ -351,7 +620,6 @@ export default function PipelinesPage() {
           }
           setPipelines(prev => prev.map(p => p.id === selectedPipeline.id ? updatedPipeline : p));
         }
-        setEditingStageId(null);
         setEditingColorStageId(null);
         toast.success(`Stage Updated: ${updatedStage.name} has been updated.`);
       } else {
@@ -364,7 +632,7 @@ export default function PipelinesPage() {
     }
   };
 
-  const handleOpenStageEdit = (stage: Stage) => {
+  const handleOpenStageEdit = useCallback((stage: Stage) => {
     setEditStageFormData({
       name: stage.name,
       color: stage.color || '#6B7280',
@@ -376,7 +644,7 @@ export default function PipelinesPage() {
     });
     setEditingStageId(stage.id);
     setIsEditingStage(true);
-  };
+  }, []);
 
   const handleSaveStageEdit = async () => {
     if (!editingStageId || !editStageFormData.name) return;
@@ -399,7 +667,7 @@ export default function PipelinesPage() {
     setEditingStageId(null);
   };
 
-  const handleDeleteStage = async (stage: Stage) => {
+  const handleDeleteStage = useCallback(async (stage: Stage) => {
     if (!confirm(`Are you sure you want to delete the "${stage.name}" stage? This action cannot be undone.`)) {
       return;
     }
@@ -429,12 +697,12 @@ export default function PipelinesPage() {
       console.error('Failed to delete stage:', error);
       toast.error('Failed to delete stage');
     }
-  };
+  }, [selectedPipeline]);
 
   // Sortable Stage Component
-  function SortableStage({ stage, index, onEdit, onDelete }: { 
-    stage: Stage; 
-    index: number; 
+  function SortableStage({ stage, index, onEdit, onDelete }: {
+    stage: Stage;
+    index: number;
     onEdit: (stage: Stage) => void;
     onDelete: (stage: Stage) => void;
   }) {
@@ -472,51 +740,17 @@ export default function PipelinesPage() {
           <div className="w-6 h-6 rounded-full bg-gray-300 flex items-center justify-center text-xs font-medium text-gray-700 mr-3">
             {index + 1}
           </div>
-          {editingStageId === stage.id ? (
-            <div className="flex-1 flex items-center gap-2">
-              <Input
-                defaultValue={stage.name}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    handleUpdateStage(stage, { name: e.currentTarget.value });
-                  } else if (e.key === 'Escape') {
-                    setEditingStageId(null);
-                  }
-                }}
-                className="h-8"
-                autoFocus
-              />
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => {
-                  const input = document.querySelector(`input[defaultValue="${stage.name}"]`) as HTMLInputElement;
-                  if (input) {
-                    handleUpdateStage(stage, { name: input.value });
-                  }
-                }}
-              >
-                <Save className="h-3 w-3" />
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => setEditingStageId(null)}
-              >
-                <X className="h-3 w-3" />
-              </Button>
+          <div className="flex-1">
+            <div className="font-medium">
+              {stage.name}
             </div>
-          ) : (
-            <div className="flex-1">
-              <div className="font-medium">{stage.name}</div>
-              <div className="text-sm text-gray-500 flex items-center gap-2">
-                {stage.isClosing && <Badge variant="secondary" className="text-xs">Closing</Badge>}
-                {stage.isLost && <Badge variant="destructive" className="text-xs">Lost</Badge>}
-                {stage.wipLimit && <span className="text-xs">WIP: {stage.wipLimit}</span>}
-                {stage.slaTarget && <span className="text-xs">SLA: {stage.slaTarget}{(stage as any).slaUnit === 'days' ? 'd' : 'h'}</span>}
-              </div>
+            <div className="text-sm text-gray-500 flex items-center gap-2">
+              {stage.isClosing && <Badge variant="secondary" className="text-xs">Closing</Badge>}
+              {stage.isLost && <Badge variant="destructive" className="text-xs">Lost</Badge>}
+              {stage.wipLimit && <span className="text-xs">WIP: {stage.wipLimit}</span>}
+              {stage.slaTarget && <span className="text-xs">SLA: {stage.slaTarget}{(stage as any).slaUnit === 'days' ? 'd' : 'h'}</span>}
             </div>
-          )}
+          </div>
         </div>
         <div className="flex items-center gap-2">
           {editingColorStageId === stage.id ? (
@@ -539,27 +773,23 @@ export default function PipelinesPage() {
               title="Click to change color"
             />
           )}
-          {editingStageId !== stage.id && editingColorStageId !== stage.id && (
-            <>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => onEdit(stage)}
-                title="Edit Stage"
-              >
-                <Edit2 className="h-3 w-3" />
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => onDelete(stage)}
-                className="text-red-600 hover:text-red-800 hover:bg-red-50"
-                title="Delete Stage"
-              >
-                <Trash2 className="h-3 w-3" />
-              </Button>
-            </>
-          )}
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => onEdit(stage)}
+            title="Edit Stage"
+          >
+            <Edit2 className="h-3 w-3" />
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => onDelete(stage)}
+            className="text-red-600 hover:text-red-800 hover:bg-red-50"
+            title="Delete Stage"
+          >
+            <Trash2 className="h-3 w-3" />
+          </Button>
         </div>
       </div>
     );
@@ -581,22 +811,54 @@ export default function PipelinesPage() {
   const newPipelineButton = (
     <Button onClick={() => setIsCreateOpen(true)}>
       <Plus className="mr-2 h-4 w-4" />
-      New Pipeline
+      {activeTab === 'templates' ? 'New Template' : 'New Pipeline'}
     </Button>
   );
 
   return (
     <AppLayout user={user}>
-      <PageHeader 
+      <PageHeader
         title="Pipelines"
         description="Manage your sales workflows and stages"
         breadcrumbs={[{ label: 'CRM' }, { label: 'Pipelines' }]}
-        actions={newPipelineButton}
       />
-      
+
       <div className="px-4 sm:px-6 lg:px-8 py-6">
-        <div className="grid gap-6">
-          {pipelines.map((pipeline) => (
+        {/* Tab Navigation */}
+        <div className="mb-6">
+          <div className="flex items-center justify-between border-b border-border">
+            <nav className="flex space-x-8" aria-label="Tabs">
+              <button
+                onClick={() => setActiveTab('pipelines')}
+                className={`whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === 'pipelines'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                Active Pipelines ({pipelines.length})
+              </button>
+              <button
+                onClick={() => setActiveTab('templates')}
+                className={`whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === 'templates'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                Templates ({templates.length})
+              </button>
+            </nav>
+            <div className="pb-2">
+              {newPipelineButton}
+            </div>
+          </div>
+        </div>
+
+        {/* Pipelines Tab */}
+        {activeTab === 'pipelines' && (
+          <div className="grid gap-6">
+            {pipelines.map((pipeline) => (
             <div key={`pipeline-${pipeline.id}`} className="bg-card rounded-lg shadow-sm border border-border p-6">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center">
@@ -613,14 +875,39 @@ export default function PipelinesPage() {
                   {pipeline.isDefault && (
                     <Badge variant="secondary" className="ml-3">Default</Badge>
                   )}
+                  <Badge
+                    variant={pipeline.isActive !== false ? "default" : "destructive"}
+                    className="ml-2"
+                  >
+                    {pipeline.isActive !== false ? "Active" : "Inactive"}
+                  </Badge>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-gray-600">
+                      {pipeline.isActive !== false ? "Active" : "Inactive"}
+                    </span>
+                    <Switch
+                      checked={pipeline.isActive !== false}
+                      onCheckedChange={() => handleTogglePipelineStatus(pipeline)}
+                      className="data-[state=checked]:bg-green-500"
+                    />
+                  </div>
                   <Button variant="ghost" size="sm" onClick={() => openPipelineManagement(pipeline)} title="Manage Pipeline">
                     <Settings className="h-4 w-4" />
                   </Button>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleSaveAsTemplate(pipeline)}
+                    className="text-blue-600 hover:text-blue-800 hover:bg-blue-50"
+                    title="Save as Template"
+                  >
+                    <Layers className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     onClick={() => handleDeletePipeline(pipeline)}
                     className="text-destructive hover:text-destructive/90 hover:bg-destructive/5"
                     title="Delete Pipeline"
@@ -652,20 +939,115 @@ export default function PipelinesPage() {
               </div>
             </div>
           ))}
-        </div>
 
-        {pipelines.length === 0 && !loading && (
-          <div className="bg-card rounded-lg shadow-sm border border-border text-center py-12">
-            <GitBranch className="h-12 w-12 text-text-tertiary mx-auto mb-4" />
-            <div className="text-text-secondary mb-4">No pipelines found</div>
-            <div className="space-x-2">
-              <Button variant="outline" onClick={() => setIsCreateOpen(true)}>
-                Create Your First Pipeline
-              </Button>
-              <Button variant="ghost" onClick={() => loadPipelines()}>
-                Refresh
-              </Button>
-            </div>
+            {pipelines.length === 0 && !loading && (
+              <div className="bg-card rounded-lg shadow-sm border border-border text-center py-12">
+                <GitBranch className="h-12 w-12 text-text-tertiary mx-auto mb-4" />
+                <div className="text-text-secondary mb-4">No pipelines found</div>
+                <div className="space-x-2">
+                  <Button variant="outline" onClick={() => setIsCreateOpen(true)}>
+                    Create Your First Pipeline
+                  </Button>
+                  <Button variant="ghost" onClick={() => loadPipelines()}>
+                    Refresh
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Templates Tab */}
+        {activeTab === 'templates' && (
+          <div className="grid gap-6">
+            {templates.map((template) => (
+              <div key={`template-${template.id}`} className="bg-card rounded-lg shadow-sm border border-border p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center">
+                    <div
+                      className="w-4 h-4 rounded-full mr-3"
+                      style={{ backgroundColor: template.color || '#6B7280' }}
+                    />
+                    <div>
+                      <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
+                        {template.name}
+                        <Badge variant="outline" className="text-xs">Template</Badge>
+                      </h3>
+                      {template.description && (
+                        <p className="text-sm text-text-secondary">{template.description}</p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={() => handleCreateFromTemplate(template)}
+                      className="bg-blue-600 hover:bg-blue-700"
+                      title="Create Pipeline from Template"
+                    >
+                      <Copy className="h-4 w-4 mr-2" />
+                      Use Template
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => openTemplateManagement(template)}
+                      title="Manage Template"
+                    >
+                      <Settings className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDeleteTemplate(template)}
+                      className="text-destructive hover:text-destructive/90 hover:bg-destructive/5"
+                      title="Delete Template"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  {template.stages?.map((stage, index) => (
+                    <div key={`${template.id}-stage-${stage.id}`} className="flex items-center">
+                      <div
+                        className="px-3 py-1 rounded-full text-sm font-medium text-primary-foreground"
+                        style={{ backgroundColor: stage.color || '#6B7280' }}
+                      >
+                        {stage.name}
+                      </div>
+                      {index < (template.stages?.length || 0) - 1 && (
+                        <div className="w-4 h-px bg-surface-300 mx-1" />
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-4 flex items-center text-sm text-text-secondary">
+                  <Layers className="h-4 w-4 mr-2" />
+                  {template.stages?.length || 0} stages • Created on {new Date((template as any).createdAt || Date.now()).toLocaleDateString()}
+                </div>
+              </div>
+            ))}
+
+            {templates.length === 0 && (
+              <div className="bg-card rounded-lg shadow-sm border border-border text-center py-12">
+                <Layers className="h-12 w-12 text-text-tertiary mx-auto mb-4" />
+                <div className="text-text-secondary mb-4">No templates found</div>
+                <p className="text-sm text-gray-500 mb-4">
+                  Save existing pipelines as templates to reuse their structure for new pipelines.
+                </p>
+                <Button
+                  variant="outline"
+                  onClick={() => setActiveTab('pipelines')}
+                  disabled={pipelines.length === 0}
+                >
+                  Go to Pipelines
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -905,16 +1287,20 @@ export default function PipelinesPage() {
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Create New Pipeline</DialogTitle>
+            <DialogTitle>
+              {activeTab === 'templates' ? 'Create New Template' : 'Create New Pipeline'}
+            </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="name">Pipeline Name *</Label>
+              <Label htmlFor="name">
+                {activeTab === 'templates' ? 'Template Name' : 'Pipeline Name'} *
+              </Label>
               <Input
                 id="name"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="Enter pipeline name"
+                placeholder={activeTab === 'templates' ? 'Enter template name' : 'Enter pipeline name'}
               />
             </div>
             <div>
@@ -923,7 +1309,7 @@ export default function PipelinesPage() {
                 id="description"
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Pipeline description (optional)"
+                placeholder={activeTab === 'templates' ? 'Template description (optional)' : 'Pipeline description (optional)'}
                 rows={3}
               />
             </div>
@@ -931,7 +1317,7 @@ export default function PipelinesPage() {
               <ColorSelector
                 value={formData.color}
                 onChange={(color) => setFormData({ ...formData, color })}
-                label="Pipeline Color"
+                label={activeTab === 'templates' ? 'Template Color' : 'Pipeline Color'}
               />
             </div>
             <div className="flex justify-end gap-2">
@@ -939,7 +1325,7 @@ export default function PipelinesPage() {
                 Cancel
               </Button>
               <Button onClick={handleCreatePipeline} disabled={!formData.name}>
-                Create Pipeline
+                {activeTab === 'templates' ? 'Create Template' : 'Create Pipeline'}
               </Button>
             </div>
           </div>

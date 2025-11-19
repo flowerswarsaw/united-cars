@@ -5,8 +5,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useSession } from '@/hooks/useSession';
 import { Button } from '@/components/ui/button';
-import { User, Mail, Phone, Building2, Plus, Search, X, Trash2 } from 'lucide-react';
-import { Contact, Organisation, ContactType } from '@united-cars/crm-core';
+import { User, Mail, Phone, Building2, Plus, Search, X, Trash2, AlertTriangle } from 'lucide-react';
+import { Contact, Organisation, ContactType, ContactMethodType } from '@united-cars/crm-core';
 import { AppLayout } from '@/components/layout/app-layout';
 import { PageHeader } from '@/components/layout/page-header';
 import { LoadingState } from '@/components/ui/loading-state';
@@ -65,6 +65,19 @@ export default function ContactsPage() {
     postalCode: ''
   });
   const [showCustomCity, setShowCustomCity] = useState(false);
+  const [duplicateWarning, setDuplicateWarning] = useState<{
+    isBlocked: boolean;
+    conflicts: Array<{
+      type: 'email' | 'phone';
+      value: string;
+      existingEntity: {
+        id: string;
+        type: 'lead' | 'contact' | 'organisation';
+        name: string;
+        details?: string;
+      };
+    }>;
+  } | null>(null);
 
   useEffect(() => {
     const loadOrganisations = async () => {
@@ -136,6 +149,14 @@ export default function ContactsPage() {
     }
   }, []);
 
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      checkDuplicates(formData.email || undefined, formData.phone || undefined);
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+  }, [formData.email, formData.phone]);
+
   const getOrganisationName = (orgId?: string) => {
     if (!orgId) return null;
     const org = organisations.find(o => o.id === orgId);
@@ -161,12 +182,51 @@ export default function ContactsPage() {
     return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   };
 
+  const checkDuplicates = async (email?: string, phone?: string) => {
+    if (!email && !phone) {
+      setDuplicateWarning(null);
+      return;
+    }
+
+    try {
+      const contactMethods = [];
+      if (email) contactMethods.push({ type: ContactMethodType.EMAIL_WORK, value: email });
+      if (phone) contactMethods.push({ type: ContactMethodType.PHONE_MOBILE, value: phone });
+
+      const response = await fetch('/api/crm/validate-duplicates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          entityType: 'contact',
+          data: {
+            firstName: formData.firstName,
+            lastName: formData.lastName,
+            contactMethods
+          }
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        setDuplicateWarning(result.conflicts.length > 0 ? result : null);
+      }
+    } catch (error) {
+      console.error('Failed to check duplicates:', error);
+    }
+  };
+
 
 
   const handleCreate = async () => {
     // Validate required fields
     if (!formData.firstName || !formData.lastName || !formData.type || !formData.phone || !formData.country) {
       alert('Please fill in all required fields: First Name, Last Name, Type, Phone, and Country');
+      return;
+    }
+
+    // Check for duplicates one more time before submission
+    if (duplicateWarning && duplicateWarning.isBlocked) {
+      toast.error('Cannot create contact: Phone number or email already exists');
       return;
     }
 
@@ -193,6 +253,7 @@ export default function ContactsPage() {
           postalCode: ''
         });
         setShowCustomCity(false);
+        setDuplicateWarning(null);
         const loadContacts = async () => {
           const data = await fetch('/api/crm/contacts').then(r => r.json());
           setContacts(data);
@@ -324,6 +385,33 @@ export default function ContactsPage() {
             </div>
           </div>
 
+          {/* Duplicate Warning */}
+          {duplicateWarning && duplicateWarning.conflicts.length > 0 && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <div className="flex items-start">
+                <AlertTriangle className="h-5 w-5 text-red-500 mt-0.5 mr-3 flex-shrink-0" />
+                <div>
+                  <h4 className="text-sm font-medium text-red-800 mb-2">
+                    Duplicate Found - Cannot Create Contact
+                  </h4>
+                  <div className="space-y-2">
+                    {duplicateWarning.conflicts.map((conflict, index) => (
+                      <div key={index} className="text-sm text-red-700">
+                        <strong>{conflict.type.toUpperCase()}:</strong> {conflict.value} already exists for{' '}
+                        <span className="font-medium">
+                          {conflict.existingEntity.name}
+                        </span>
+                        {conflict.existingEntity.details && (
+                          <span className="text-red-600"> ({conflict.existingEntity.details})</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div>
             <Label htmlFor="organisationId">Organisation</Label>
             <Select value={formData.organisationId || undefined} onValueChange={(value) => setFormData({ ...formData, organisationId: value || '' })}>
@@ -434,7 +522,17 @@ export default function ContactsPage() {
             <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleCreate} disabled={!formData.firstName || !formData.lastName || !formData.type || !formData.phone || !formData.country}>
+            <Button
+              onClick={handleCreate}
+              disabled={
+                !formData.firstName ||
+                !formData.lastName ||
+                !formData.type ||
+                !formData.phone ||
+                !formData.country ||
+                (duplicateWarning && duplicateWarning.isBlocked)
+              }
+            >
               Create Contact
             </Button>
           </div>
@@ -593,17 +691,43 @@ export default function ContactsPage() {
                     {contact.country || '-'}
                   </TableCell>
                   <TableCell>
-                    <div className="flex gap-2">
-                      {contact.email && (
-                        <a href={`mailto:${contact.email}`} className="text-gray-500 hover:text-gray-700">
-                          <Mail className="h-4 w-4" />
-                        </a>
-                      )}
-                      {contact.phone && (
-                        <a href={`tel:${contact.phone}`} className="text-gray-500 hover:text-gray-700">
-                          <Phone className="h-4 w-4" />
-                        </a>
-                      )}
+                    <div className="space-y-1">
+                      {(() => {
+                        const emailMethod = contact.contactMethods?.find(method => method.type.includes('EMAIL'));
+                        const phoneMethod = contact.contactMethods?.find(method => method.type.includes('PHONE'));
+
+                        return (
+                          <>
+                            {emailMethod && (
+                              <div className="flex items-center gap-2">
+                                <Mail className="h-3 w-3 text-gray-400 flex-shrink-0" />
+                                <a
+                                  href={`mailto:${emailMethod.value}`}
+                                  className="text-sm text-blue-600 hover:text-blue-800 hover:underline truncate"
+                                  title={emailMethod.value}
+                                >
+                                  {emailMethod.value}
+                                </a>
+                              </div>
+                            )}
+                            {phoneMethod && (
+                              <div className="flex items-center gap-2">
+                                <Phone className="h-3 w-3 text-gray-400 flex-shrink-0" />
+                                <a
+                                  href={`tel:${phoneMethod.value}`}
+                                  className="text-sm text-blue-600 hover:text-blue-800 hover:underline"
+                                  title={phoneMethod.value}
+                                >
+                                  {phoneMethod.value}
+                                </a>
+                              </div>
+                            )}
+                            {!emailMethod && !phoneMethod && (
+                              <span className="text-sm text-gray-400">No contact info</span>
+                            )}
+                          </>
+                        );
+                      })()}
                     </div>
                   </TableCell>
                   <TableCell>

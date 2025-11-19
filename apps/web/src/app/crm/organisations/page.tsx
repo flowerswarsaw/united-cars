@@ -34,9 +34,11 @@ import {
   Phone,
   Globe,
   X,
-  Trash2
+  Trash2,
+  AlertTriangle,
+  User
 } from 'lucide-react';
-import { Organisation, OrganizationType } from '@united-cars/crm-core';
+import { Organisation, OrganizationType, Contact, ContactMethodType } from '@united-cars/crm-core';
 import { COUNTRIES_REGIONS, getRegionsByCountryCode, hasRegions, getRegionDisplayName, getCitiesByRegion, hasCities } from '@/lib/countries-regions';
 import toast from 'react-hot-toast';
 
@@ -50,9 +52,17 @@ const escapeRegex = (str: string) => {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 };
 
+// Helper function to get main contact for an organisation
+const getMainContact = (orgId: string, contacts: Contact[]) => {
+  const orgContacts = contacts.filter(contact => contact.organisationId === orgId);
+  // Return the first contact or null if none exist
+  return orgContacts.length > 0 ? orgContacts[0] : null;
+};
+
 export default function OrganisationsPage() {
   const { user, loading: sessionLoading } = useSession();
   const [organisations, setOrganisations] = useState<Organisation[]>([]);
+  const [contacts, setContacts] = useState<Contact[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState<OrganisationFilters>({
     type: '',
@@ -73,6 +83,29 @@ export default function OrganisationsPage() {
     city: ''
   });
   const [showCustomCity, setShowCustomCity] = useState(false);
+  const [duplicateWarning, setDuplicateWarning] = useState<{
+    isBlocked: boolean;
+    conflicts: Array<{
+      type: 'email' | 'phone' | 'companyId';
+      value: string;
+      existingEntity: {
+        id: string;
+        type: 'lead' | 'contact' | 'organisation';
+        name: string;
+        details?: string;
+      };
+    }>;
+    warnings: Array<{
+      type: 'companyName';
+      value: string;
+      existingEntities: Array<{
+        id: string;
+        type: 'organisation';
+        name: string;
+        details?: string;
+      }>;
+    }>;
+  } | null>(null);
 
   const loadOrganisations = useCallback(async () => {
     try {
@@ -98,6 +131,11 @@ export default function OrganisationsPage() {
       const response = await fetch(url);
       const data = await response.json();
       setOrganisations(data || []);
+
+      // Also fetch contacts to show main contact
+      const contactsResponse = await fetch('/api/crm/contacts');
+      const contactsData = await contactsResponse.json();
+      setContacts(contactsData || []);
     } catch (error) {
       console.error('Failed to load organisations:', error);
       toast.error('Failed to load organisations');
@@ -126,10 +164,66 @@ export default function OrganisationsPage() {
     }
   }, []);
 
+  const checkDuplicates = async (name?: string, companyId?: string, email?: string, phone?: string) => {
+    if (!name && !companyId && !email && !phone) {
+      setDuplicateWarning(null);
+      return;
+    }
+
+    try {
+      const contactMethods = [];
+      if (email) contactMethods.push({ type: ContactMethodType.EMAIL_WORK, value: email });
+      if (phone) contactMethods.push({ type: ContactMethodType.PHONE_WORK, value: phone });
+
+      const response = await fetch('/api/crm/validate-duplicates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          entityType: 'organisation',
+          data: {
+            name,
+            companyId,
+            contactMethods
+          }
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.conflicts.length > 0 || result.warnings.length > 0) {
+          setDuplicateWarning(result);
+        } else {
+          setDuplicateWarning(null);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to check duplicates:', error);
+    }
+  };
+
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      checkDuplicates(
+        formData.name || undefined,
+        formData.companyId || undefined,
+        formData.email || undefined,
+        formData.phone || undefined
+      );
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+  }, [formData.name, formData.companyId, formData.email, formData.phone]);
+
   const handleCreate = async () => {
     // Validate required fields
     if (!formData.name || !formData.companyId || !formData.type || !formData.country) {
       alert('Please fill in all required fields: Name, Company ID, Type, and Country');
+      return;
+    }
+
+    // Check for blocking duplicates (company ID, email, phone)
+    if (duplicateWarning && duplicateWarning.isBlocked) {
+      toast.error('Cannot create organisation: Company ID, phone number or email already exists');
       return;
     }
 
@@ -139,7 +233,7 @@ export default function OrganisationsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
       });
-      
+
       if (response.ok) {
         setIsCreateOpen(false);
         setFormData({
@@ -155,6 +249,7 @@ export default function OrganisationsPage() {
           city: ''
         });
         setShowCustomCity(false);
+        setDuplicateWarning(null);
         loadOrganisations();
         toast.success(`Organisation created: ${formData.name}`);
       }
@@ -307,6 +402,69 @@ export default function OrganisationsPage() {
                 </div>
               </div>
 
+              {/* Duplicate Warning */}
+              {duplicateWarning && (duplicateWarning.conflicts.length > 0 || duplicateWarning.warnings.length > 0) && (
+                <div className="space-y-3">
+                  {/* Blocking Conflicts */}
+                  {duplicateWarning.conflicts.length > 0 && (
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                      <div className="flex items-start">
+                        <AlertTriangle className="h-5 w-5 text-red-500 mt-0.5 mr-3 flex-shrink-0" />
+                        <div>
+                          <h4 className="text-sm font-medium text-red-800 mb-2">
+                            Duplicate Found - Cannot Create Organisation
+                          </h4>
+                          <div className="space-y-2">
+                            {duplicateWarning.conflicts.map((conflict, index) => (
+                              <div key={index} className="text-sm text-red-700">
+                                <strong>{conflict.type.replace('Id', ' ID').toUpperCase()}:</strong> {conflict.value} already exists for{' '}
+                                <span className="font-medium">
+                                  {conflict.existingEntity.name}
+                                </span>
+                                {conflict.existingEntity.details && (
+                                  <span className="text-red-600"> ({conflict.existingEntity.details})</span>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Non-blocking Warnings */}
+                  {duplicateWarning.warnings.length > 0 && (
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                      <div className="flex items-start">
+                        <AlertTriangle className="h-5 w-5 text-yellow-500 mt-0.5 mr-3 flex-shrink-0" />
+                        <div>
+                          <h4 className="text-sm font-medium text-yellow-800 mb-2">
+                            Similar Organisation Names Found
+                          </h4>
+                          <div className="space-y-2">
+                            {duplicateWarning.warnings.map((warning, index) => (
+                              <div key={index} className="text-sm text-yellow-700">
+                                <strong>Company Name:</strong> "{warning.value}" already exists for{' '}
+                                {warning.existingEntities.map((entity, entityIndex) => (
+                                  <span key={entityIndex}>
+                                    <span className="font-medium">{entity.name}</span>
+                                    {entity.details && <span className="text-yellow-600"> ({entity.details})</span>}
+                                    {entityIndex < warning.existingEntities.length - 1 && ', '}
+                                  </span>
+                                ))}
+                              </div>
+                            ))}
+                            <div className="text-xs text-yellow-600 mt-1">
+                              This is just a warning - you can still create the organisation.
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div>
                 <Label htmlFor="size">Size</Label>
                 <Input
@@ -411,7 +569,16 @@ export default function OrganisationsPage() {
                 <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
                   Cancel
                 </Button>
-                <Button onClick={handleCreate} disabled={!formData.name || !formData.companyId || !formData.type || !formData.country}>
+                <Button
+                  onClick={handleCreate}
+                  disabled={
+                    !formData.name ||
+                    !formData.companyId ||
+                    !formData.type ||
+                    !formData.country ||
+                    (duplicateWarning && duplicateWarning.isBlocked)
+                  }
+                >
                   Create Organisation
                 </Button>
               </div>
@@ -507,14 +674,15 @@ export default function OrganisationsPage() {
               <TableHead>Company ID</TableHead>
               <TableHead>Type</TableHead>
               <TableHead>Country</TableHead>
-              <TableHead>Contact</TableHead>
+              <TableHead>Main Contact</TableHead>
+              <TableHead>Contact Info</TableHead>
               <TableHead className="w-[50px]"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {organisations.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8">
+                <TableCell colSpan={7} className="text-center py-8">
                   <div className="flex flex-col items-center space-y-3">
                     <Building2 className="h-12 w-12 text-text-tertiary" />
                     <div className="text-text-secondary">
@@ -561,22 +729,84 @@ export default function OrganisationsPage() {
                     {org.country || '-'}
                   </TableCell>
                   <TableCell>
-                    <div className="flex gap-2">
-                      {org.email && (
-                        <a href={`mailto:${org.email}`} className="text-text-secondary hover:text-foreground">
-                          <Mail className="h-4 w-4" />
-                        </a>
-                      )}
-                      {org.phone && (
-                        <a href={`tel:${org.phone}`} className="text-text-secondary hover:text-foreground">
-                          <Phone className="h-4 w-4" />
-                        </a>
-                      )}
-                      {org.website && (
-                        <a href={org.website} target="_blank" rel="noopener noreferrer" className="text-text-secondary hover:text-foreground">
-                          <Globe className="h-4 w-4" />
-                        </a>
-                      )}
+                    {(() => {
+                      const mainContact = getMainContact(org.id, contacts);
+                      if (!mainContact) {
+                        return <span className="text-sm text-gray-400">No main contact</span>;
+                      }
+
+                      const emailMethod = mainContact.contactMethods?.find(method => method.type.includes('EMAIL'));
+                      const phoneMethod = mainContact.contactMethods?.find(method => method.type.includes('PHONE'));
+
+                      return (
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-1">
+                            <User className="h-3 w-3 text-gray-400 flex-shrink-0" />
+                            <Link
+                              href={`/crm/contacts/${mainContact.id}`}
+                              className="text-sm text-blue-600 hover:text-blue-800 hover:underline font-medium"
+                              title={`${mainContact.firstName} ${mainContact.lastName}`}
+                            >
+                              {mainContact.firstName} {mainContact.lastName}
+                            </Link>
+                          </div>
+                          {emailMethod && (
+                            <div className="flex items-center gap-1 text-xs text-gray-500">
+                              <Mail className="h-2.5 w-2.5" />
+                              <span className="truncate">{emailMethod.value}</span>
+                            </div>
+                          )}
+                          {phoneMethod && (
+                            <div className="flex items-center gap-1 text-xs text-gray-500">
+                              <Phone className="h-2.5 w-2.5" />
+                              <span>{phoneMethod.value}</span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+                  </TableCell>
+                  <TableCell>
+                    <div className="space-y-1">
+                      {(() => {
+                        // Extract contact info from contactMethods array or fallback to direct properties
+                        const emailMethod = org.contactMethods?.find(method => method.type.includes('EMAIL'));
+                        const phoneMethod = org.contactMethods?.find(method => method.type.includes('PHONE'));
+                        const email = emailMethod?.value || org.email;
+                        const phone = phoneMethod?.value || org.phone;
+
+                        return (
+                          <>
+                            {email && (
+                              <div className="flex items-center gap-2">
+                                <Mail className="h-3 w-3 text-gray-400 flex-shrink-0" />
+                                <a
+                                  href={`mailto:${email}`}
+                                  className="text-sm text-blue-600 hover:text-blue-800 hover:underline truncate"
+                                  title={email}
+                                >
+                                  {email}
+                                </a>
+                              </div>
+                            )}
+                            {phone && (
+                              <div className="flex items-center gap-2">
+                                <Phone className="h-3 w-3 text-gray-400 flex-shrink-0" />
+                                <a
+                                  href={`tel:${phone}`}
+                                  className="text-sm text-blue-600 hover:text-blue-800 hover:underline"
+                                  title={phone}
+                                >
+                                  {phone}
+                                </a>
+                              </div>
+                            )}
+                            {!email && !phone && (
+                              <span className="text-sm text-gray-400">No contact info</span>
+                            )}
+                          </>
+                        );
+                      })()}
                     </div>
                   </TableCell>
                   <TableCell>

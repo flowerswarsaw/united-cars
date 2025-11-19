@@ -4,21 +4,33 @@ import { dealRepository, jsonPersistence } from '@united-cars/crm-mocks';
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const pipelineId = searchParams.get('pipelineId');
-    const stageId = searchParams.get('stageId');
+    const pipeline = searchParams.get('pipeline');
+    const pipelineId = searchParams.get('pipelineId') || pipeline;
+    const stage = searchParams.get('stage');
+    const stageId = searchParams.get('stageId') || stage;
     const status = searchParams.get('status');
     const contactId = searchParams.get('contactId');
 
-    let deals = await dealRepository.list();
-
-    // Apply filtering
+    // Use the repository method if filtering by pipeline/stage
     if (pipelineId) {
-      deals = deals.filter(deal => deal.pipelineId === pipelineId);
+      const deals = await dealRepository.getByPipelineAndStage(pipelineId, stageId || undefined);
+
+      // Apply additional filters
+      let filteredDeals = deals;
+
+      if (status) {
+        filteredDeals = filteredDeals.filter(deal => deal.status === status);
+      }
+
+      if (contactId) {
+        filteredDeals = filteredDeals.filter(deal => deal.contactId === contactId);
+      }
+
+      return NextResponse.json(filteredDeals);
     }
 
-    if (stageId) {
-      deals = deals.filter(deal => deal.stageId === stageId);
-    }
+    // No pipeline filter - get all deals and apply other filters
+    let deals = await dealRepository.list();
 
     if (status) {
       deals = deals.filter(deal => deal.status === status);

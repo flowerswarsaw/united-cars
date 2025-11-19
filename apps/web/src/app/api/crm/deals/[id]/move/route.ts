@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { moveDealInputSchema } from '@united-cars/crm-core';
-import { dealRepository, jsonPersistence } from '@united-cars/crm-mocks';
+import { moveDealInputSchema, ActivityType, EntityType } from '@united-cars/crm-core';
+import { dealRepository, activityRepository, pipelineRepository, jsonPersistence } from '@united-cars/crm-mocks';
 
 export async function PATCH(
   request: NextRequest,
@@ -12,19 +12,81 @@ export async function PATCH(
 
     console.log(`Moving deal ${id} to stage:`, body);
 
-    // Update deal with new stage/pipeline using CRM repository
+    // Ensure we have the latest data
+    await jsonPersistence.load();
+
+    // Get the current deal
+    const currentDeal = await dealRepository.get(id);
+    if (!currentDeal) {
+      return NextResponse.json(
+        { error: 'Deal not found' },
+        { status: 404 }
+      );
+    }
+
+    // Update deal with new stage/pipeline using simple update
     const updateData = {
       pipelineId: body.pipelineId,
       stageId: body.toStageId
     };
 
-    const updatedDeal = await dealRepository.update(id, updateData);
+    const updatedDeal = await dealRepository.update(id, updateData, body.movedBy || 'system');
 
     if (!updatedDeal) {
       return NextResponse.json(
-        { error: 'Deal not found' },
-        { status: 404 }
+        { error: 'Failed to update deal' },
+        { status: 500 }
       );
+    }
+
+    // Manually log the stage move activity with better descriptions
+    try {
+      // Get pipeline and stage information for better descriptions
+      let fromStageName = 'Unknown Stage';
+      let toStageName = 'Unknown Stage';
+      let pipelineName = 'Unknown Pipeline';
+
+      try {
+        const pipeline = await pipelineRepository.get(body.pipelineId);
+        if (pipeline) {
+          pipelineName = pipeline.name;
+          const stages = await pipelineRepository.getStages(body.pipelineId);
+
+          const fromStage = stages?.find(s => s.id === currentDeal.stageId);
+          const toStage = stages?.find(s => s.id === body.toStageId);
+
+          if (fromStage) fromStageName = fromStage.name;
+          if (toStage) toStageName = toStage.name;
+        }
+      } catch (pipelineError) {
+        console.warn('Failed to get pipeline/stage names:', pipelineError);
+        // Continue with default names
+      }
+
+      const description = fromStageName !== 'Unknown Stage'
+        ? `Deal moved from "${fromStageName}" to "${toStageName}" in ${pipelineName} pipeline`
+        : `Deal moved to "${toStageName}" in ${pipelineName} pipeline`;
+
+      await activityRepository.log({
+        entityType: EntityType.DEAL,
+        entityId: id,
+        type: ActivityType.STAGE_MOVED,
+        description,
+        userId: body.movedBy || 'system',
+        meta: {
+          fromStageId: currentDeal.stageId,
+          fromStageName,
+          toStageId: body.toStageId,
+          toStageName,
+          pipelineId: body.pipelineId,
+          pipelineName,
+          note: body.note,
+          lossReason: body.lossReason
+        }
+      });
+    } catch (activityError) {
+      console.warn('Failed to log activity:', activityError);
+      // Don't fail the request if activity logging fails
     }
 
     // Save to persistent storage
@@ -37,13 +99,6 @@ export async function PATCH(
     if (error.name === 'ZodError') {
       return NextResponse.json(
         { error: 'Invalid input', details: error.errors },
-        { status: 400 }
-      );
-    }
-
-    if (error.message === 'Loss reason required for lost stage') {
-      return NextResponse.json(
-        { error: 'Loss reason required for lost stage' },
         { status: 400 }
       );
     }
