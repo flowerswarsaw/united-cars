@@ -35,10 +35,9 @@ import {
   Globe,
   X,
   Trash2,
-  AlertTriangle,
-  User
+  AlertTriangle
 } from 'lucide-react';
-import { Organisation, OrganizationType, Contact, ContactMethodType } from '@united-cars/crm-core';
+import { Organisation, OrganizationType, ContactMethodType } from '@united-cars/crm-core';
 import { COUNTRIES_REGIONS, getRegionsByCountryCode, hasRegions, getRegionDisplayName, getCitiesByRegion, hasCities } from '@/lib/countries-regions';
 import toast from 'react-hot-toast';
 
@@ -52,17 +51,9 @@ const escapeRegex = (str: string) => {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 };
 
-// Helper function to get main contact for an organisation
-const getMainContact = (orgId: string, contacts: Contact[]) => {
-  const orgContacts = contacts.filter(contact => contact.organisationId === orgId);
-  // Return the first contact or null if none exist
-  return orgContacts.length > 0 ? orgContacts[0] : null;
-};
-
 export default function OrganisationsPage() {
   const { user, loading: sessionLoading } = useSession();
   const [organisations, setOrganisations] = useState<Organisation[]>([]);
-  const [contacts, setContacts] = useState<Contact[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState<OrganisationFilters>({
     type: '',
@@ -131,11 +122,6 @@ export default function OrganisationsPage() {
       const response = await fetch(url);
       const data = await response.json();
       setOrganisations(data || []);
-
-      // Also fetch contacts to show main contact
-      const contactsResponse = await fetch('/api/crm/contacts');
-      const contactsData = await contactsResponse.json();
-      setContacts(contactsData || []);
     } catch (error) {
       console.error('Failed to load organisations:', error);
       toast.error('Failed to load organisations');
@@ -172,8 +158,8 @@ export default function OrganisationsPage() {
 
     try {
       const contactMethods = [];
-      if (email) contactMethods.push({ type: ContactMethodType.EMAIL_WORK, value: email });
-      if (phone) contactMethods.push({ type: ContactMethodType.PHONE_WORK, value: phone });
+      if (email) contactMethods.push({ type: ContactMethodType.EMAIL, value: email });
+      if (phone) contactMethods.push({ type: ContactMethodType.PHONE, value: phone });
 
       const response = await fetch('/api/crm/validate-duplicates', {
         method: 'POST',
@@ -674,7 +660,6 @@ export default function OrganisationsPage() {
               <TableHead>Company ID</TableHead>
               <TableHead>Type</TableHead>
               <TableHead>Country</TableHead>
-              <TableHead>Main Contact</TableHead>
               <TableHead>Contact Info</TableHead>
               <TableHead className="w-[50px]"></TableHead>
             </TableRow>
@@ -682,7 +667,7 @@ export default function OrganisationsPage() {
           <TableBody>
             {organisations.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8">
+                <TableCell colSpan={6} className="text-center py-8">
                   <div className="flex flex-col items-center space-y-3">
                     <Building2 className="h-12 w-12 text-text-tertiary" />
                     <div className="text-text-secondary">
@@ -727,44 +712,6 @@ export default function OrganisationsPage() {
                   </TableCell>
                   <TableCell>
                     {org.country || '-'}
-                  </TableCell>
-                  <TableCell>
-                    {(() => {
-                      const mainContact = getMainContact(org.id, contacts);
-                      if (!mainContact) {
-                        return <span className="text-sm text-gray-400">No main contact</span>;
-                      }
-
-                      const emailMethod = mainContact.contactMethods?.find(method => method.type.includes('EMAIL'));
-                      const phoneMethod = mainContact.contactMethods?.find(method => method.type.includes('PHONE'));
-
-                      return (
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-1">
-                            <User className="h-3 w-3 text-gray-400 flex-shrink-0" />
-                            <Link
-                              href={`/crm/contacts/${mainContact.id}`}
-                              className="text-sm text-blue-600 hover:text-blue-800 hover:underline font-medium"
-                              title={`${mainContact.firstName} ${mainContact.lastName}`}
-                            >
-                              {mainContact.firstName} {mainContact.lastName}
-                            </Link>
-                          </div>
-                          {emailMethod && (
-                            <div className="flex items-center gap-1 text-xs text-gray-500">
-                              <Mail className="h-2.5 w-2.5" />
-                              <span className="truncate">{emailMethod.value}</span>
-                            </div>
-                          )}
-                          {phoneMethod && (
-                            <div className="flex items-center gap-1 text-xs text-gray-500">
-                              <Phone className="h-2.5 w-2.5" />
-                              <span>{phoneMethod.value}</span>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })()}
                   </TableCell>
                   <TableCell>
                     <div className="space-y-1">

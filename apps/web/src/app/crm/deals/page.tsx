@@ -32,19 +32,19 @@ import toast from 'react-hot-toast';
 // Helper functions to get contact methods
 const getEmail = (contactMethods?: Array<{type: ContactMethodType, value: string, isPrimary?: boolean}>) => {
   return contactMethods?.find(cm => 
-    cm.type === ContactMethodType.EMAIL_WORK || 
-    cm.type === ContactMethodType.EMAIL_PERSONAL ||
-    cm.type === ContactMethodType.EMAIL_OTHER
+    cm.type === ContactMethodType.EMAIL || 
+    cm.type === ContactMethodType.EMAIL ||
+    cm.type === ContactMethodType.EMAIL
   )?.value;
 };
 
 const getPhone = (contactMethods?: Array<{type: ContactMethodType, value: string, isPrimary?: boolean}>) => {
   return contactMethods?.find(cm => 
-    cm.type === ContactMethodType.PHONE_WORK || 
-    cm.type === ContactMethodType.PHONE_HOME ||
-    cm.type === ContactMethodType.PHONE_MOBILE ||
-    cm.type === ContactMethodType.PHONE_OTHER ||
-    cm.type === ContactMethodType.PHONE_FAX
+    cm.type === ContactMethodType.PHONE || 
+    cm.type === ContactMethodType.PHONE ||
+    cm.type === ContactMethodType.PHONE ||
+    cm.type === ContactMethodType.PHONE ||
+    cm.type === ContactMethodType.PHONE
   )?.value;
 };
 

@@ -58,14 +58,14 @@ const mockOrganizations: UnifiedOrganization[] = [
       contactMethods: [
         {
           id: 'cm-1',
-          type: ContactMethodType.EMAIL_WORK,
+          type: ContactMethodType.EMAIL,
           value: 'info@autodeal.com',
           isPrimary: true,
           label: 'Primary Email'
         },
         {
           id: 'cm-2',
-          type: ContactMethodType.PHONE_WORK,
+          type: ContactMethodType.PHONE,
           value: '+1-555-0123',
           isPrimary: true,
           label: 'Main Office'
@@ -98,7 +98,7 @@ const mockOrganizations: UnifiedOrganization[] = [
       contactMethods: [
         {
           id: 'cm-3',
-          type: ContactMethodType.EMAIL_WORK,
+          type: ContactMethodType.EMAIL,
           value: 'houston@copart.com',
           isPrimary: true
         }
@@ -129,7 +129,7 @@ const mockOrganizations: UnifiedOrganization[] = [
       contactMethods: [
         {
           id: 'cm-4',
-          type: ContactMethodType.EMAIL_WORK,
+          type: ContactMethodType.EMAIL,
           value: 'dispatch@swift-transport.com',
           isPrimary: true
         }
@@ -194,7 +194,7 @@ export default function OrganizationManagementPage() {
     type: UnifiedOrganizationType.DEALER,
     contactMethods: [
       {
-        type: ContactMethodType.EMAIL_WORK,
+        type: ContactMethodType.EMAIL,
         value: '',
         isPrimary: true,
         label: 'Primary Email'
@@ -312,7 +312,7 @@ export default function OrganizationManagementPage() {
       type: UnifiedOrganizationType.DEALER,
       contactMethods: [
         {
-          type: ContactMethodType.EMAIL_WORK,
+          type: ContactMethodType.EMAIL,
           value: '',
           isPrimary: true,
           label: 'Primary Email'
@@ -386,7 +386,7 @@ export default function OrganizationManagementPage() {
       contactMethods: [
         ...prev.contactMethods,
         {
-          type: ContactMethodType.EMAIL_WORK,
+          type: ContactMethodType.EMAIL,
           value: '',
           isPrimary: false,
           label: ''
@@ -763,11 +763,11 @@ export default function OrganizationManagementPage() {
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value={ContactMethodType.EMAIL_WORK}>Work Email</SelectItem>
-                              <SelectItem value={ContactMethodType.EMAIL_PERSONAL}>Personal Email</SelectItem>
-                              <SelectItem value={ContactMethodType.PHONE_WORK}>Work Phone</SelectItem>
-                              <SelectItem value={ContactMethodType.PHONE_MOBILE}>Mobile Phone</SelectItem>
-                              <SelectItem value={ContactMethodType.PHONE_FAX}>Fax</SelectItem>
+                              <SelectItem value={ContactMethodType.EMAIL}>Work Email</SelectItem>
+                              <SelectItem value={ContactMethodType.EMAIL}>Personal Email</SelectItem>
+                              <SelectItem value={ContactMethodType.PHONE}>Work Phone</SelectItem>
+                              <SelectItem value={ContactMethodType.PHONE}>Mobile Phone</SelectItem>
+                              <SelectItem value={ContactMethodType.PHONE}>Fax</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>

@@ -65,14 +65,14 @@ const mockContacts: EnhancedContact[] = [
     contactMethods: [
       {
         id: 'cm-1',
-        type: ContactMethodType.EMAIL_WORK,
+        type: ContactMethodType.EMAIL,
         value: 'john.thompson@autodeal.com',
         isPrimary: true,
         label: 'Work Email'
       },
       {
         id: 'cm-2',
-        type: ContactMethodType.PHONE_MOBILE,
+        type: ContactMethodType.PHONE,
         value: '+1-555-0123',
         isPrimary: false,
         label: 'Mobile'
@@ -108,14 +108,14 @@ const mockContacts: EnhancedContact[] = [
     contactMethods: [
       {
         id: 'cm-3',
-        type: ContactMethodType.EMAIL_WORK,
+        type: ContactMethodType.EMAIL,
         value: 'sarah.chen@copart.com',
         isPrimary: true,
         label: 'Work Email'
       },
       {
         id: 'cm-4',
-        type: ContactMethodType.PHONE_WORK,
+        type: ContactMethodType.PHONE,
         value: '+1-555-0456',
         isPrimary: true,
         label: 'Office Direct'
@@ -143,14 +143,14 @@ const mockContacts: EnhancedContact[] = [
     contactMethods: [
       {
         id: 'cm-5',
-        type: ContactMethodType.EMAIL_WORK,
+        type: ContactMethodType.EMAIL,
         value: 'mike@swift-transport.com',
         isPrimary: true,
         label: 'Work Email'
       },
       {
         id: 'cm-6',
-        type: ContactMethodType.EMAIL_WORK,
+        type: ContactMethodType.EMAIL,
         value: 'mike.rodriguez@swift-transport.com',
         isPrimary: false,
         label: 'Alternative Email'
@@ -178,7 +178,7 @@ const mockContacts: EnhancedContact[] = [
     contactMethods: [
       {
         id: 'cm-7',
-        type: ContactMethodType.EMAIL_WORK,
+        type: ContactMethodType.EMAIL,
         value: 'j.thompson@autodeal.com',
         isPrimary: true,
         label: 'Work Email'
@@ -247,7 +247,7 @@ export default function ContactManagementPage() {
     phone: '',
     contactMethods: [
       {
-        type: ContactMethodType.EMAIL_WORK,
+        type: ContactMethodType.EMAIL,
         value: '',
         isPrimary: true,
         label: 'Primary Email'
@@ -502,7 +502,7 @@ export default function ContactManagementPage() {
       phone: '',
       contactMethods: [
         {
-          type: ContactMethodType.EMAIL_WORK,
+          type: ContactMethodType.EMAIL,
           value: '',
           isPrimary: true,
           label: 'Primary Email'
@@ -560,7 +560,7 @@ export default function ContactManagementPage() {
       contactMethods: [
         ...prev.contactMethods,
         {
-          type: ContactMethodType.EMAIL_WORK,
+          type: ContactMethodType.EMAIL,
           value: '',
           isPrimary: false,
           label: ''
@@ -959,11 +959,11 @@ export default function ContactManagementPage() {
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value={ContactMethodType.EMAIL_WORK}>Work Email</SelectItem>
-                              <SelectItem value={ContactMethodType.EMAIL_PERSONAL}>Personal Email</SelectItem>
-                              <SelectItem value={ContactMethodType.PHONE_WORK}>Work Phone</SelectItem>
-                              <SelectItem value={ContactMethodType.PHONE_MOBILE}>Mobile Phone</SelectItem>
-                              <SelectItem value={ContactMethodType.PHONE_FAX}>Fax</SelectItem>
+                              <SelectItem value={ContactMethodType.EMAIL}>Work Email</SelectItem>
+                              <SelectItem value={ContactMethodType.EMAIL}>Personal Email</SelectItem>
+                              <SelectItem value={ContactMethodType.PHONE}>Work Phone</SelectItem>
+                              <SelectItem value={ContactMethodType.PHONE}>Mobile Phone</SelectItem>
+                              <SelectItem value={ContactMethodType.PHONE}>Fax</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>

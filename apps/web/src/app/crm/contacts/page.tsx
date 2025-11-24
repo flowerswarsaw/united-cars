@@ -190,8 +190,8 @@ export default function ContactsPage() {
 
     try {
       const contactMethods = [];
-      if (email) contactMethods.push({ type: ContactMethodType.EMAIL_WORK, value: email });
-      if (phone) contactMethods.push({ type: ContactMethodType.PHONE_MOBILE, value: phone });
+      if (email) contactMethods.push({ type: ContactMethodType.EMAIL, value: email });
+      if (phone) contactMethods.push({ type: ContactMethodType.PHONE, value: phone });
 
       const response = await fetch('/api/crm/validate-duplicates', {
         method: 'POST',

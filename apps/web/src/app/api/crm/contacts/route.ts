@@ -85,6 +85,7 @@ export async function POST(request: NextRequest) {
     const contactData = {
       firstName: body.firstName || '',
       lastName: body.lastName || '',
+      type: body.type || 'SALES', // Default to SALES if not provided
       title: body.title || '',
       organisationId: body.organisationId || null,
       department: body.department || '',

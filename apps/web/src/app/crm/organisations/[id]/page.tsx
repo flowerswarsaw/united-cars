@@ -17,7 +17,7 @@ import { LoadingState } from '@/components/ui/loading-state';
 import { useSession } from '@/hooks/useSession';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Organisation, Contact, Deal, OrganizationType, ContactMethod, ContactMethodType, SocialMediaLink, SocialPlatform, OrganisationConnection, TypeSpecificFieldDef, CustomFieldType, getTypeSpecificFields, ContactType } from '@united-cars/crm-core';
+import { Organisation, Contact, Deal, OrganizationType, ContactMethod, ContactMethodType, SocialMediaLink, SocialPlatform, OrganisationConnection, TypeSpecificFieldDef, CustomFieldType, getTypeSpecificFields, ContactType, Pipeline, Stage } from '@united-cars/crm-core';
 import { COUNTRIES_REGIONS, getRegionsByCountryCode, hasRegions, getRegionDisplayName, getCitiesByRegion, hasCities } from '@/lib/countries-regions';
 import { CrmBadge } from '@united-cars/ui';
 import toast from 'react-hot-toast';
@@ -31,6 +31,7 @@ export default function OrganisationDetailPage() {
   const [organisation, setOrganisation] = useState<Organisation | null>(null);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [deals, setDeals] = useState<Deal[]>([]);
+  const [pipelines, setPipelines] = useState<Pipeline[]>([]);
   const [connections, setConnections] = useState<OrganisationConnection[]>([]);
   const [connectedOrgs, setConnectedOrgs] = useState<Organisation[]>([]);
   const [allContacts, setAllContacts] = useState<Contact[]>([]);
@@ -74,7 +75,7 @@ export default function OrganisationDetailPage() {
     value: '',
     stage: '',
     contactId: '',
-    pipeline: 'DEALER'
+    pipeline: ''
   });
 
   // Section-specific editing states (matching contact page pattern)
@@ -90,6 +91,7 @@ export default function OrganisationDetailPage() {
   // Section-specific form data
   const [basicInfoData, setBasicInfoData] = useState({
     name: '',
+    companyId: '',
     type: OrganizationType.DEALER,
     size: ''
   });
@@ -136,6 +138,7 @@ export default function OrganisationDetailPage() {
         // Initialize section-specific data
         setBasicInfoData({
           name: data.name || '',
+          companyId: data.companyId || '',
           type: data.type || OrganizationType.DEALER,
           size: data.size || ''
         });
@@ -197,6 +200,11 @@ export default function OrganisationDetailPage() {
       const allDeals = await dealsResponse.json();
       const orgDeals = allDeals.filter((d: Deal) => d.organisationId === orgId);
       setDeals(orgDeals);
+
+      // Load pipelines
+      const pipelinesResponse = await fetch('/api/crm/pipelines');
+      const pipelinesData = await pipelinesResponse.json();
+      setPipelines(pipelinesData);
 
       // Load organisation connections
       const connectionsResponse = await fetch(`/api/crm/organisation-connections?orgId=${orgId}`);
@@ -274,6 +282,17 @@ export default function OrganisationDetailPage() {
       }
     }
 
+    // Validation for contact info section
+    if (section === 'contactInfo') {
+      // Filter out empty contact methods
+      const validContactMethods = data.contactMethods?.filter((method: any) =>
+        method.value?.trim()
+      ) || [];
+
+      // Update data with filtered contact methods
+      data = { ...data, contactMethods: validContactMethods };
+    }
+
     try {
       const response = await fetch(`/api/crm/organisations/${orgId}`, {
         method: 'PATCH',
@@ -337,7 +356,7 @@ export default function OrganisationDetailPage() {
   const addContactMethod = () => {
     const newMethod: ContactMethod = {
       id: Date.now().toString(),
-      type: ContactMethodType.EMAIL_BUSINESS,
+      type: ContactMethodType.EMAIL,
       value: '',
       label: ''
     };
@@ -427,7 +446,7 @@ export default function OrganisationDetailPage() {
   };
 
   const handleCreateDeal = async () => {
-    if (!dealFormData.title || !dealFormData.stage) {
+    if (!dealFormData.title || !dealFormData.pipeline || !dealFormData.stage) {
       toast.error('Please fill in all required fields');
       return;
     }
@@ -444,9 +463,9 @@ export default function OrganisationDetailPage() {
           value: dealFormData.value ? parseFloat(dealFormData.value) : undefined,
           organisationId: orgId,
           contactId: dealFormData.contactId || undefined,
-          pipeline: dealFormData.pipeline,
-          stage: dealFormData.stage,
-          status: 'ACTIVE'
+          pipelineId: dealFormData.pipeline,
+          stageId: dealFormData.stage,
+          status: 'OPEN'
         })
       });
 
@@ -459,7 +478,7 @@ export default function OrganisationDetailPage() {
           value: '',
           stage: '',
           contactId: '',
-          pipeline: 'DEALER'
+          pipeline: ''
         });
         await fetchRelatedData(); // Reload deals
       } else {
@@ -784,6 +803,23 @@ export default function OrganisationDetailPage() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div>
+                    <Label htmlFor="companyId">Company ID</Label>
+                    {editingSections.basicInfo ? (
+                      <Input
+                        id="companyId"
+                        value={basicInfoData.companyId}
+                        onChange={(e) => setBasicInfoData({ ...basicInfoData, companyId: e.target.value })}
+                        placeholder="e.g., ORG-001, DEALER-123"
+                        className="mt-1 font-mono"
+                      />
+                    ) : (
+                      <p className="text-sm text-gray-900 mt-1 font-mono">
+                        {organisation.companyId || 'Not specified'}
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
                     <Label htmlFor="name">Organisation Name <span className="text-red-500">*</span></Label>
                     {editingSections.basicInfo ? (
                       <Input
@@ -863,44 +899,56 @@ export default function OrganisationDetailPage() {
                     {editingSections.contactInfo ? (
                       <div className="mt-1 space-y-3">
                         {contactInfoData.contactMethods.map((method, index) => (
-                          <div key={method.id || index} className="flex gap-2 items-start">
-                            <Select
-                              value={method.type}
-                              onValueChange={(value) => updateContactMethod(index, 'type', value)}
-                            >
-                              <SelectTrigger className="w-32">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {Object.values(ContactMethodType).map((type) => (
-                                  <SelectItem key={type} value={type}>
-                                    {type.toLowerCase().replace('_', ' ')}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <Input
-                              value={method.value}
-                              onChange={(e) => updateContactMethod(index, 'value', e.target.value)}
-                              placeholder="Contact value"
-                              className="flex-1"
-                            />
-                            <Input
-                              value={method.label || ''}
-                              onChange={(e) => updateContactMethod(index, 'label', e.target.value)}
-                              placeholder="Label"
-                              className="w-24"
-                            />
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => removeContactMethod(index)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                          <div key={method.id || index} className="p-4 border rounded-lg bg-gray-50">
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                              <div>
+                                <Label className="text-xs">Type</Label>
+                                <Select
+                                  value={method.type}
+                                  onValueChange={(value) => updateContactMethod(index, 'type', value)}
+                                >
+                                  <SelectTrigger className="mt-1">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value={ContactMethodType.EMAIL}>Email</SelectItem>
+                                    <SelectItem value={ContactMethodType.PHONE}>Phone</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div>
+                                <Label className="text-xs">Value</Label>
+                                <Input
+                                  value={method.value}
+                                  onChange={(e) => updateContactMethod(index, 'value', e.target.value)}
+                                  placeholder={method.type === ContactMethodType.EMAIL ? 'email@example.com' : '+1 (555) 123-4567'}
+                                  className="mt-1"
+                                />
+                              </div>
+                              <div>
+                                <Label className="text-xs">Label (optional)</Label>
+                                <Input
+                                  value={method.label || ''}
+                                  onChange={(e) => updateContactMethod(index, 'label', e.target.value)}
+                                  placeholder="e.g., Work, Mobile, Direct"
+                                  className="mt-1"
+                                />
+                              </div>
+                              <div className="flex items-end">
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => removeContactMethod(index)}
+                                  className="text-red-600 hover:text-red-700 w-full"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </div>
                           </div>
                         ))}
-                        <Button variant="outline" size="sm" onClick={addContactMethod}>
+                        <Button variant="outline" size="sm" onClick={addContactMethod} className="w-full">
                           <Plus className="h-4 w-4 mr-2" />
                           Add Contact Method
                         </Button>
@@ -908,38 +956,27 @@ export default function OrganisationDetailPage() {
                     ) : (
                       <div className="mt-1">
                         {organisation.contactMethods && organisation.contactMethods.length > 0 ? (
-                          <div className="space-y-3">
-                            <div>
-                              <Label className="text-xs font-medium text-gray-700 mb-1 block">Email Addresses</Label>
-                              <div className="space-y-1">
-                                {organisation.contactMethods.filter(m => m.type.includes('EMAIL')).map((method, index) => (
-                                  <div key={method.id || `email-${index}`} className="flex items-center space-x-2 text-sm">
-                                    <Mail className="h-3 w-3 text-gray-500" />
-                                    <span>{method.value}</span>
-                                    {method.label && <span className="text-xs text-gray-500">({method.label})</span>}
-                                  </div>
-                                ))}
-                                {organisation.contactMethods.filter(m => m.type.includes('EMAIL')).length === 0 && (
-                                  <p className="text-xs text-gray-500">No email addresses</p>
-                                )}
+                          <div className="space-y-2">
+                            {organisation.contactMethods.map((method, index) => (
+                              <div key={method.id || `method-${index}`} className="flex items-start gap-3 p-2 rounded hover:bg-gray-50">
+                                <div className="flex items-center gap-2 min-w-[80px]">
+                                  {method.type === ContactMethodType.EMAIL ? (
+                                    <Mail className="h-4 w-4 text-gray-500" />
+                                  ) : (
+                                    <Phone className="h-4 w-4 text-gray-500" />
+                                  )}
+                                  <span className="text-xs font-medium text-gray-600">
+                                    {method.type === ContactMethodType.EMAIL ? 'Email' : 'Phone'}
+                                  </span>
+                                </div>
+                                <div className="flex-1 flex items-center gap-2">
+                                  <span className="text-sm text-gray-900">{method.value}</span>
+                                  {method.label && (
+                                    <span className="text-xs text-gray-500 italic">({method.label})</span>
+                                  )}
+                                </div>
                               </div>
-                            </div>
-
-                            <div>
-                              <Label className="text-xs font-medium text-gray-700 mb-1 block">Phone Numbers</Label>
-                              <div className="space-y-1">
-                                {organisation.contactMethods.filter(m => m.type.includes('PHONE')).map((method, index) => (
-                                  <div key={method.id || `phone-${index}`} className="flex items-center space-x-2 text-sm">
-                                    <Phone className="h-3 w-3 text-gray-500" />
-                                    <span>{method.value}</span>
-                                    {method.label && <span className="text-xs text-gray-500">({method.label})</span>}
-                                  </div>
-                                ))}
-                                {organisation.contactMethods.filter(m => m.type.includes('PHONE')).length === 0 && (
-                                  <p className="text-xs text-gray-500">No phone numbers</p>
-                                )}
-                              </div>
-                            </div>
+                            ))}
                           </div>
                         ) : (
                           <p className="text-sm text-gray-500">No contact methods available</p>
@@ -1628,7 +1665,7 @@ export default function OrganisationDetailPage() {
                   <p className="text-sm text-muted-foreground mb-4">
                     Create deals to track sales opportunities with this organisation
                   </p>
-                  <Button onClick={() => router.push('/crm/deals?orgId=' + orgId)}>
+                  <Button onClick={() => setIsDealCreateOpen(true)}>
                     <Plus className="h-4 w-4 mr-2" />
                     Create First Deal
                   </Button>
@@ -2220,17 +2257,20 @@ export default function OrganisationDetailPage() {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="deal-pipeline">Pipeline</Label>
+                <Label htmlFor="deal-pipeline">Pipeline *</Label>
                 <Select
                   value={dealFormData.pipeline}
-                  onValueChange={(value) => setDealFormData({ ...dealFormData, pipeline: value })}
+                  onValueChange={(value) => setDealFormData({ ...dealFormData, pipeline: value, stage: '' })}
                 >
                   <SelectTrigger className="mt-1">
                     <SelectValue placeholder="Select pipeline" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="DEALER">Dealer Pipeline</SelectItem>
-                    <SelectItem value="INTEGRATION">Integration Pipeline</SelectItem>
+                    {pipelines.map((pipeline) => (
+                      <SelectItem key={pipeline.id} value={pipeline.id}>
+                        {pipeline.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -2239,28 +2279,20 @@ export default function OrganisationDetailPage() {
                 <Select
                   value={dealFormData.stage}
                   onValueChange={(value) => setDealFormData({ ...dealFormData, stage: value })}
+                  disabled={!dealFormData.pipeline}
                 >
                   <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Select stage" />
+                    <SelectValue placeholder={dealFormData.pipeline ? "Select stage" : "Select pipeline first"} />
                   </SelectTrigger>
                   <SelectContent>
-                    {dealFormData.pipeline === 'DEALER' ? (
-                      <>
-                        <SelectItem value="LEAD">Lead</SelectItem>
-                        <SelectItem value="QUALIFICATION">Qualification</SelectItem>
-                        <SelectItem value="PROPOSAL">Proposal</SelectItem>
-                        <SelectItem value="NEGOTIATION">Negotiation</SelectItem>
-                        <SelectItem value="CLOSING">Closing</SelectItem>
-                      </>
-                    ) : (
-                      <>
-                        <SelectItem value="DISCOVERY">Discovery</SelectItem>
-                        <SelectItem value="TECHNICAL_REVIEW">Technical Review</SelectItem>
-                        <SelectItem value="INTEGRATION">Integration</SelectItem>
-                        <SelectItem value="TESTING">Testing</SelectItem>
-                        <SelectItem value="DEPLOYMENT">Deployment</SelectItem>
-                      </>
-                    )}
+                    {pipelines
+                      .find((p) => p.id === dealFormData.pipeline)
+                      ?.stages?.sort((a, b) => a.order - b.order)
+                      .map((stage) => (
+                        <SelectItem key={stage.id} value={stage.id}>
+                          {stage.name}
+                        </SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
               </div>

@@ -179,13 +179,25 @@ export default function ContactDetailPage() {
 
     // Validation for contact info section
     if (section === 'contactInfo') {
-      const hasPhone = data.contactMethods?.some((method: any) =>
-        method.type?.includes('PHONE') && method.value?.trim()
+      console.log('Raw contact methods before filter:', data.contactMethods);
+
+      // Filter out empty contact methods
+      const validContactMethods = data.contactMethods?.filter((method: any) =>
+        method.value?.trim()
+      ) || [];
+
+      console.log('Filtered contact methods:', validContactMethods);
+
+      const hasPhone = validContactMethods.some((method: any) =>
+        method.type === ContactMethodType.PHONE && method.value?.trim()
       );
       if (!hasPhone) {
         toast.error('At least one phone number is required');
         return;
       }
+
+      // Update data with filtered contact methods
+      data = { ...data, contactMethods: validContactMethods };
     }
 
     // Validation for address section
@@ -345,8 +357,9 @@ export default function ContactDetailPage() {
   const addContactMethod = () => {
     const newMethod: ContactMethod = {
       id: `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      type: ContactMethodType.EMAIL_WORK,
+      type: ContactMethodType.EMAIL,
       value: '',
+      label: '',
       isPrimary: false
     };
     setContactInfoData(prev => ({
@@ -662,7 +675,7 @@ export default function ContactDetailPage() {
                       <div className="space-y-3 mt-1">
                         {contactInfoData.contactMethods.map((method, index) => (
                           <div key={method.id} className="p-4 border rounded-lg bg-gray-50">
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                               <div>
                                 <Label className="text-xs">Type</Label>
                                 <Select
@@ -673,14 +686,8 @@ export default function ContactDetailPage() {
                                     <SelectValue />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    <SelectItem value={ContactMethodType.EMAIL_WORK}>Email (Work)</SelectItem>
-                                    <SelectItem value={ContactMethodType.EMAIL_PERSONAL}>Email (Personal)</SelectItem>
-                                    <SelectItem value={ContactMethodType.EMAIL_OTHER}>Email (Other)</SelectItem>
-                                    <SelectItem value={ContactMethodType.PHONE_WORK}>Phone (Work)</SelectItem>
-                                    <SelectItem value={ContactMethodType.PHONE_MOBILE}>Phone (Mobile)</SelectItem>
-                                    <SelectItem value={ContactMethodType.PHONE_HOME}>Phone (Home)</SelectItem>
-                                    <SelectItem value={ContactMethodType.PHONE_FAX}>Phone (Fax)</SelectItem>
-                                    <SelectItem value={ContactMethodType.PHONE_OTHER}>Phone (Other)</SelectItem>
+                                    <SelectItem value={ContactMethodType.EMAIL}>Email</SelectItem>
+                                    <SelectItem value={ContactMethodType.PHONE}>Phone</SelectItem>
                                   </SelectContent>
                                 </Select>
                               </div>
@@ -689,7 +696,16 @@ export default function ContactDetailPage() {
                                 <Input
                                   value={method.value}
                                   onChange={(e) => updateContactMethod(method.id!, { value: e.target.value })}
-                                  placeholder={method.type.includes('EMAIL') ? 'email@example.com' : '+1 (555) 123-4567'}
+                                  placeholder={method.type === ContactMethodType.EMAIL ? 'email@example.com' : '+1 (555) 123-4567'}
+                                  className="mt-1"
+                                />
+                              </div>
+                              <div>
+                                <Label className="text-xs">Label (optional)</Label>
+                                <Input
+                                  value={method.label || ''}
+                                  onChange={(e) => updateContactMethod(method.id!, { label: e.target.value })}
+                                  placeholder="e.g., Work, Mobile, Direct"
                                   className="mt-1"
                                 />
                               </div>
@@ -718,32 +734,33 @@ export default function ContactDetailPage() {
                         </Button>
                       </div>
                     ) : (
-                      <div className="space-y-3 mt-1">
-                        <div>
-                          <Label className="text-xs font-medium text-gray-700 mb-1 block">Email Addresses</Label>
-                          <div className="space-y-1">
-                            {contact.contactMethods?.filter(m => m.type.includes('EMAIL')).map((method, index) => (
-                              <div key={method.id || `email-${index}`} className="flex items-center space-x-2 text-sm">
-                                <Mail className="h-3 w-3 text-gray-500" />
-                                <span>{method.value}</span>
-                                {method.label && <span className="text-xs text-gray-500">({method.label})</span>}
+                      <div className="mt-1">
+                        {contact.contactMethods && contact.contactMethods.length > 0 ? (
+                          <div className="space-y-2">
+                            {contact.contactMethods.map((method, index) => (
+                              <div key={method.id || `method-${index}`} className="flex items-start gap-3 p-2 rounded hover:bg-gray-50">
+                                <div className="flex items-center gap-2 min-w-[80px]">
+                                  {method.type === ContactMethodType.EMAIL ? (
+                                    <Mail className="h-4 w-4 text-gray-500" />
+                                  ) : (
+                                    <Phone className="h-4 w-4 text-gray-500" />
+                                  )}
+                                  <span className="text-xs font-medium text-gray-600">
+                                    {method.type === ContactMethodType.EMAIL ? 'Email' : 'Phone'}
+                                  </span>
+                                </div>
+                                <div className="flex-1 flex items-center gap-2">
+                                  <span className="text-sm text-gray-900">{method.value}</span>
+                                  {method.label && (
+                                    <span className="text-xs text-gray-500 italic">({method.label})</span>
+                                  )}
+                                </div>
                               </div>
-                            )) || <p className="text-xs text-gray-500">No email addresses</p>}
+                            ))}
                           </div>
-                        </div>
-
-                        <div>
-                          <Label className="text-xs font-medium text-gray-700 mb-1 block">Phone Numbers</Label>
-                          <div className="space-y-1">
-                            {contact.contactMethods?.filter(m => m.type.includes('PHONE')).map((method, index) => (
-                              <div key={method.id || `phone-${index}`} className="flex items-center space-x-2 text-sm">
-                                <Phone className="h-3 w-3 text-gray-500" />
-                                <span>{method.value}</span>
-                                {method.label && <span className="text-xs text-gray-500">({method.label})</span>}
-                              </div>
-                            )) || <p className="text-xs text-gray-500">No phone numbers</p>}
-                          </div>
-                        </div>
+                        ) : (
+                          <p className="text-sm text-gray-500">No contact methods available</p>
+                        )}
                       </div>
                     )}
                   </div>

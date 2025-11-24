@@ -34,28 +34,35 @@ export async function PATCH(
     const body = await request.json();
     const validated = updateContactSchema.parse(body);
     const { id } = await params;
-    
-    const contact = await contactRepository.update(id, validated);
-    
+
+    // Don't allow empty contactMethods array - preserve existing if not provided or empty
+    const updateData = { ...validated };
+    if (!updateData.contactMethods || updateData.contactMethods.length === 0) {
+      delete updateData.contactMethods;
+    }
+
+    const contact = await contactRepository.update(id, updateData);
+
     if (!contact) {
       return NextResponse.json(
         { error: 'Contact not found' },
         { status: 404 }
       );
     }
-    
+
     await jsonPersistence.save();
     return NextResponse.json(contact);
   } catch (error: any) {
+    console.error('Error updating contact:', error);
     if (error.name === 'ZodError') {
       return NextResponse.json(
         { error: 'Invalid input', details: error.errors },
         { status: 400 }
       );
     }
-    
+
     return NextResponse.json(
-      { error: 'Failed to update contact' },
+      { error: 'Failed to update contact', details: error.message },
       { status: 500 }
     );
   }
