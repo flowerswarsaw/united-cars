@@ -96,3 +96,11 @@ playwright/.cache/
 *.backup
 *.bak
 *.tmp
+*-old.*
+
+# TypeScript build info
+*.tsbuildinfo
+
+# CRM development data
+.crm-data/
+**/.crm-data/data.json
