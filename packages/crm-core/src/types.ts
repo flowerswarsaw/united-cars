@@ -79,14 +79,8 @@ export enum CustomFieldType {
 }
 
 export enum ContactMethodType {
-  EMAIL_WORK = 'EMAIL_WORK',
-  EMAIL_PERSONAL = 'EMAIL_PERSONAL',
-  EMAIL_OTHER = 'EMAIL_OTHER',
-  PHONE_MOBILE = 'PHONE_MOBILE',
-  PHONE_WORK = 'PHONE_WORK',
-  PHONE_HOME = 'PHONE_HOME',
-  PHONE_FAX = 'PHONE_FAX',
-  PHONE_OTHER = 'PHONE_OTHER'
+  EMAIL = 'EMAIL',
+  PHONE = 'PHONE'
 }
 
 export enum SocialPlatform {

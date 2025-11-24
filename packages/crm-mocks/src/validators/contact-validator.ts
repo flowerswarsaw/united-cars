@@ -117,8 +117,14 @@ class RequiredLastNameRule implements BusinessRule<Contact> {
 
 class RequiredContactMethodRule implements BusinessRule<Contact> {
   name = 'RequiredContactMethod';
-  
-  validate(entity: Contact): BusinessRuleValidationResult {
+
+  validate(entity: Contact, context?: any): BusinessRuleValidationResult {
+    // Only enforce this rule during creation, not during updates
+    // This allows updating other fields without needing to send contact methods
+    if (context?.operation === 'update') {
+      return { valid: true, errors: [] };
+    }
+
     if (!entity.contactMethods || entity.contactMethods.length === 0) {
       return {
         valid: false,
@@ -129,7 +135,7 @@ class RequiredContactMethodRule implements BusinessRule<Contact> {
         }]
       };
     }
-    
+
     return { valid: true, errors: [] };
   }
 }

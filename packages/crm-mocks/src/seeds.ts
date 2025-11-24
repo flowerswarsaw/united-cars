@@ -61,35 +61,35 @@ const organisations = [
     contactMethods: [
       {
         id: 'cm_1_1',
-        type: ContactMethodType.EMAIL_WORK,
+        type: ContactMethodType.EMAIL,
         value: 'info@automax.com',
         isPrimary: true,
         label: 'Main Office'
       },
       {
         id: 'cm_1_2',
-        type: ContactMethodType.EMAIL_WORK,
+        type: ContactMethodType.EMAIL,
         value: 'sales@automax.com',
         isPrimary: false,
         label: 'Sales Department'
       },
       {
         id: 'cm_1_3',
-        type: ContactMethodType.PHONE_WORK,
+        type: ContactMethodType.PHONE,
         value: '+1-555-0100',
         isPrimary: true,
         label: 'Main Office'
       },
       {
         id: 'cm_1_4',
-        type: ContactMethodType.PHONE_MOBILE,
+        type: ContactMethodType.PHONE,
         value: '+1-555-0199',
         isPrimary: false,
         label: 'Emergency Line'
       },
       {
         id: 'cm_1_5',
-        type: ContactMethodType.PHONE_FAX,
+        type: ContactMethodType.PHONE,
         value: '+1-555-0101',
         isPrimary: false,
         label: 'Fax'
@@ -424,28 +424,28 @@ const contacts = [
     contactMethods: [
       {
         id: 'cc_1_1',
-        type: ContactMethodType.EMAIL_WORK,
+        type: ContactMethodType.EMAIL,
         value: 'j.smith@automax.com',
         isPrimary: true,
         label: 'Work Email'
       },
       {
         id: 'cc_1_2',
-        type: ContactMethodType.EMAIL_PERSONAL,
+        type: ContactMethodType.EMAIL,
         value: 'john.smith.personal@gmail.com',
         isPrimary: false,
         label: 'Personal Email'
       },
       {
         id: 'cc_1_3',
-        type: ContactMethodType.PHONE_WORK,
+        type: ContactMethodType.PHONE,
         value: '+1-555-0200',
         isPrimary: true,
         label: 'Office Direct'
       },
       {
         id: 'cc_1_4',
-        type: ContactMethodType.PHONE_MOBILE,
+        type: ContactMethodType.PHONE,
         value: '+1-555-0299',
         isPrimary: false,
         label: 'Mobile'

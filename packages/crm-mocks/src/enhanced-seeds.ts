@@ -70,7 +70,7 @@ export const enhancedOrganisations: EnhancedOrganisation[] = [
     contactMethods: [
       {
         id: 'cm-admin-001-1',
-        type: ContactMethodType.EMAIL_WORK,
+        type: ContactMethodType.EMAIL,
         value: 'info@automaxluxury.com',
         primary: true,
         verified: true,
@@ -79,7 +79,7 @@ export const enhancedOrganisations: EnhancedOrganisation[] = [
       },
       {
         id: 'cm-admin-001-2',
-        type: ContactMethodType.PHONE_WORK,
+        type: ContactMethodType.PHONE,
         value: '+1-555-LUXURY',
         primary: true,
         verified: true,
@@ -128,7 +128,7 @@ export const enhancedOrganisations: EnhancedOrganisation[] = [
     contactMethods: [
       {
         id: 'cm-senior-001-1',
-        type: ContactMethodType.EMAIL_WORK,
+        type: ContactMethodType.EMAIL,
         value: 'contact@premiermotorsec.com',
         primary: true,
         verified: true,
@@ -167,7 +167,7 @@ export const enhancedOrganisations: EnhancedOrganisation[] = [
     contactMethods: [
       {
         id: 'cm-junior-001-1',
-        type: ContactMethodType.EMAIL_WORK,
+        type: ContactMethodType.EMAIL,
         value: 'info@citycarsdirect.com',
         primary: true,
         verified: false,
@@ -253,7 +253,7 @@ export function createTestScenarios() {
         contactMethods: [
           {
             id: 'conflict-email',
-            type: ContactMethodType.EMAIL_WORK,
+            type: ContactMethodType.EMAIL,
             value: 'info@automaxluxury.com', // Same as existing org
             primary: true,
             verified: false,

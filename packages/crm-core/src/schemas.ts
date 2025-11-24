@@ -54,11 +54,7 @@ export const organisationSchema = z.object({
   type: z.nativeEnum(OrganizationType),
   contactMethods: z.array(contactMethodSchema).min(1).refine((methods) =>
     methods.some(method =>
-      method.type === 'PHONE_MOBILE' ||
-      method.type === 'PHONE_WORK' ||
-      method.type === 'PHONE_HOME' ||
-      method.type === 'PHONE_FAX' ||
-      method.type === 'PHONE_OTHER'
+      method.type === 'PHONE'
     ),
     { message: "At least one phone contact method is required" }
   ),
@@ -85,11 +81,7 @@ export const contactSchema = z.object({
   lastName: z.string().min(1),
   contactMethods: z.array(contactMethodSchema).min(1).refine((methods) =>
     methods.some(method =>
-      method.type === 'PHONE_MOBILE' ||
-      method.type === 'PHONE_WORK' ||
-      method.type === 'PHONE_HOME' ||
-      method.type === 'PHONE_FAX' ||
-      method.type === 'PHONE_OTHER'
+      method.type === 'PHONE'
     ),
     { message: "At least one phone contact method is required" }
   ),

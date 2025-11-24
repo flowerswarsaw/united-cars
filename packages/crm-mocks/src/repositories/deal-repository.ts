@@ -22,11 +22,33 @@ class DealRepositoryImpl extends BaseRepository<Deal> implements IDealRepository
   }
 
   async create(data: Omit<Deal, 'id' | 'tenantId' | 'createdAt' | 'updatedAt'>, createdBy?: string): Promise<Deal> {
-    const deal = await super.create(data, createdBy);
-    
+    // Initialize currentStages array if pipelineId and stageId are provided
+    const enhancedData = { ...data };
+
+    // Check if we have pipelineId and stageId but no currentStages
+    const hasPipelineAndStage = (data as any).pipelineId && (data as any).stageId;
+    if (hasPipelineAndStage && (!data.currentStages || data.currentStages.length === 0)) {
+      const currentStage = makeDealCurrentStage(
+        '', // Will be set after creation
+        (data as any).pipelineId,
+        (data as any).stageId
+      );
+      enhancedData.currentStages = [currentStage];
+    }
+
+    const deal = await super.create(enhancedData, createdBy);
+
+    // Update the currentStage dealId to match the created deal's ID
+    if (deal.currentStages && deal.currentStages.length > 0) {
+      deal.currentStages = deal.currentStages.map(cs => ({
+        ...cs,
+        dealId: deal.id
+      }));
+    }
+
     // Track deal creation - use a default user ID if none provided for testing
     const userId = createdBy || 'system';
-    
+
     try {
       const { ChangeTracker } = await import('../change-tracker');
       await ChangeTracker.trackEntityChange(
@@ -50,8 +72,32 @@ class DealRepositoryImpl extends BaseRepository<Deal> implements IDealRepository
     const existing = await this.get(id);
     if (!existing) return undefined;
 
-    const updated = await super.update(id, data, updatedBy);
-    
+    // If pipelineId and stageId are being updated, also update currentStages
+    const enhancedData = { ...data };
+    const hasPipelineAndStage = (data as any).pipelineId && (data as any).stageId;
+
+    if (hasPipelineAndStage) {
+      // Update or create currentStages entry for this pipeline
+      let updatedCurrentStages = existing.currentStages ? [...existing.currentStages] : [];
+      const existingIndex = updatedCurrentStages.findIndex(cs => cs.pipelineId === (data as any).pipelineId);
+
+      const newCurrentStage = makeDealCurrentStage(
+        id,
+        (data as any).pipelineId,
+        (data as any).stageId
+      );
+
+      if (existingIndex >= 0) {
+        updatedCurrentStages[existingIndex] = newCurrentStage;
+      } else {
+        updatedCurrentStages.push(newCurrentStage);
+      }
+
+      enhancedData.currentStages = updatedCurrentStages;
+    }
+
+    const updated = await super.update(id, enhancedData, updatedBy);
+
     // Track deal update
     if (updated && updatedBy) {
       try {
