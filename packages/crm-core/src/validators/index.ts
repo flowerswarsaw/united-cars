@@ -64,3 +64,26 @@ export {
   formatDateForInput,
   formatDateTimeForInput
 } from './date';
+
+// Location validation
+export {
+  countryCodeSchema,
+  regionCodeSchema,
+  citySchema,
+  addressSchema,
+  postalCodeSchema,
+  locationSchema,
+  partialLocationSchema,
+  minimalLocationSchema,
+  fullAddressSchema,
+  optionalFullAddressSchema,
+  validateLocation
+} from './location';
+
+export type {
+  Location,
+  PartialLocation,
+  MinimalLocation,
+  FullAddress,
+  OptionalFullAddress
+} from './location';

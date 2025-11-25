@@ -186,6 +186,11 @@ export const leadSchema = z.object({
   phone: z.string().optional(),
   company: z.string().optional(),
   jobTitle: z.string().optional(),
+  // Location fields
+  country: z.string().optional(),
+  state: z.string().optional(),
+  city: z.string().optional(),
+  zipCode: z.string().optional(),
   // Archive fields
   isArchived: z.boolean().default(false),
   archivedAt: z.date().optional(),

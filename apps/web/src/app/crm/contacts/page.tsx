@@ -10,7 +10,8 @@ import { Contact, Organisation, ContactType, ContactMethodType } from '@united-c
 import { AppLayout } from '@/components/layout/app-layout';
 import { PageHeader } from '@/components/layout/page-header';
 import { LoadingState } from '@/components/ui/loading-state';
-import { COUNTRIES_REGIONS, getRegionsByCountryCode, hasRegions, getRegionDisplayName, getCitiesByRegion, hasCities } from '@/lib/countries-regions';
+import { LocationFieldGroup } from '@/components/location';
+import { COUNTRIES_REGIONS, getCountryByCode, getRegionsByCountryCode, hasRegions, getRegionDisplayName, getCitiesByRegion, hasCities } from '@/lib/countries-regions';
 import {
   Table,
   TableBody,
@@ -64,7 +65,6 @@ export default function ContactsPage() {
     address: '',
     postalCode: ''
   });
-  const [showCustomCity, setShowCustomCity] = useState(false);
   const [duplicateWarning, setDuplicateWarning] = useState<{
     isBlocked: boolean;
     conflicts: Array<{
@@ -252,7 +252,6 @@ export default function ContactsPage() {
           address: '',
           postalCode: ''
         });
-        setShowCustomCity(false);
         setDuplicateWarning(null);
         const loadContacts = async () => {
           const data = await fetch('/api/crm/contacts').then(r => r.json());
@@ -429,95 +428,16 @@ export default function ContactsPage() {
           </div>
 
           {/* Location Information */}
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="country">Country <span className="text-red-500">*</span></Label>
-              <Select
-                value={formData.country}
-                onValueChange={(value) => setFormData({ ...formData, country: value, state: '', city: '' })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select country..." />
-                </SelectTrigger>
-                <SelectContent className="max-h-[300px] overflow-y-auto">
-                  {COUNTRIES_REGIONS.countries.map((country) => (
-                    <SelectItem key={country.code} value={country.code}>
-                      {country.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="state">State/Region</Label>
-                <Select
-                  value={formData.state}
-                  onValueChange={(value) => setFormData({ ...formData, state: value, city: '' })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select state/region..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {getRegionsByCountryCode(formData.country).map((region) => (
-                      <SelectItem key={region.code} value={region.code}>
-                        {region.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label htmlFor="city">City</Label>
-                {getCitiesByRegion(formData.country, formData.state).length > 0 ? (
-                  <>
-                    <Select
-                      value={showCustomCity ? '__custom__' : formData.city}
-                      onValueChange={(value) => {
-                        if (value === '__custom__') {
-                          setShowCustomCity(true);
-                          setFormData({ ...formData, city: '' });
-                        } else {
-                          setShowCustomCity(false);
-                          setFormData({ ...formData, city: value });
-                        }
-                      }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select city..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {getCitiesByRegion(formData.country, formData.state).map((city) => (
-                          <SelectItem key={city} value={city}>
-                            {city}
-                          </SelectItem>
-                        ))}
-                        <SelectItem value="__custom__">Other/Custom city...</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    {showCustomCity && (
-                      <Input
-                        id="city"
-                        value={formData.city}
-                        onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                        placeholder="Enter city name..."
-                        className="mt-2"
-                      />
-                    )}
-                  </>
-                ) : (
-                  <Input
-                    id="city"
-                    value={formData.city}
-                    onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                    placeholder="Enter city name..."
-                  />
-                )}
-              </div>
-            </div>
-          </div>
+          <LocationFieldGroup
+            value={{
+              country: formData.country,
+              state: formData.state,
+              city: formData.city
+            }}
+            onChange={(location) => setFormData({ ...formData, ...location })}
+            required={true}
+            layout="grid"
+          />
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
               Cancel
@@ -688,7 +608,7 @@ export default function ContactsPage() {
                     )}
                   </TableCell>
                   <TableCell>
-                    {contact.country || '-'}
+                    {contact.country ? (getCountryByCode(contact.country)?.name || contact.country) : '-'}
                   </TableCell>
                   <TableCell>
                     <div className="space-y-1">

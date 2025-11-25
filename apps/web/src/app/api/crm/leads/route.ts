@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { leadRepository } from '@united-cars/crm-mocks';
 import { formatPhoneForStorage } from '@/lib/phone-formatter';
+import { normalizeCountryCode, normalizeRegionCode } from '@/lib/country-validator';
+import { normalizePostalCode } from '@/lib/postal-code-validator';
 
 export async function GET(request: NextRequest) {
   try {
@@ -79,18 +81,30 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
+    // Normalize location fields
+    const normalizedCountry = body.country ? normalizeCountryCode(body.country) : undefined;
+    const normalizedState = body.state ? normalizeRegionCode(body.state) : undefined;
+    const normalizedZipCode = body.zipCode ? normalizePostalCode(body.zipCode) : undefined;
+
     const newLead = await leadRepository.create({
       title: body.title,
       firstName: body.firstName,
       lastName: body.lastName,
       email: body.email,
       phone: body.phone ? formatPhoneForStorage(body.phone) : body.phone,
+      company: body.company,
+      jobTitle: body.jobTitle,
       source: body.source,
       organisationId: body.organisationId,
       contactId: body.contactId,
       isTarget: body.isTarget || false,
       score: body.score,
       notes: body.notes,
+      // Location fields (normalized)
+      country: normalizedCountry,
+      state: normalizedState,
+      city: body.city,
+      zipCode: normalizedZipCode,
       customFields: body.customFields || {},
     });
 

@@ -38,7 +38,8 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import { Organisation, OrganizationType, ContactMethodType } from '@united-cars/crm-core';
-import { COUNTRIES_REGIONS, getRegionsByCountryCode, hasRegions, getRegionDisplayName, getCitiesByRegion, hasCities } from '@/lib/countries-regions';
+import { COUNTRIES_REGIONS, getCountryByCode, getRegionsByCountryCode, hasRegions, getRegionDisplayName, getCitiesByRegion, hasCities } from '@/lib/countries-regions';
+import { LocationFieldGroup } from '@/components/location';
 import toast from 'react-hot-toast';
 
 interface OrganisationFilters {
@@ -76,7 +77,6 @@ export default function OrganisationsPage() {
     state: '',
     city: ''
   });
-  const [showCustomCity, setShowCustomCity] = useState(false);
   const [duplicateWarning, setDuplicateWarning] = useState<{
     isBlocked: boolean;
     conflicts: Array<{
@@ -250,7 +250,6 @@ export default function OrganisationsPage() {
           state: '',
           city: ''
         });
-        setShowCustomCity(false);
         setDuplicateWarning(null);
         loadOrganisations();
         toast.success(`Organisation created: ${formData.name}`);
@@ -478,95 +477,16 @@ export default function OrganisationsPage() {
               </div>
 
               {/* Location Information */}
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="country">Country *</Label>
-                  <Select
-                    value={formData.country}
-                    onValueChange={(value) => setFormData({ ...formData, country: value, state: '', city: '' })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select country..." />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-[300px] overflow-y-auto">
-                      {COUNTRIES_REGIONS.countries.map((country) => (
-                        <SelectItem key={country.code} value={country.code}>
-                          {country.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="state">State/Region</Label>
-                    <Select
-                      value={formData.state}
-                      onValueChange={(value) => setFormData({ ...formData, state: value, city: '' })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select state/region..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {getRegionsByCountryCode(formData.country).map((region) => (
-                          <SelectItem key={region.code} value={region.code}>
-                            {region.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="city">City</Label>
-                    {getCitiesByRegion(formData.country, formData.state).length > 0 ? (
-                      <>
-                        <Select
-                          value={showCustomCity ? '__custom__' : formData.city}
-                          onValueChange={(value) => {
-                            if (value === '__custom__') {
-                              setShowCustomCity(true);
-                              setFormData({ ...formData, city: '' });
-                            } else {
-                              setShowCustomCity(false);
-                              setFormData({ ...formData, city: value });
-                            }
-                          }}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select city..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {getCitiesByRegion(formData.country, formData.state).map((city) => (
-                              <SelectItem key={city} value={city}>
-                                {city}
-                              </SelectItem>
-                            ))}
-                            <SelectItem value="__custom__">Other/Custom city...</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        {showCustomCity && (
-                          <Input
-                            id="city"
-                            value={formData.city}
-                            onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                            placeholder="Enter city name..."
-                            className="mt-2"
-                          />
-                        )}
-                      </>
-                    ) : (
-                      <Input
-                        id="city"
-                        value={formData.city}
-                        onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                        placeholder="Enter city name..."
-                      />
-                    )}
-                  </div>
-                </div>
-              </div>
+              <LocationFieldGroup
+                value={{
+                  country: formData.country,
+                  state: formData.state,
+                  city: formData.city
+                }}
+                onChange={(location) => setFormData({ ...formData, ...location })}
+                required={true}
+                layout="grid"
+              />
               <div className="flex justify-end gap-2">
                 <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
                   Cancel
@@ -747,7 +667,7 @@ export default function OrganisationsPage() {
                     </span>
                   </TableCell>
                   <TableCell>
-                    {org.country || '-'}
+                    {org.country ? (getCountryByCode(org.country)?.name || org.country) : '-'}
                   </TableCell>
                   <TableCell>
                     <div className="space-y-1">

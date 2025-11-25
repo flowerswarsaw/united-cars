@@ -14,11 +14,12 @@ import { Edit2, Save, X, Building2, MapPin, Globe, Mail, Phone, Users, DollarSig
 import { AppLayout } from '@/components/layout/app-layout';
 import { PageHeader } from '@/components/layout/page-header';
 import { LoadingState } from '@/components/ui/loading-state';
+import { LocationFieldGroup } from '@/components/location';
 import { useSession } from '@/hooks/useSession';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Organisation, Contact, Deal, OrganizationType, ContactMethod, ContactMethodType, SocialMediaLink, SocialPlatform, OrganisationConnection, TypeSpecificFieldDef, CustomFieldType, getTypeSpecificFields, ContactType, Pipeline, Stage } from '@united-cars/crm-core';
-import { COUNTRIES_REGIONS, getRegionsByCountryCode, hasRegions, getRegionDisplayName, getCitiesByRegion, hasCities } from '@/lib/countries-regions';
+import { COUNTRIES_REGIONS, getCountryByCode, getRegionsByCountryCode, hasRegions, getRegionDisplayName, getCitiesByRegion, hasCities } from '@/lib/countries-regions';
 import { CrmBadge } from '@united-cars/ui';
 import toast from 'react-hot-toast';
 
@@ -57,7 +58,6 @@ export default function OrganisationDetailPage() {
     state: '',
     city: ''
   });
-  const [showCustomCityOrg, setShowCustomCityOrg] = useState(false);
   const [showCustomCityContact, setShowCustomCityContact] = useState(false);
   const [contactDuplicateWarning, setContactDuplicateWarning] = useState<{
     isBlocked: boolean;
@@ -918,7 +918,7 @@ export default function OrganisationDetailPage() {
                   </div>
 
                   <div>
-                    <Label htmlFor="name">Organisation Name <span className="text-red-500">*</span></Label>
+                    <Label htmlFor="name">Organisation Name</Label>
                     {editingSections.basicInfo ? (
                       <Input
                         id="name"
@@ -935,7 +935,7 @@ export default function OrganisationDetailPage() {
                   </div>
 
                   <div>
-                    <Label htmlFor="type">Type <span className="text-red-500">*</span></Label>
+                    <Label htmlFor="type">Type</Label>
                     {editingSections.basicInfo ? (
                       <Select
                         value={basicInfoData.type}
@@ -1098,154 +1098,76 @@ export default function OrganisationDetailPage() {
                   />
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {/* Location Hierarchy */}
-                  <div className="grid grid-cols-1 gap-4">
-                    <div>
-                      <Label htmlFor="country">Country <span className="text-red-500">*</span></Label>
-                      {editingSections.address ? (
-                        <Select
-                          value={addressData.country}
-                          onValueChange={(value) => setAddressData({ ...addressData, country: value, state: '', city: '' })}
-                        >
-                          <SelectTrigger className="mt-1">
-                            <SelectValue placeholder="Select country..." />
-                          </SelectTrigger>
-                          <SelectContent className="max-h-[300px] overflow-y-auto">
-                            {COUNTRIES_REGIONS.countries.map((country) => (
-                              <SelectItem key={country.code} value={country.code}>
-                                {country.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      ) : (
-                        <p className="text-sm text-gray-900 mt-1">
-                          {organisation.country || 'Not specified'}
-                        </p>
-                      )}
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="state">State/Region</Label>
-                        {editingSections.address ? (
-                          <Select
-                            value={addressData.state}
-                            onValueChange={(value) => setAddressData({ ...addressData, state: value, city: '' })}
-                          >
-                            <SelectTrigger className="mt-1">
-                              <SelectValue placeholder="Select state/region..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {getRegionsByCountryCode(addressData.country).map((region) => (
-                                <SelectItem key={region.code} value={region.code}>
-                                  {region.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        ) : (
+                  {editingSections.address ? (
+                    <LocationFieldGroup
+                      value={{
+                        country: addressData.country,
+                        state: addressData.state,
+                        city: addressData.city,
+                        address: addressData.address,
+                        zipCode: addressData.postalCode
+                      }}
+                      onChange={(location) => setAddressData({
+                        ...addressData,
+                        country: location.country,
+                        state: location.state,
+                        city: location.city,
+                        address: location.address || '',
+                        postalCode: location.zipCode || ''
+                      })}
+                      showAddress={true}
+                      showZipCode={true}
+                      required={true}
+                      layout="grid"
+                    />
+                  ) : (
+                    <div className="space-y-4">
+                      {/* Location Display */}
+                      <div className="grid grid-cols-1 gap-4">
+                        <div>
+                          <Label htmlFor="country">Country</Label>
                           <p className="text-sm text-gray-900 mt-1">
-                            {organisation.state ? getRegionDisplayName(organisation.country || '', organisation.state) : 'Not specified'}
+                            {organisation.country ? (getCountryByCode(organisation.country)?.name || organisation.country) : 'Not specified'}
                           </p>
-                        )}
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="state">State/Region</Label>
+                            <p className="text-sm text-gray-900 mt-1">
+                              {organisation.state ? (hasRegions(organisation.country || '') ? getRegionDisplayName(organisation.country || '', organisation.state) : organisation.state) : 'Not specified'}
+                            </p>
+                          </div>
+
+                          <div>
+                            <Label htmlFor="city">City</Label>
+                            <p className="text-sm text-gray-900 mt-1">
+                              {organisation.city || 'Not specified'}
+                            </p>
+                          </div>
+                        </div>
                       </div>
 
-                      <div>
-                        <Label htmlFor="city">City</Label>
-                        {editingSections.address ? (
-                          getCitiesByRegion(addressData.country, addressData.state).length > 0 ? (
-                            <>
-                              <Select
-                                value={showCustomCityOrg ? '__custom__' : addressData.city}
-                                onValueChange={(value) => {
-                                  if (value === '__custom__') {
-                                    setShowCustomCityOrg(true);
-                                    setAddressData({ ...addressData, city: '' });
-                                  } else {
-                                    setShowCustomCityOrg(false);
-                                    setAddressData({ ...addressData, city: value });
-                                  }
-                                }}
-                              >
-                                <SelectTrigger className="mt-1">
-                                  <SelectValue placeholder="Select city..." />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {getCitiesByRegion(addressData.country, addressData.state).map((city) => (
-                                    <SelectItem key={city} value={city}>
-                                      {city}
-                                    </SelectItem>
-                                  ))}
-                                  <SelectItem value="__custom__">Other/Custom city...</SelectItem>
-                                </SelectContent>
-                              </Select>
-                              {showCustomCityOrg && (
-                                <Input
-                                  id="city"
-                                  value={addressData.city}
-                                  onChange={(e) => setAddressData({ ...addressData, city: e.target.value })}
-                                  placeholder="Enter city name..."
-                                  className="mt-2"
-                                />
-                              )}
-                            </>
-                          ) : (
-                            <Input
-                              id="city"
-                              value={addressData.city}
-                              onChange={(e) => setAddressData({ ...addressData, city: e.target.value })}
-                              placeholder="Enter city name..."
-                              className="mt-1"
-                            />
-                          )
-                        ) : (
-                          <p className="text-sm text-gray-900 mt-1">
-                            {organisation.city || 'Not specified'}
-                          </p>
-                        )}
+                      {/* Address Details */}
+                      <div className="border-t border-gray-200 pt-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="address">Street Address</Label>
+                            <p className="text-sm text-gray-900 mt-1">
+                              {organisation.address || 'Not specified'}
+                            </p>
+                          </div>
+
+                          <div>
+                            <Label htmlFor="postalCode">Postal Code</Label>
+                            <p className="text-sm text-gray-900 mt-1">
+                              {organisation.postalCode || 'Not specified'}
+                            </p>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  </div>
-
-                  {/* Address Details */}
-                  <div className="border-t border-gray-200 pt-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="address">Street Address</Label>
-                        {editingSections.address ? (
-                          <Input
-                            id="address"
-                            value={addressData.address}
-                            onChange={(e) => setAddressData({ ...addressData, address: e.target.value })}
-                            placeholder="123 Business Street"
-                            className="mt-1"
-                          />
-                        ) : (
-                          <p className="text-sm text-gray-900 mt-1">
-                            {organisation.address || 'Not specified'}
-                          </p>
-                        )}
-                      </div>
-
-                      <div>
-                        <Label htmlFor="postalCode">Postal Code</Label>
-                        {editingSections.address ? (
-                          <Input
-                            id="postalCode"
-                            value={addressData.postalCode}
-                            onChange={(e) => setAddressData({ ...addressData, postalCode: e.target.value })}
-                            placeholder="12345"
-                            className="mt-1"
-                          />
-                        ) : (
-                          <p className="text-sm text-gray-900 mt-1">
-                            {organisation.postalCode || 'Not specified'}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
+                  )}
                 </CardContent>
               </Card>
 

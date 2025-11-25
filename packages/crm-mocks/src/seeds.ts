@@ -123,7 +123,7 @@ const organisations = [
     size: '50-100',
     city: 'Los Angeles',
     state: 'CA',
-    country: 'USA',
+    country: 'US',
     typeSpecificData: {
       dealerLicense: 'CA-DL-2024-001',
       dealerType: 'Both',
@@ -145,7 +145,7 @@ const organisations = [
     size: '100-500',
     city: 'New York',
     state: 'NY',
-    country: 'USA',
+    country: 'US',
     typeSpecificData: {
       dealerLicense: 'NY-DL-2024-002',
       dealerType: 'New Car',
@@ -166,7 +166,7 @@ const organisations = [
     size: '10-50',
     city: 'Chicago',
     state: 'IL',
-    country: 'USA',
+    country: 'US',
     typeSpecificData: {
       dealerLicense: 'IL-DL-2024-003',
       dealerType: 'Used Car',
@@ -190,7 +190,7 @@ const organisations = [
     size: '100-500',
     city: 'Miami',
     state: 'FL',
-    country: 'USA',
+    country: 'US',
     typeSpecificData: {
       serviceAreas: ['International', 'East Coast'],
       equipmentTypes: ['Container', 'RoRo'],
@@ -217,7 +217,7 @@ const organisations = [
     size: '20-50',
     city: 'Seattle',
     state: 'WA',
-    country: 'USA',
+    country: 'US',
     typeSpecificData: {
       serviceAreas: ['West Coast'],
       equipmentTypes: ['Flatbed', 'Enclosed', 'Multi-car'],
@@ -237,7 +237,7 @@ const organisations = [
 
     city: 'Denver',
     state: 'CO',
-    country: 'USA',
+    country: 'US',
     typeSpecificData: {
       budgetRange: '$50k-100k',
       vehiclePreferences: ['Luxury', 'SUV'],
@@ -260,7 +260,7 @@ const organisations = [
     size: '500+',
     city: 'Sacramento',
     state: 'CA',
-    country: 'USA',
+    country: 'US',
     typeSpecificData: {
       auctionType: 'Insurance',
       apiAccess: true,
@@ -282,7 +282,7 @@ const organisations = [
     size: '50-100',
     city: 'Atlanta',
     state: 'GA',
-    country: 'USA',
+    country: 'US',
     typeSpecificData: {
       serviceAreas: ['South', 'East Coast'],
       equipmentTypes: ['Multi-car', 'Enclosed'],
@@ -305,7 +305,7 @@ const organisations = [
     size: '100-500',
     city: 'Phoenix',
     state: 'AZ',
-    country: 'USA',
+    country: 'US',
     typeSpecificData: {
       processingTypes: ['Title Transfer', 'Registration', 'Export Documentation'],
       statesCovered: ['CA', 'TX', 'FL', 'NY', 'IL', 'OH', 'PA', 'MI', 'GA', 'NC'],
@@ -891,6 +891,10 @@ const leads = [
     organisationId: 'org_1',
     isTarget: true,
     score: 85,
+    country: 'US',
+    state: 'CA',
+    city: 'Los Angeles',
+    zipCode: '90001',
     notes: 'Looking to expand their inventory with imported vehicles'
   }),
   makeLead({
@@ -900,6 +904,10 @@ const leads = [
     contactId: 'contact_6',
     isTarget: true,
     score: 70,
+    country: 'US',
+    state: 'NY',
+    city: 'New York',
+    zipCode: '10001',
     notes: 'Referred by existing client, high potential'
   }),
   makeLead({
@@ -909,6 +917,10 @@ const leads = [
     organisationId: 'org_3',
     isTarget: false,
     score: 30,
+    country: 'US',
+    state: 'TX',
+    city: 'Austin',
+    zipCode: '78701',
     notes: 'Not ready yet, follow up in 6 months'
   }),
   makeLead({
@@ -918,6 +930,10 @@ const leads = [
     organisationId: 'org_4',
     isTarget: true,
     score: 90,
+    country: 'US',
+    state: 'FL',
+    city: 'Miami',
+    zipCode: '33101',
     notes: 'Met at auto trade show, very interested'
   }),
   makeLead({
@@ -927,6 +943,10 @@ const leads = [
     contactId: 'contact_8',
     isTarget: false,
     score: 20,
+    country: 'US',
+    state: 'IL',
+    city: 'Chicago',
+    zipCode: '60601',
     notes: 'Individual buyer, not our target market'
   }),
   makeLead({
@@ -936,6 +956,10 @@ const leads = [
     organisationId: 'org_5',
     isTarget: false,
     score: 45,
+    country: 'US',
+    state: 'WA',
+    city: 'Seattle',
+    zipCode: '98101',
     notes: 'Interested but needs more information'
   })
 ];

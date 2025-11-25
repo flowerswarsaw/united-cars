@@ -21,7 +21,8 @@ export const getRegionDisplayName = (countryCode: string, regionCode: string): s
   const country = COUNTRIES_REGIONS.countries.find(c => c.code === countryCode);
   if (!country?.regions) return regionCode;
 
-  const region = country.regions.find(r => r.code === regionCode);
+  // Case-insensitive comparison to handle both uppercase (US: 'CA') and lowercase (PL: 'lower-silesian') codes
+  const region = country.regions.find(r => r.code.toLowerCase() === regionCode.toLowerCase());
   return region ? region.name : regionCode;
 };
 
@@ -32,7 +33,8 @@ export const getCitiesByRegion = (countryCode: string, regionCode: string): stri
   const country = COUNTRIES_REGIONS.countries.find(c => c.code === countryCode);
   if (!country?.regions) return [];
 
-  const region = country.regions.find(r => r.code === regionCode);
+  // Case-insensitive comparison to handle both uppercase (US: 'CA') and lowercase (PL: 'lower-silesian') codes
+  const region = country.regions.find(r => r.code.toLowerCase() === regionCode.toLowerCase());
   return region?.cities || [];
 };
 
@@ -465,7 +467,8 @@ export function getRegionsByCountryCode(countryCode: string): Region[] {
 
 export function getRegionByCode(countryCode: string, regionCode: string): Region | undefined {
   const regions = getRegionsByCountryCode(countryCode);
-  return regions.find(region => region.code === regionCode);
+  // Case-insensitive comparison to handle both uppercase (US: 'CA') and lowercase (PL: 'lower-silesian') codes
+  return regions.find(region => region.code.toLowerCase() === regionCode.toLowerCase());
 }
 
 export function hasRegions(countryCode: string): boolean {

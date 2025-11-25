@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { contactRepository, jsonPersistence } from '@united-cars/crm-mocks';
 import { updateContactSchema } from '@united-cars/crm-core';
 import { formatContactMethods } from '@/lib/phone-formatter';
+import { formatContactMethodsEmails } from '@/lib/email-formatter';
+import { normalizeCountryCode, normalizeRegionCode } from '@/lib/country-validator';
+import { normalizePostalCode } from '@/lib/postal-code-validator';
 
 export async function GET(
   request: NextRequest,
@@ -43,6 +46,21 @@ export async function PATCH(
     } else {
       // Format phone numbers in contact methods if present
       updateData.contactMethods = formatContactMethods(updateData.contactMethods);
+      // Normalize emails in contact methods
+      updateData.contactMethods = formatContactMethodsEmails(updateData.contactMethods);
+    }
+
+    // Normalize location fields if present
+    if (updateData.country) {
+      updateData.country = normalizeCountryCode(updateData.country);
+    }
+    if (updateData.state) {
+      updateData.state = normalizeRegionCode(updateData.state);
+    }
+    if (updateData.zipCode || updateData.postalCode) {
+      const postalCode = updateData.zipCode || updateData.postalCode;
+      updateData.zipCode = normalizePostalCode(postalCode);
+      delete updateData.postalCode; // Remove alternative field name
     }
 
     const contact = await contactRepository.update(id, updateData);

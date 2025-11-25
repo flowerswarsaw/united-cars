@@ -55,6 +55,8 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import { Lead, Pipeline, Organisation } from '@united-cars/crm-core';
+import { LocationFieldGroup } from '@/components/location';
+import { getCountryByCode, hasRegions, getRegionDisplayName } from '@/lib/countries-regions';
 import toast from 'react-hot-toast';
 
 interface LeadFilters {
@@ -103,7 +105,11 @@ export default function LeadsPage() {
     jobTitle: '',
     title: '',
     isTarget: false,
-    notes: ''
+    notes: '',
+    country: '',
+    state: '',
+    city: '',
+    zipCode: ''
   });
   const [duplicateWarning, setDuplicateWarning] = useState<{
     leads: Lead[];
@@ -355,7 +361,11 @@ export default function LeadsPage() {
           jobTitle: '',
           title: '',
           isTarget: false,
-          notes: ''
+          notes: '',
+          country: '',
+          state: '',
+          city: '',
+          zipCode: ''
         });
         setDuplicateWarning(null);
         loadLeads();
@@ -572,6 +582,29 @@ export default function LeadsPage() {
                     placeholder="Partnership Opportunity"
                   />
                 </div>
+              </div>
+
+              {/* Location Fields */}
+              <div>
+                <Label className="mb-2 block">Location Information</Label>
+                <LocationFieldGroup
+                  value={{
+                    country: createData.country,
+                    state: createData.state,
+                    city: createData.city,
+                    zipCode: createData.zipCode
+                  }}
+                  onChange={(location) => setCreateData({
+                    ...createData,
+                    country: location.country,
+                    state: location.state,
+                    city: location.city,
+                    zipCode: location.zipCode || ''
+                  })}
+                  showZipCode={true}
+                  required={false}
+                  layout="grid"
+                />
               </div>
 
               {/* Duplicate Warning */}
@@ -853,6 +886,7 @@ export default function LeadsPage() {
                       <TableHead>Name</TableHead>
                       <TableHead>Contact</TableHead>
                       <TableHead>Job Title</TableHead>
+                      <TableHead>Location</TableHead>
                       <TableHead>Source</TableHead>
                       <TableHead>Target</TableHead>
                       <TableHead>Score</TableHead>
@@ -862,7 +896,7 @@ export default function LeadsPage() {
                   <TableBody>
                     {leads.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center py-8">
+                        <TableCell colSpan={8} className="text-center py-8">
                           <div className="flex flex-col items-center space-y-3">
                             <UserPlus className="h-12 w-12 text-gray-300" />
                             <div className="text-gray-500">
@@ -911,6 +945,19 @@ export default function LeadsPage() {
                             <div className="text-sm">
                               {lead.jobTitle && (
                                 <div className="font-medium">{lead.jobTitle}</div>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-sm text-gray-600">
+                              {lead.city && lead.state ? (
+                                <div>{lead.city}, {hasRegions(lead.country || '') ? getRegionDisplayName(lead.country || '', lead.state) : lead.state}</div>
+                              ) : lead.city ? (
+                                <div>{lead.city}</div>
+                              ) : lead.country ? (
+                                <div>{getCountryByCode(lead.country)?.name || lead.country}</div>
+                              ) : (
+                                <span className="text-gray-400">-</span>
                               )}
                             </div>
                           </TableCell>
@@ -983,6 +1030,7 @@ export default function LeadsPage() {
                       <TableHead>Name</TableHead>
                       <TableHead>Contact</TableHead>
                       <TableHead>Job Title</TableHead>
+                      <TableHead>Location</TableHead>
                       <TableHead>Archived</TableHead>
                       <TableHead>Reason</TableHead>
                       <TableHead>Actions</TableHead>
@@ -991,7 +1039,7 @@ export default function LeadsPage() {
                   <TableBody>
                     {leads.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={6} className="text-center py-8">
+                        <TableCell colSpan={7} className="text-center py-8">
                           <div className="flex flex-col items-center space-y-3">
                             <Archive className="h-12 w-12 text-gray-300" />
                             <div className="text-gray-500">
@@ -1035,6 +1083,19 @@ export default function LeadsPage() {
                             <div className="text-sm">
                               {lead.jobTitle && (
                                 <div className="font-medium">{lead.jobTitle}</div>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-sm text-gray-600">
+                              {lead.city && lead.state ? (
+                                <div>{lead.city}, {hasRegions(lead.country || '') ? getRegionDisplayName(lead.country || '', lead.state) : lead.state}</div>
+                              ) : lead.city ? (
+                                <div>{lead.city}</div>
+                              ) : lead.country ? (
+                                <div>{getCountryByCode(lead.country)?.name || lead.country}</div>
+                              ) : (
+                                <span className="text-gray-400">-</span>
                               )}
                             </div>
                           </TableCell>

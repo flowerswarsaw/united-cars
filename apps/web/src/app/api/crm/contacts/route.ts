@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { contactRepository, jsonPersistence } from '@united-cars/crm-mocks';
 import { formatContactMethods, formatPhoneForStorage } from '@/lib/phone-formatter';
+import { formatContactMethodsEmails } from '@/lib/email-formatter';
+import { normalizeCountryCode, normalizeRegionCode } from '@/lib/country-validator';
+import { normalizePostalCode } from '@/lib/postal-code-validator';
 
 export async function GET(request: NextRequest) {
   try {
@@ -85,6 +88,14 @@ export async function POST(request: NextRequest) {
     // Format phone numbers in contact methods
     contactMethods = formatContactMethods(contactMethods);
 
+    // Normalize emails in contact methods
+    contactMethods = formatContactMethodsEmails(contactMethods);
+
+    // Normalize country and region codes
+    const normalizedCountry = body.country ? normalizeCountryCode(body.country) : '';
+    const normalizedState = body.state ? normalizeRegionCode(body.state) : '';
+    const normalizedPostalCode = body.zipCode || body.postalCode ? normalizePostalCode(body.zipCode || body.postalCode) : '';
+
     // Create contact data
     const contactData = {
       firstName: body.firstName || '',
@@ -96,10 +107,11 @@ export async function POST(request: NextRequest) {
       contactMethods: contactMethods,
       socialMediaLinks: body.socialMediaLinks || [],
       customFields: body.customFields || {},
-      // Address fields
+      // Address fields (normalized)
       city: body.city || '',
-      state: body.state || '',
-      country: body.country || ''
+      state: normalizedState,
+      country: normalizedCountry,
+      zipCode: normalizedPostalCode
     };
 
     // Add to the repository

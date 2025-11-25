@@ -193,8 +193,8 @@ export const validateRegionCode = (countryCode: string, regionCode: string): boo
     return true;
   }
 
-  // Check if region code exists for this country
-  return country.regions.some(r => r.code === regionCode.toUpperCase());
+  // Check if region code exists for this country (case-insensitive to handle both uppercase and lowercase codes)
+  return country.regions.some(r => r.code.toLowerCase() === regionCode.toLowerCase());
 };
 
 /**

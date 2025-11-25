@@ -222,6 +222,11 @@ export interface LeadContactInfo {
   phone?: string;
   company?: string;
   jobTitle?: string;
+  // Location fields for geographic segmentation
+  country?: string;
+  state?: string;
+  city?: string;
+  zipCode?: string;
 }
 
 export interface LeadRelationships {

@@ -94,8 +94,8 @@ export async function POST(request: NextRequest) {
     let formattedContactMethods = body.contactMethods
       ? formatContactMethods(body.contactMethods)
       : [
-          ...(body.email ? [{ id: `cm_${Date.now()}_1`, type: 'EMAIL_WORK', value: body.email, primary: true }] : []),
-          ...(body.phone ? [{ id: `cm_${Date.now()}_2`, type: 'PHONE_WORK', value: formatPhoneForStorage(body.phone), primary: true }] : [])
+          ...(body.email ? [{ id: `cm_${Date.now()}_1`, type: ContactMethodType.EMAIL, value: body.email, isPrimary: true }] : []),
+          ...(body.phone ? [{ id: `cm_${Date.now()}_2`, type: ContactMethodType.PHONE, value: formatPhoneForStorage(body.phone), isPrimary: true }] : [])
         ];
 
     // Normalize emails in contact methods
