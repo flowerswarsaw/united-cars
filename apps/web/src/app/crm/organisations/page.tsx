@@ -101,6 +101,41 @@ export default function OrganisationsPage() {
     }>;
   } | null>(null);
 
+  // Load organisations function
+  const loadOrganisations = useCallback(async () => {
+    try {
+      setLoading(true);
+      const params = new URLSearchParams();
+
+      if (debouncedSearchQuery.trim()) {
+        params.append('search', debouncedSearchQuery.trim());
+      }
+
+      if (filters.type && filters.type !== 'all') {
+        params.append('type', filters.type);
+      }
+
+      if (filters.country.trim()) {
+        params.append('country', filters.country.trim());
+      }
+
+      const url = params.toString()
+        ? `/api/crm/organisations?${params.toString()}`
+        : '/api/crm/organisations';
+
+      const response = await fetch(url);
+      const data = await response.json();
+      setOrganisations(data || []);
+    } catch (error) {
+      console.error('Failed to load organisations:', error);
+      toast.error('Failed to load organisations');
+      setOrganisations([]);
+    } finally {
+      setLoading(false);
+      setInitialLoading(false);
+    }
+  }, [debouncedSearchQuery, filters.type, filters.country]);
+
   // Debounce search query
   useEffect(() => {
     if (searchQuery !== debouncedSearchQuery) {
@@ -117,42 +152,8 @@ export default function OrganisationsPage() {
 
   // Load organisations when debounced query or filters change
   useEffect(() => {
-    const loadOrganisations = async () => {
-      try {
-        setLoading(true);
-        const params = new URLSearchParams();
-
-        if (debouncedSearchQuery.trim()) {
-          params.append('search', debouncedSearchQuery.trim());
-        }
-
-        if (filters.type && filters.type !== 'all') {
-          params.append('type', filters.type);
-        }
-
-        if (filters.country.trim()) {
-          params.append('country', filters.country.trim());
-        }
-
-        const url = params.toString()
-          ? `/api/crm/organisations?${params.toString()}`
-          : '/api/crm/organisations';
-
-        const response = await fetch(url);
-        const data = await response.json();
-        setOrganisations(data || []);
-      } catch (error) {
-        console.error('Failed to load organisations:', error);
-        toast.error('Failed to load organisations');
-        setOrganisations([]);
-      } finally {
-        setLoading(false);
-        setInitialLoading(false);
-      }
-    };
-
     loadOrganisations();
-  }, [debouncedSearchQuery, filters.type, filters.country]);
+  }, [loadOrganisations]);
 
   useEffect(() => {
     // Auto-open creation dialog if create parameter is present
