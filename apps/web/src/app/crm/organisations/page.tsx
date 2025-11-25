@@ -55,12 +55,15 @@ export default function OrganisationsPage() {
   const { user, loading: sessionLoading } = useSession();
   const [organisations, setOrganisations] = useState<Organisation[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [filters, setFilters] = useState<OrganisationFilters>({
     type: '',
     country: ''
   });
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [isSearching, setIsSearching] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     companyId: '',
@@ -98,46 +101,58 @@ export default function OrganisationsPage() {
     }>;
   } | null>(null);
 
-  const loadOrganisations = useCallback(async () => {
-    try {
-      setLoading(true);
-      const params = new URLSearchParams();
-      
-      if (searchQuery.trim()) {
-        params.append('search', searchQuery.trim());
-      }
-      
-      if (filters.type && filters.type !== 'all') {
-        params.append('type', filters.type);
-      }
-      
-      if (filters.country.trim()) {
-        params.append('country', filters.country.trim());
-      }
-      
-      const url = params.toString() 
-        ? `/api/crm/organisations?${params.toString()}`
-        : '/api/crm/organisations';
-      
-      const response = await fetch(url);
-      const data = await response.json();
-      setOrganisations(data || []);
-    } catch (error) {
-      console.error('Failed to load organisations:', error);
-      toast.error('Failed to load organisations');
-      setOrganisations([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [searchQuery, filters.type, filters.country]);
-
+  // Debounce search query
   useEffect(() => {
+    if (searchQuery !== debouncedSearchQuery) {
+      setIsSearching(true);
+    }
+
     const timeoutId = setTimeout(() => {
-      loadOrganisations();
+      setDebouncedSearchQuery(searchQuery);
+      setIsSearching(false);
     }, 300);
 
     return () => clearTimeout(timeoutId);
-  }, [loadOrganisations]);
+  }, [searchQuery, debouncedSearchQuery]);
+
+  // Load organisations when debounced query or filters change
+  useEffect(() => {
+    const loadOrganisations = async () => {
+      try {
+        setLoading(true);
+        const params = new URLSearchParams();
+
+        if (debouncedSearchQuery.trim()) {
+          params.append('search', debouncedSearchQuery.trim());
+        }
+
+        if (filters.type && filters.type !== 'all') {
+          params.append('type', filters.type);
+        }
+
+        if (filters.country.trim()) {
+          params.append('country', filters.country.trim());
+        }
+
+        const url = params.toString()
+          ? `/api/crm/organisations?${params.toString()}`
+          : '/api/crm/organisations';
+
+        const response = await fetch(url);
+        const data = await response.json();
+        setOrganisations(data || []);
+      } catch (error) {
+        console.error('Failed to load organisations:', error);
+        toast.error('Failed to load organisations');
+        setOrganisations([]);
+      } finally {
+        setLoading(false);
+        setInitialLoading(false);
+      }
+    };
+
+    loadOrganisations();
+  }, [debouncedSearchQuery, filters.type, filters.country]);
 
   useEffect(() => {
     // Auto-open creation dialog if create parameter is present
@@ -285,10 +300,10 @@ export default function OrganisationsPage() {
   };
 
 
-  if (sessionLoading || !user || loading) {
+  if (sessionLoading || !user || initialLoading) {
     return (
       <AppLayout user={user}>
-        <PageHeader 
+        <PageHeader
           title="Organisations"
           description="Manage your companies and accounts"
           breadcrumbs={[{ label: 'CRM' }, { label: 'Organisations' }]}
@@ -593,8 +608,28 @@ export default function OrganisationsPage() {
                   placeholder="Search by name, company ID, phone, or email..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
+                  className="pl-10 pr-8"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Escape' && searchQuery) {
+                      setSearchQuery('');
+                      e.currentTarget.blur();
+                    }
+                  }}
                 />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-2 top-1/2 transform -translate-y-1/2 text-text-tertiary hover:text-foreground transition-colors"
+                    title="Clear search"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+                {isSearching && (
+                  <div className="absolute right-8 top-1/2 transform -translate-y-1/2">
+                    <div className="h-3 w-3 border-2 border-text-tertiary border-t-transparent rounded-full animate-spin" />
+                  </div>
+                )}
               </div>
               
               {/* Organisation Type Filter */}
