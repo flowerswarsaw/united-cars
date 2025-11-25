@@ -548,7 +548,7 @@ export default function DealsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: formData.title,
-          description: formData.description || undefined,
+          notes: formData.description || undefined,
           value: formData.amount ? parseFloat(formData.amount) : undefined,
           currency: formData.currency,
           probability: formData.probability ? parseInt(formData.probability) : undefined,
@@ -946,6 +946,18 @@ export default function DealsPage() {
                   </Select>
                 </div>
               </div>
+
+              <div>
+                <Label htmlFor="description">Description</Label>
+                <Textarea
+                  id="description"
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  placeholder="Enter deal description..."
+                  rows={3}
+                />
+              </div>
+
               <div className="flex justify-end gap-2">
                 <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
                   Cancel

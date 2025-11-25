@@ -322,32 +322,6 @@ function DealCardComponent({ deal, organisations, contacts, tasks, onClick, onOr
         {/* Actions: Won/Lost and controls */}
         <div className="flex items-center justify-end pt-2 mt-2 border-t border-slate-200/60 dark:border-slate-700/60">
           {/* Won/Lost action buttons */}
-          <div className="flex items-center space-x-1">
-            {canMarkWon && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onMarkWon?.(deal.id);
-                }}
-                className="flex items-center justify-center w-8 h-8 text-muted-foreground hover:text-green-600 dark:hover:text-green-400 hover:bg-green-50/80 dark:hover:bg-green-950/40 transition-all duration-200 hover:scale-110 z-20 isolate rounded-lg hover:shadow-sm border border-transparent hover:border-green-200/50 dark:hover:border-green-800/50"
-                title="Mark as won"
-              >
-                <Trophy className="h-4 w-4" />
-              </button>
-            )}
-            {canMarkLost && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onMarkLost?.(deal.id);
-                }}
-                className="flex items-center justify-center w-8 h-8 text-muted-foreground hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50/80 dark:hover:bg-red-950/40 transition-all duration-200 hover:scale-110 z-20 isolate rounded-lg hover:shadow-sm border border-transparent hover:border-red-200/50 dark:hover:border-red-800/50"
-                title="Mark as lost"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            )}
-          </div>
           <div className="flex items-center text-muted-foreground/70 text-xs bg-muted/20 px-2 py-1 rounded-md">
             <Calendar className="h-3.5 w-3.5 mr-1.5" />
             <span className="font-medium">{deal.createdAt && formatDate(deal.createdAt)}</span>

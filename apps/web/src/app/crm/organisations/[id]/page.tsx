@@ -59,6 +59,19 @@ export default function OrganisationDetailPage() {
   });
   const [showCustomCityOrg, setShowCustomCityOrg] = useState(false);
   const [showCustomCityContact, setShowCustomCityContact] = useState(false);
+  const [contactDuplicateWarning, setContactDuplicateWarning] = useState<{
+    isBlocked: boolean;
+    conflicts: Array<{
+      type: 'email' | 'phone';
+      value: string;
+      existingEntity: {
+        id: string;
+        type: 'lead' | 'contact' | 'organisation';
+        name: string;
+        details?: string;
+      };
+    }>;
+  } | null>(null);
 
   // Contact management dialog state
   const [isContactManageOpen, setIsContactManageOpen] = useState(false);
@@ -73,6 +86,8 @@ export default function OrganisationDetailPage() {
     title: '',
     description: '',
     value: '',
+    currency: 'USD',
+    probability: '',
     stage: '',
     contactId: '',
     pipeline: ''
@@ -126,6 +141,58 @@ export default function OrganisationDetailPage() {
       fetchRelatedData();
     }
   }, [orgId]);
+
+  // Auto-generate deal title when dialog opens
+  useEffect(() => {
+    if (isDealCreateOpen && organisation) {
+      setDealFormData(prev => ({
+        ...prev,
+        title: generateDealTitle()
+      }));
+    }
+  }, [isDealCreateOpen, organisation]);
+
+  // Duplicate checking for contact creation
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      checkContactDuplicates(contactFormData.email || undefined, contactFormData.phone || undefined);
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+  }, [contactFormData.email, contactFormData.phone]);
+
+  const checkContactDuplicates = async (email?: string, phone?: string) => {
+    if (!email && !phone) {
+      setContactDuplicateWarning(null);
+      return;
+    }
+
+    try {
+      const contactMethods = [];
+      if (email) contactMethods.push({ type: ContactMethodType.EMAIL, value: email });
+      if (phone) contactMethods.push({ type: ContactMethodType.PHONE, value: phone });
+
+      const response = await fetch('/api/crm/validate-duplicates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          entityType: 'contact',
+          data: {
+            firstName: contactFormData.firstName,
+            lastName: contactFormData.lastName,
+            contactMethods
+          }
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        setContactDuplicateWarning(result.conflicts.length > 0 ? result : null);
+      }
+    } catch (error) {
+      console.error('Failed to check contact duplicates:', error);
+    }
+  };
 
   const fetchOrganisation = async () => {
     try {
@@ -445,6 +512,21 @@ export default function OrganisationDetailPage() {
     }
   };
 
+  const generateDealTitle = (): string => {
+    const date = new Date();
+    const shortDate = date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: '2-digit'
+    });
+
+    if (organisation) {
+      return `Deal with ${organisation.name} - ${shortDate}`;
+    }
+
+    return `New Deal - ${shortDate}`;
+  };
+
   const handleCreateDeal = async () => {
     if (!dealFormData.title || !dealFormData.pipeline || !dealFormData.stage) {
       toast.error('Please fill in all required fields');
@@ -459,13 +541,15 @@ export default function OrganisationDetailPage() {
         },
         body: JSON.stringify({
           title: dealFormData.title,
-          description: dealFormData.description,
+          notes: dealFormData.description || undefined,
           value: dealFormData.value ? parseFloat(dealFormData.value) : undefined,
+          currency: dealFormData.currency,
+          probability: dealFormData.probability ? parseInt(dealFormData.probability) : undefined,
           organisationId: orgId,
           contactId: dealFormData.contactId || undefined,
           pipelineId: dealFormData.pipeline,
           stageId: dealFormData.stage,
-          status: 'OPEN'
+          status: 'ACTIVE'
         })
       });
 
@@ -476,6 +560,8 @@ export default function OrganisationDetailPage() {
           title: '',
           description: '',
           value: '',
+          currency: 'USD',
+          probability: '',
           stage: '',
           contactId: '',
           pipeline: ''
@@ -592,6 +678,12 @@ export default function OrganisationDetailPage() {
       return;
     }
 
+    // Check for duplicates one more time before submission
+    if (contactDuplicateWarning && contactDuplicateWarning.isBlocked) {
+      toast.error('Cannot create contact: Phone number or email already exists');
+      return;
+    }
+
     try {
       const response = await fetch('/api/crm/contacts', {
         method: 'POST',
@@ -630,6 +722,12 @@ export default function OrganisationDetailPage() {
     // Validate required fields
     if (!contactFormData.firstName || !contactFormData.lastName || !contactFormData.type || !contactFormData.phone || !contactFormData.country) {
       alert('Please fill in all required fields: First Name, Last Name, Type, Phone, and Country');
+      return;
+    }
+
+    // Check for duplicates one more time before submission
+    if (contactDuplicateWarning && contactDuplicateWarning.isBlocked) {
+      toast.error('Cannot create contact: Phone number or email already exists');
       return;
     }
 
@@ -1012,7 +1110,7 @@ export default function OrganisationDetailPage() {
                           <SelectTrigger className="mt-1">
                             <SelectValue placeholder="Select country..." />
                           </SelectTrigger>
-                          <SelectContent>
+                          <SelectContent className="max-h-[300px] overflow-y-auto">
                             {COUNTRIES_REGIONS.countries.map((country) => (
                               <SelectItem key={country.code} value={country.code}>
                                 {country.name}
@@ -1926,6 +2024,45 @@ export default function OrganisationDetailPage() {
                   </div>
                 </div>
 
+                {/* Duplicate Warning */}
+                {contactDuplicateWarning && contactDuplicateWarning.conflicts.length > 0 && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                    <div className="flex items-start">
+                      <AlertTriangle className="h-5 w-5 text-red-500 mt-0.5 mr-3 flex-shrink-0" />
+                      <div>
+                        <h4 className="text-sm font-medium text-red-800 mb-2">
+                          Duplicate Found - Cannot Create Contact
+                        </h4>
+                        <div className="space-y-2">
+                          {contactDuplicateWarning.conflicts.map((conflict, index) => (
+                            <div key={index} className="text-sm text-red-700">
+                              <strong>{conflict.type.toUpperCase()}:</strong> {conflict.value} already exists for{' '}
+                              <span className="font-medium">
+                                {conflict.existingEntity.name}
+                              </span>
+                              {conflict.existingEntity.details && (
+                                <span className="text-red-600"> ({conflict.existingEntity.details})</span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Organisation */}
+                <div>
+                  <Label htmlFor="organisationId">Organisation</Label>
+                  <Input
+                    id="organisationId"
+                    value={organisation?.name || ''}
+                    disabled
+                    className="bg-gray-50"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Contact will be automatically assigned to this organisation</p>
+                </div>
+
                 {/* Location Information */}
                 <div className="space-y-4">
                   <div>
@@ -1937,10 +2074,10 @@ export default function OrganisationDetailPage() {
                       <SelectTrigger>
                         <SelectValue placeholder="Select country..." />
                       </SelectTrigger>
-                      <SelectContent>
-                        {Object.keys(COUNTRIES_REGIONS).map((countryCode) => (
-                          <SelectItem key={countryCode} value={countryCode}>
-                            {COUNTRIES_REGIONS[countryCode].name}
+                      <SelectContent className="max-h-[300px] overflow-y-auto">
+                        {COUNTRIES_REGIONS.countries.map((country) => (
+                          <SelectItem key={country.code} value={country.code}>
+                            {country.name}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -2023,7 +2160,14 @@ export default function OrganisationDetailPage() {
                   </Button>
                   <Button
                     onClick={handleCreateNewContactInDialog}
-                    disabled={!contactFormData.firstName || !contactFormData.lastName || !contactFormData.type || !contactFormData.phone || !contactFormData.country}
+                    disabled={
+                      !contactFormData.firstName ||
+                      !contactFormData.lastName ||
+                      !contactFormData.type ||
+                      !contactFormData.phone ||
+                      !contactFormData.country ||
+                      (contactDuplicateWarning && contactDuplicateWarning.isBlocked)
+                    }
                   >
                     Create Contact
                   </Button>
@@ -2109,6 +2253,45 @@ export default function OrganisationDetailPage() {
               </div>
             </div>
 
+            {/* Duplicate Warning */}
+            {contactDuplicateWarning && contactDuplicateWarning.conflicts.length > 0 && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <div className="flex items-start">
+                  <AlertTriangle className="h-5 w-5 text-red-500 mt-0.5 mr-3 flex-shrink-0" />
+                  <div>
+                    <h4 className="text-sm font-medium text-red-800 mb-2">
+                      Duplicate Found - Cannot Create Contact
+                    </h4>
+                    <div className="space-y-2">
+                      {contactDuplicateWarning.conflicts.map((conflict, index) => (
+                        <div key={index} className="text-sm text-red-700">
+                          <strong>{conflict.type.toUpperCase()}:</strong> {conflict.value} already exists for{' '}
+                          <span className="font-medium">
+                            {conflict.existingEntity.name}
+                          </span>
+                          {conflict.existingEntity.details && (
+                            <span className="text-red-600"> ({conflict.existingEntity.details})</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Organisation */}
+            <div>
+              <Label htmlFor="organisationId">Organisation</Label>
+              <Input
+                id="organisationId"
+                value={organisation?.name || ''}
+                disabled
+                className="bg-gray-50"
+              />
+              <p className="text-xs text-gray-500 mt-1">Contact will be automatically assigned to this organisation</p>
+            </div>
+
             {/* Location Information */}
             <div className="space-y-4">
               <div>
@@ -2120,7 +2303,7 @@ export default function OrganisationDetailPage() {
                   <SelectTrigger>
                     <SelectValue placeholder="Select country..." />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="max-h-[300px] overflow-y-auto">
                     {COUNTRIES_REGIONS.countries.map((country) => (
                       <SelectItem key={country.code} value={country.code}>
                         {country.name}
@@ -2204,7 +2387,17 @@ export default function OrganisationDetailPage() {
               <Button variant="outline" onClick={() => setIsContactCreateOpen(false)}>
                 Cancel
               </Button>
-              <Button onClick={handleCreateContact} disabled={!contactFormData.firstName || !contactFormData.lastName || !contactFormData.type || !contactFormData.phone || !contactFormData.country}>
+              <Button
+                onClick={handleCreateContact}
+                disabled={
+                  !contactFormData.firstName ||
+                  !contactFormData.lastName ||
+                  !contactFormData.type ||
+                  !contactFormData.phone ||
+                  !contactFormData.country ||
+                  (contactDuplicateWarning && contactDuplicateWarning.isBlocked)
+                }
+              >
                 Create Contact
               </Button>
             </div>
@@ -2232,7 +2425,7 @@ export default function OrganisationDetailPage() {
           </DialogHeader>
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
-              <div>
+              <div className="col-span-2">
                 <Label htmlFor="deal-title">Deal Title *</Label>
                 <Input
                   id="deal-title"
@@ -2250,6 +2443,35 @@ export default function OrganisationDetailPage() {
                   value={dealFormData.value}
                   onChange={(e) => setDealFormData({ ...dealFormData, value: e.target.value })}
                   placeholder="0.00"
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label htmlFor="deal-currency">Currency</Label>
+                <Select
+                  value={dealFormData.currency}
+                  onValueChange={(value) => setDealFormData({ ...dealFormData, currency: value })}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="USD">USD</SelectItem>
+                    <SelectItem value="EUR">EUR</SelectItem>
+                    <SelectItem value="GBP">GBP</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="deal-probability">Probability (%)</Label>
+                <Input
+                  id="deal-probability"
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={dealFormData.probability}
+                  onChange={(e) => setDealFormData({ ...dealFormData, probability: e.target.value })}
+                  placeholder="50"
                   className="mt-1"
                 />
               </div>
@@ -2338,9 +2560,11 @@ export default function OrganisationDetailPage() {
                     title: '',
                     description: '',
                     value: '',
+                    currency: 'USD',
+                    probability: '',
                     stage: '',
                     contactId: '',
-                    pipeline: 'DEALER'
+                    pipeline: ''
                   });
                 }}
               >

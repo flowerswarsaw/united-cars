@@ -16,7 +16,7 @@ import { AppLayout } from '@/components/layout/app-layout';
 import { PageHeader } from '@/components/layout/page-header';
 import { LoadingState } from '@/components/ui/loading-state';
 import { useSession } from '@/hooks/useSession';
-import { Contact, Organisation, Deal, ContactMethod, ContactMethodType, ContactType, EntityType } from '@united-cars/crm-core';
+import { Contact, Organisation, Deal, ContactMethod, ContactMethodType, ContactType, EntityType, Pipeline } from '@united-cars/crm-core';
 import { ChangeLogPanel } from '@/components/ui/change-log';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -32,6 +32,7 @@ export default function ContactDetailPage() {
   const [contact, setContact] = useState<Contact | null>(null);
   const [organisation, setOrganisation] = useState<Organisation | null>(null);
   const [organisations, setOrganisations] = useState<Organisation[]>([]);
+  const [pipelines, setPipelines] = useState<Pipeline[]>([]);
   const [deals, setDeals] = useState<Deal[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCustomCity, setShowCustomCity] = useState(false);
@@ -74,16 +75,29 @@ export default function ContactDetailPage() {
     title: '',
     description: '',
     value: '',
-    stage: '',
-    pipeline: 'DEALER'
+    currency: 'USD',
+    probability: '',
+    stageId: '',
+    pipelineId: ''
   });
 
   useEffect(() => {
     if (contactId) {
       fetchContact();
       fetchOrganisations();
+      fetchPipelines();
     }
   }, [contactId]);
+
+  // Auto-generate deal title when dialog opens
+  useEffect(() => {
+    if (isDealCreateOpen && contact) {
+      setDealFormData(prev => ({
+        ...prev,
+        title: generateDealTitle()
+      }));
+    }
+  }, [isDealCreateOpen, contact, organisation]);
 
   const fetchContact = async () => {
     try {
@@ -154,6 +168,26 @@ export default function ContactDetailPage() {
       }
     } catch (error) {
       console.error('Failed to fetch organisations:', error);
+    }
+  };
+
+  const fetchPipelines = async () => {
+    try {
+      const response = await fetch('/api/crm/pipelines');
+      if (response.ok) {
+        const data = await response.json();
+        setPipelines(data || []);
+        // Set default pipeline if available
+        if (data && data.length > 0 && !dealFormData.pipelineId) {
+          setDealFormData(prev => ({
+            ...prev,
+            pipelineId: data[0].id,
+            stageId: data[0].stages && data[0].stages.length > 0 ? data[0].stages[0].id : ''
+          }));
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch pipelines:', error);
     }
   };
 
@@ -308,8 +342,27 @@ export default function ContactDetailPage() {
     }
   };
 
+  const generateDealTitle = (): string => {
+    const date = new Date();
+    const shortDate = date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: '2-digit'
+    });
+
+    if (contact) {
+      const contactName = `${contact.firstName} ${contact.lastName}`;
+      if (organisation) {
+        return `Deal with ${contactName} (${organisation.name}) - ${shortDate}`;
+      }
+      return `Deal with ${contactName} - ${shortDate}`;
+    }
+
+    return `New Deal - ${shortDate}`;
+  };
+
   const handleCreateDeal = async () => {
-    if (!dealFormData.title || !dealFormData.stage) {
+    if (!dealFormData.title || !dealFormData.stageId || !dealFormData.pipelineId) {
       toast.error('Please fill in all required fields');
       return;
     }
@@ -322,12 +375,14 @@ export default function ContactDetailPage() {
         },
         body: JSON.stringify({
           title: dealFormData.title,
-          description: dealFormData.description,
+          notes: dealFormData.description || undefined,
           value: dealFormData.value ? parseFloat(dealFormData.value) : undefined,
+          currency: dealFormData.currency,
+          probability: dealFormData.probability ? parseInt(dealFormData.probability) : undefined,
           organisationId: contact?.organisationId,
           contactId: contactId,
-          pipeline: dealFormData.pipeline,
-          stage: dealFormData.stage,
+          pipelineId: dealFormData.pipelineId,
+          stageId: dealFormData.stageId,
           status: 'ACTIVE'
         })
       });
@@ -335,12 +390,16 @@ export default function ContactDetailPage() {
       if (response.ok) {
         toast.success('Deal created successfully');
         setIsDealCreateOpen(false);
+        // Reset form with default pipeline/stage
+        const defaultPipeline = pipelines.length > 0 ? pipelines[0] : null;
         setDealFormData({
           title: '',
           description: '',
           value: '',
-          stage: '',
-          pipeline: 'DEALER'
+          currency: 'USD',
+          probability: '',
+          stageId: defaultPipeline?.stages?.[0]?.id || '',
+          pipelineId: defaultPipeline?.id || ''
         });
         fetchContact(); // Reload contact data which includes deals
       } else {
@@ -790,7 +849,7 @@ export default function ContactDetailPage() {
                           <SelectTrigger className="mt-1">
                             <SelectValue placeholder="Select country..." />
                           </SelectTrigger>
-                          <SelectContent>
+                          <SelectContent className="max-h-[300px] overflow-y-auto">
                             {COUNTRIES_REGIONS.countries.map((country) => (
                               <SelectItem key={country.code} value={country.code}>
                                 {country.name}
@@ -1060,7 +1119,7 @@ export default function ContactDetailPage() {
           </DialogHeader>
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
-              <div>
+              <div className="col-span-2">
                 <Label htmlFor="deal-title">Deal Title *</Label>
                 <Input
                   id="deal-title"
@@ -1081,51 +1140,80 @@ export default function ContactDetailPage() {
                   className="mt-1"
                 />
               </div>
+              <div>
+                <Label htmlFor="deal-currency">Currency</Label>
+                <Select
+                  value={dealFormData.currency}
+                  onValueChange={(value) => setDealFormData({ ...dealFormData, currency: value })}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="USD">USD</SelectItem>
+                    <SelectItem value="EUR">EUR</SelectItem>
+                    <SelectItem value="GBP">GBP</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="deal-probability">Probability (%)</Label>
+                <Input
+                  id="deal-probability"
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={dealFormData.probability}
+                  onChange={(e) => setDealFormData({ ...dealFormData, probability: e.target.value })}
+                  placeholder="50"
+                  className="mt-1"
+                />
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="deal-pipeline">Pipeline</Label>
+                <Label htmlFor="deal-pipeline">Pipeline *</Label>
                 <Select
-                  value={dealFormData.pipeline}
-                  onValueChange={(value) => setDealFormData({ ...dealFormData, pipeline: value })}
+                  value={dealFormData.pipelineId}
+                  onValueChange={(value) => {
+                    const selectedPipeline = pipelines.find(p => p.id === value);
+                    setDealFormData({
+                      ...dealFormData,
+                      pipelineId: value,
+                      stageId: selectedPipeline?.stages?.[0]?.id || ''
+                    });
+                  }}
                 >
                   <SelectTrigger className="mt-1">
                     <SelectValue placeholder="Select pipeline" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="DEALER">Dealer Pipeline</SelectItem>
-                    <SelectItem value="INTEGRATION">Integration Pipeline</SelectItem>
+                    {pipelines.map(pipeline => (
+                      <SelectItem key={pipeline.id} value={pipeline.id}>
+                        {pipeline.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
               <div>
                 <Label htmlFor="deal-stage">Stage *</Label>
                 <Select
-                  value={dealFormData.stage}
-                  onValueChange={(value) => setDealFormData({ ...dealFormData, stage: value })}
+                  value={dealFormData.stageId}
+                  onValueChange={(value) => setDealFormData({ ...dealFormData, stageId: value })}
                 >
                   <SelectTrigger className="mt-1">
                     <SelectValue placeholder="Select stage" />
                   </SelectTrigger>
                   <SelectContent>
-                    {dealFormData.pipeline === 'DEALER' ? (
-                      <>
-                        <SelectItem value="LEAD">Lead</SelectItem>
-                        <SelectItem value="QUALIFICATION">Qualification</SelectItem>
-                        <SelectItem value="PROPOSAL">Proposal</SelectItem>
-                        <SelectItem value="NEGOTIATION">Negotiation</SelectItem>
-                        <SelectItem value="CLOSING">Closing</SelectItem>
-                      </>
-                    ) : (
-                      <>
-                        <SelectItem value="DISCOVERY">Discovery</SelectItem>
-                        <SelectItem value="TECHNICAL_REVIEW">Technical Review</SelectItem>
-                        <SelectItem value="INTEGRATION">Integration</SelectItem>
-                        <SelectItem value="TESTING">Testing</SelectItem>
-                        <SelectItem value="DEPLOYMENT">Deployment</SelectItem>
-                      </>
-                    )}
+                    {pipelines
+                      .find(p => p.id === dealFormData.pipelineId)
+                      ?.stages?.map(stage => (
+                        <SelectItem key={stage.id} value={stage.id}>
+                          {stage.name}
+                        </SelectItem>
+                      )) || null}
                   </SelectContent>
                 </Select>
               </div>
@@ -1148,12 +1236,15 @@ export default function ContactDetailPage() {
                 variant="outline"
                 onClick={() => {
                   setIsDealCreateOpen(false);
+                  const defaultPipeline = pipelines.length > 0 ? pipelines[0] : null;
                   setDealFormData({
                     title: '',
                     description: '',
                     value: '',
-                    stage: '',
-                    pipeline: 'DEALER'
+                    currency: 'USD',
+                    probability: '',
+                    stageId: defaultPipeline?.stages?.[0]?.id || '',
+                    pipelineId: defaultPipeline?.id || ''
                   });
                 }}
               >

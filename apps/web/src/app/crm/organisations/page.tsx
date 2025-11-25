@@ -472,7 +472,7 @@ export default function OrganisationsPage() {
                     <SelectTrigger>
                       <SelectValue placeholder="Select country..." />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="max-h-[300px] overflow-y-auto">
                       {COUNTRIES_REGIONS.countries.map((country) => (
                         <SelectItem key={country.code} value={country.code}>
                           {country.name}
