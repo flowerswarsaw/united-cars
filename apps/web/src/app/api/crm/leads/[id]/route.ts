@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { leadRepository, jsonPersistence } from '@united-cars/crm-mocks';
 import { updateLeadSchema } from '@united-cars/crm-core';
+import { formatPhoneForStorage } from '@/lib/phone-formatter';
 
 export async function GET(
   request: NextRequest,
@@ -34,8 +35,14 @@ export async function PATCH(
     const { id } = await params;
     const body = await request.json();
     const validated = updateLeadSchema.parse(body);
-    
-    const lead = await leadRepository.update(id, validated);
+
+    // Format phone number if present
+    const updateData = { ...validated };
+    if (updateData.phone) {
+      updateData.phone = formatPhoneForStorage(updateData.phone);
+    }
+
+    const lead = await leadRepository.update(id, updateData);
     
     if (!lead) {
       return NextResponse.json(

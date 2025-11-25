@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { organisationRepository, jsonPersistence } from '@united-cars/crm-mocks';
+import { formatContactMethods, formatPhoneForStorage } from '@/lib/phone-formatter';
 
 export async function GET(
   request: NextRequest,
@@ -37,8 +38,17 @@ export async function PATCH(
     const body = await request.json();
     const { id } = await params;
 
+    // Format phone numbers in contact methods if present
+    const updateData = { ...body };
+    if (updateData.contactMethods) {
+      updateData.contactMethods = formatContactMethods(updateData.contactMethods);
+    }
+    if (updateData.phone) {
+      updateData.phone = formatPhoneForStorage(updateData.phone);
+    }
+
     // Update the organization using the repository
-    const updatedOrg = await organisationRepository.update(id, body);
+    const updatedOrg = await organisationRepository.update(id, updateData);
 
     if (!updatedOrg) {
       return NextResponse.json(

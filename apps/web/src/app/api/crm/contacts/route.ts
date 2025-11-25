@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { contactRepository, jsonPersistence } from '@united-cars/crm-mocks';
+import { formatContactMethods, formatPhoneForStorage } from '@/lib/phone-formatter';
 
 export async function GET(request: NextRequest) {
   try {
@@ -80,6 +81,9 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    // Format phone numbers in contact methods
+    contactMethods = formatContactMethods(contactMethods);
 
     // Create contact data
     const contactData = {

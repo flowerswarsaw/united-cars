@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { organisationRepository, jsonPersistence } from '@united-cars/crm-mocks';
 import { ContactMethodType } from '@united-cars/crm-core';
+import { formatContactMethods, formatPhoneForStorage } from '@/lib/phone-formatter';
 
 // Helper function to normalize phone numbers for comparison
 // Strips all non-numeric characters to enable format-agnostic matching
@@ -86,6 +87,14 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
+    // Format contact methods (normalize phone numbers)
+    const formattedContactMethods = body.contactMethods
+      ? formatContactMethods(body.contactMethods)
+      : [
+          ...(body.email ? [{ id: `cm_${Date.now()}_1`, type: 'EMAIL_WORK', value: body.email, primary: true }] : []),
+          ...(body.phone ? [{ id: `cm_${Date.now()}_2`, type: 'PHONE_WORK', value: formatPhoneForStorage(body.phone), primary: true }] : [])
+        ];
+
     // Create the new organization object
     const orgData = {
       name: body.name || '',
@@ -98,14 +107,11 @@ export async function POST(request: NextRequest) {
       state: body.state || '',
       zipCode: body.zipCode || '',
       country: body.country || '',
-      phone: body.phone || '',
+      phone: body.phone ? formatPhoneForStorage(body.phone) : '',
       email: body.email || '',
       industry: body.industry || '',
       size: body.size || '',
-      contactMethods: body.contactMethods || [
-        ...(body.email ? [{ id: `cm_${Date.now()}_1`, type: 'EMAIL_WORK', value: body.email, primary: true }] : []),
-        ...(body.phone ? [{ id: `cm_${Date.now()}_2`, type: 'PHONE_WORK', value: body.phone, primary: true }] : [])
-      ],
+      contactMethods: formattedContactMethods,
       socialMediaLinks: body.socialMediaLinks || [],
       customFields: body.customFields || {
         ...(body.industry ? { industry: body.industry } : {}),

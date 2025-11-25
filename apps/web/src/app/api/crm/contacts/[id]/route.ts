@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { contactRepository, jsonPersistence } from '@united-cars/crm-mocks';
 import { updateContactSchema } from '@united-cars/crm-core';
+import { formatContactMethods } from '@/lib/phone-formatter';
 
 export async function GET(
   request: NextRequest,
@@ -39,6 +40,9 @@ export async function PATCH(
     const updateData = { ...validated };
     if (!updateData.contactMethods || updateData.contactMethods.length === 0) {
       delete updateData.contactMethods;
+    } else {
+      // Format phone numbers in contact methods if present
+      updateData.contactMethods = formatContactMethods(updateData.contactMethods);
     }
 
     const contact = await contactRepository.update(id, updateData);

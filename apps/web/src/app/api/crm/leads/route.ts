@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { leadRepository } from '@united-cars/crm-mocks';
+import { formatPhoneForStorage } from '@/lib/phone-formatter';
 
 export async function GET(request: NextRequest) {
   try {
@@ -83,7 +84,7 @@ export async function POST(request: NextRequest) {
       firstName: body.firstName,
       lastName: body.lastName,
       email: body.email,
-      phone: body.phone,
+      phone: body.phone ? formatPhoneForStorage(body.phone) : body.phone,
       source: body.source,
       organisationId: body.organisationId,
       contactId: body.contactId,
