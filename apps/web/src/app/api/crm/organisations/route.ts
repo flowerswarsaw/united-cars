@@ -1,5 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { organisationRepository, jsonPersistence } from '@united-cars/crm-mocks';
+import { ContactMethodType } from '@united-cars/crm-core';
+
+// Helper function to normalize phone numbers for comparison
+// Strips all non-numeric characters to enable format-agnostic matching
+const normalizePhone = (phone: string): string => {
+  return phone.replace(/\D/g, ''); // Remove all non-digits
+};
 
 export async function GET(request: NextRequest) {
   try {
@@ -10,9 +17,11 @@ export async function GET(request: NextRequest) {
     const country = searchParams.get('country');
 
     let filteredOrgs = await organisationRepository.list();
-    
+
     if (search) {
       const searchLower = search.toLowerCase();
+      const normalizedSearch = normalizePhone(search);
+
       filteredOrgs = filteredOrgs.filter(org => {
         // Search in name
         if (org.name.toLowerCase().includes(searchLower)) return true;
@@ -23,17 +32,32 @@ export async function GET(request: NextRequest) {
         // Search in description
         if (org.description && org.description.toLowerCase().includes(searchLower)) return true;
 
-        // Search in contact methods (emails and phones)
+        // Search in contact methods (emails and phones with normalization)
         if (org.contactMethods && org.contactMethods.length > 0) {
-          const hasMatchingContact = org.contactMethods.some(cm =>
-            cm.value && cm.value.toLowerCase().includes(searchLower)
-          );
+          const hasMatchingContact = org.contactMethods.some(cm => {
+            if (!cm.value) return false;
+
+            // For phone numbers, try both formatted and normalized matching
+            if (cm.type === ContactMethodType.PHONE) {
+              return cm.value.toLowerCase().includes(searchLower) ||
+                     normalizePhone(cm.value).includes(normalizedSearch);
+            }
+
+            // For emails and other types, use standard case-insensitive matching
+            return cm.value.toLowerCase().includes(searchLower);
+          });
           if (hasMatchingContact) return true;
         }
 
         // Legacy fields for backward compatibility
         if (org.email && org.email.toLowerCase().includes(searchLower)) return true;
-        if (org.phone && org.phone.toLowerCase().includes(searchLower)) return true;
+        if (org.phone) {
+          // Apply same normalization logic to legacy phone field
+          if (org.phone.toLowerCase().includes(searchLower) ||
+              normalizePhone(org.phone).includes(normalizedSearch)) {
+            return true;
+          }
+        }
 
         return false;
       });

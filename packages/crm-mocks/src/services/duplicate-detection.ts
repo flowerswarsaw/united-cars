@@ -3,6 +3,12 @@ import { leadRepository } from '../repositories/lead-repository';
 import { contactRepository } from '../repositories/contact-repository';
 import { organisationRepository } from '../repositories/organisation-repository';
 
+// Helper function to normalize phone numbers for comparison
+// Strips all non-numeric characters to enable format-agnostic matching
+const normalizePhone = (phone: string): string => {
+  return phone.replace(/\D/g, ''); // Remove all non-digits
+};
+
 export interface DuplicateResult {
   isBlocked: boolean;
   conflicts: DuplicateConflict[];
@@ -223,6 +229,7 @@ export class DuplicateDetectionService {
 
   /**
    * Check phone uniqueness across all entities
+   * Uses normalized phone comparison to catch duplicates regardless of formatting
    */
   private async checkPhoneUniqueness(
     phone: string,
@@ -231,21 +238,25 @@ export class DuplicateDetectionService {
     excludeLeadId?: string
   ): Promise<DuplicateConflict[]> {
     const conflicts: DuplicateConflict[] = [];
+    const normalizedPhone = normalizePhone(phone);
 
     // Check leads
     const leads = await leadRepository.list();
     for (const lead of leads) {
-      if (lead.id !== excludeLeadId && lead.phone && lead.phone === phone) {
-        conflicts.push({
-          type: 'phone',
-          value: phone,
-          existingEntity: {
-            id: lead.id,
-            type: 'lead',
-            name: `${lead.firstName} ${lead.lastName}`,
-            details: lead.title
-          }
-        });
+      if (lead.id !== excludeLeadId && lead.phone) {
+        const normalizedLeadPhone = normalizePhone(lead.phone);
+        if (normalizedLeadPhone === normalizedPhone) {
+          conflicts.push({
+            type: 'phone',
+            value: phone,
+            existingEntity: {
+              id: lead.id,
+              type: 'lead',
+              name: `${lead.firstName} ${lead.lastName}`,
+              details: lead.title
+            }
+          });
+        }
       }
     }
 
@@ -254,17 +265,20 @@ export class DuplicateDetectionService {
     for (const contact of contacts) {
       if (contact.id !== excludeContactId) {
         for (const method of contact.contactMethods || []) {
-          if (method.type.toString().includes('PHONE') && method.value === phone) {
-            conflicts.push({
-              type: 'phone',
-              value: phone,
-              existingEntity: {
-                id: contact.id,
-                type: 'contact',
-                name: `${contact.firstName} ${contact.lastName}`,
-                details: contact.type
-              }
-            });
+          if (method.type.toString().includes('PHONE') && method.value) {
+            const normalizedMethodPhone = normalizePhone(method.value);
+            if (normalizedMethodPhone === normalizedPhone) {
+              conflicts.push({
+                type: 'phone',
+                value: phone,
+                existingEntity: {
+                  id: contact.id,
+                  type: 'contact',
+                  name: `${contact.firstName} ${contact.lastName}`,
+                  details: contact.type
+                }
+              });
+            }
           }
         }
       }
@@ -275,17 +289,20 @@ export class DuplicateDetectionService {
     for (const org of orgs) {
       if (org.id !== excludeOrgId) {
         for (const method of org.contactMethods || []) {
-          if (method.type.toString().includes('PHONE') && method.value === phone) {
-            conflicts.push({
-              type: 'phone',
-              value: phone,
-              existingEntity: {
-                id: org.id,
-                type: 'organisation',
-                name: org.name,
-                details: org.type
-              }
-            });
+          if (method.type.toString().includes('PHONE') && method.value) {
+            const normalizedMethodPhone = normalizePhone(method.value);
+            if (normalizedMethodPhone === normalizedPhone) {
+              conflicts.push({
+                type: 'phone',
+                value: phone,
+                existingEntity: {
+                  id: org.id,
+                  type: 'organisation',
+                  name: org.name,
+                  details: org.type
+                }
+              });
+            }
           }
         }
       }
