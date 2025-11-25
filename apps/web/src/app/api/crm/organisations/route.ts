@@ -13,11 +13,30 @@ export async function GET(request: NextRequest) {
     
     if (search) {
       const searchLower = search.toLowerCase();
-      filteredOrgs = filteredOrgs.filter(org => 
-        org.name.toLowerCase().includes(searchLower) ||
-        (org.description && org.description.toLowerCase().includes(searchLower)) ||
-        (org.email && org.email.toLowerCase().includes(searchLower))
-      );
+      filteredOrgs = filteredOrgs.filter(org => {
+        // Search in name
+        if (org.name.toLowerCase().includes(searchLower)) return true;
+
+        // Search in company ID
+        if (org.companyId && org.companyId.toLowerCase().includes(searchLower)) return true;
+
+        // Search in description
+        if (org.description && org.description.toLowerCase().includes(searchLower)) return true;
+
+        // Search in contact methods (emails and phones)
+        if (org.contactMethods && org.contactMethods.length > 0) {
+          const hasMatchingContact = org.contactMethods.some(cm =>
+            cm.value && cm.value.toLowerCase().includes(searchLower)
+          );
+          if (hasMatchingContact) return true;
+        }
+
+        // Legacy fields for backward compatibility
+        if (org.email && org.email.toLowerCase().includes(searchLower)) return true;
+        if (org.phone && org.phone.toLowerCase().includes(searchLower)) return true;
+
+        return false;
+      });
     }
     
     if (type) {
