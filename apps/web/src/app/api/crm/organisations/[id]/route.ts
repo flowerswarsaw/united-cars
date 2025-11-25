@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { organisationRepository, jsonPersistence } from '@united-cars/crm-mocks';
 import { formatContactMethods, formatPhoneForStorage } from '@/lib/phone-formatter';
+import { formatContactMethodsEmails } from '@/lib/email-formatter';
+import { normalizeCountryCode, normalizeRegionCode } from '@/lib/country-validator';
+import { normalizePostalCode } from '@/lib/postal-code-validator';
 
 export async function GET(
   request: NextRequest,
@@ -38,13 +41,29 @@ export async function PATCH(
     const body = await request.json();
     const { id } = await params;
 
-    // Format phone numbers in contact methods if present
+    // Format phone numbers and emails in contact methods if present
     const updateData = { ...body };
     if (updateData.contactMethods) {
       updateData.contactMethods = formatContactMethods(updateData.contactMethods);
+      updateData.contactMethods = formatContactMethodsEmails(updateData.contactMethods);
     }
     if (updateData.phone) {
       updateData.phone = formatPhoneForStorage(updateData.phone);
+    }
+
+    // Normalize country, state, and postal code if present
+    if (updateData.country) {
+      updateData.country = normalizeCountryCode(updateData.country);
+    }
+    if (updateData.state) {
+      updateData.state = normalizeRegionCode(updateData.state);
+    }
+    if (updateData.zipCode || updateData.postalCode) {
+      const postalCode = updateData.zipCode || updateData.postalCode;
+      updateData.zipCode = normalizePostalCode(postalCode);
+      if (updateData.postalCode) {
+        updateData.postalCode = normalizePostalCode(postalCode);
+      }
     }
 
     // Update the organization using the repository

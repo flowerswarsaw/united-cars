@@ -13,6 +13,12 @@ import {
   SocialPlatform,
   OrganisationRelationType
 } from './types';
+import {
+  validatePostalCode,
+  validateRegionCode,
+  validateCountryCode,
+  validateCurrencyCode
+} from './validators';
 
 export const contactMethodSchema = z.object({
   id: z.string(),
@@ -46,7 +52,8 @@ export const organisationConnectionSchema = z.object({
   updatedAt: z.date()
 });
 
-export const organisationSchema = z.object({
+// Base organisation schema for deriving input schemas
+const organisationBaseSchema = z.object({
   id: z.string(),
   tenantId: z.string(),
   name: z.string().min(1),
@@ -63,7 +70,8 @@ export const organisationSchema = z.object({
   address: z.string().optional(),
   city: z.string().optional(),
   state: z.string().optional(),
-  country: z.string().min(1),
+  // ISO 3166-1 alpha-2 country code (e.g., US, GB, DE)
+  country: z.string().length(2).regex(/^[A-Z]{2}$/, 'Must be a valid ISO 3166-1 alpha-2 country code'),
   postalCode: z.string().optional(),
   industry: z.string().optional(),
   size: z.string().optional(),
@@ -74,7 +82,38 @@ export const organisationSchema = z.object({
   updatedAt: z.date()
 });
 
-export const contactSchema = z.object({
+// Full organisation schema with cross-field validation
+export const organisationSchema = organisationBaseSchema.refine(
+  (data) => {
+    // Validate country code exists in our list
+    if (data.country && !validateCountryCode(data.country)) {
+      return false;
+    }
+    return true;
+  },
+  { message: "Invalid country code", path: ["country"] }
+).refine(
+  (data) => {
+    // Validate postal code format for the given country
+    if (data.postalCode && data.country) {
+      return validatePostalCode(data.postalCode, data.country);
+    }
+    return true;
+  },
+  { message: "Invalid postal code format for selected country", path: ["postalCode"] }
+).refine(
+  (data) => {
+    // Validate state/region code for the given country
+    if (data.state && data.country) {
+      return validateRegionCode(data.country, data.state);
+    }
+    return true;
+  },
+  { message: "Invalid state/region code for selected country", path: ["state"] }
+);
+
+// Base contact schema for deriving input schemas
+const contactBaseSchema = z.object({
   id: z.string(),
   tenantId: z.string(),
   firstName: z.string().min(1),
@@ -90,13 +129,44 @@ export const contactSchema = z.object({
   address: z.string().optional(),
   city: z.string().optional(),
   state: z.string().optional(),
-  country: z.string().min(1),
+  // ISO 3166-1 alpha-2 country code (e.g., US, GB, DE)
+  country: z.string().length(2).regex(/^[A-Z]{2}$/, 'Must be a valid ISO 3166-1 alpha-2 country code'),
   postalCode: z.string().optional(),
   notes: z.string().optional(),
   tags: z.array(z.string()).optional(),
   createdAt: z.date(),
   updatedAt: z.date()
 });
+
+// Full contact schema with cross-field validation
+export const contactSchema = contactBaseSchema.refine(
+  (data) => {
+    // Validate country code exists in our list
+    if (data.country && !validateCountryCode(data.country)) {
+      return false;
+    }
+    return true;
+  },
+  { message: "Invalid country code", path: ["country"] }
+).refine(
+  (data) => {
+    // Validate postal code format for the given country
+    if (data.postalCode && data.country) {
+      return validatePostalCode(data.postalCode, data.country);
+    }
+    return true;
+  },
+  { message: "Invalid postal code format for selected country", path: ["postalCode"] }
+).refine(
+  (data) => {
+    // Validate state/region code for the given country
+    if (data.state && data.country) {
+      return validateRegionCode(data.country, data.state);
+    }
+    return true;
+  },
+  { message: "Invalid state/region code for selected country", path: ["state"] }
+);
 
 export const leadSchema = z.object({
   id: z.string(),
@@ -182,12 +252,14 @@ export const dealStageHistorySchema = z.object({
   updatedAt: z.date()
 });
 
-export const dealSchema = z.object({
+// Base deal schema for deriving input schemas
+const dealBaseSchema = z.object({
   id: z.string(),
   tenantId: z.string(),
   title: z.string().min(1),
   amount: z.number().optional(),
-  currency: z.string().optional(),
+  // ISO 4217 currency code (e.g., USD, EUR, GBP)
+  currency: z.string().length(3).regex(/^[A-Z]{3}$/, 'Must be a valid ISO 4217 currency code').optional(),
   organisationId: z.string().optional(),
   contactId: z.string().optional(),
   status: z.nativeEnum(DealStatus),
@@ -205,6 +277,18 @@ export const dealSchema = z.object({
   createdAt: z.date(),
   updatedAt: z.date()
 });
+
+// Full deal schema with currency validation
+export const dealSchema = dealBaseSchema.refine(
+  (data) => {
+    // Validate currency code exists in our list
+    if (data.currency && !validateCurrencyCode(data.currency)) {
+      return false;
+    }
+    return true;
+  },
+  { message: "Invalid currency code", path: ["currency"] }
+);
 
 export const taskSchema = z.object({
   id: z.string(),
@@ -291,23 +375,141 @@ export const changeLogSchema = z.object({
 });
 
 // Input schemas
-export const createOrganisationSchema = organisationSchema.omit({
+export const createOrganisationSchema = organisationBaseSchema.omit({
   id: true,
   tenantId: true,
   createdAt: true,
   updatedAt: true
-});
+}).refine(
+  (data) => {
+    // Validate country code exists in our list
+    if (data.country && !validateCountryCode(data.country)) {
+      return false;
+    }
+    return true;
+  },
+  { message: "Invalid country code", path: ["country"] }
+).refine(
+  (data) => {
+    // Validate postal code format for the given country
+    if (data.postalCode && data.country) {
+      return validatePostalCode(data.postalCode, data.country);
+    }
+    return true;
+  },
+  { message: "Invalid postal code format for selected country", path: ["postalCode"] }
+).refine(
+  (data) => {
+    // Validate state/region code for the given country
+    if (data.state && data.country) {
+      return validateRegionCode(data.country, data.state);
+    }
+    return true;
+  },
+  { message: "Invalid state/region code for selected country", path: ["state"] }
+);
 
-export const updateOrganisationSchema = createOrganisationSchema.partial();
-
-export const createContactSchema = contactSchema.omit({
+export const updateOrganisationSchema = organisationBaseSchema.omit({
   id: true,
   tenantId: true,
   createdAt: true,
   updatedAt: true
-});
+}).partial().refine(
+  (data) => {
+    // Validate country code exists in our list (if provided)
+    if (data.country && !validateCountryCode(data.country)) {
+      return false;
+    }
+    return true;
+  },
+  { message: "Invalid country code", path: ["country"] }
+).refine(
+  (data) => {
+    // Validate postal code format for the given country (if both provided)
+    if (data.postalCode && data.country) {
+      return validatePostalCode(data.postalCode, data.country);
+    }
+    return true;
+  },
+  { message: "Invalid postal code format for selected country", path: ["postalCode"] }
+).refine(
+  (data) => {
+    // Validate state/region code for the given country (if both provided)
+    if (data.state && data.country) {
+      return validateRegionCode(data.country, data.state);
+    }
+    return true;
+  },
+  { message: "Invalid state/region code for selected country", path: ["state"] }
+);
 
-export const updateContactSchema = createContactSchema.partial();
+export const createContactSchema = contactBaseSchema.omit({
+  id: true,
+  tenantId: true,
+  createdAt: true,
+  updatedAt: true
+}).refine(
+  (data) => {
+    // Validate country code exists in our list
+    if (data.country && !validateCountryCode(data.country)) {
+      return false;
+    }
+    return true;
+  },
+  { message: "Invalid country code", path: ["country"] }
+).refine(
+  (data) => {
+    // Validate postal code format for the given country
+    if (data.postalCode && data.country) {
+      return validatePostalCode(data.postalCode, data.country);
+    }
+    return true;
+  },
+  { message: "Invalid postal code format for selected country", path: ["postalCode"] }
+).refine(
+  (data) => {
+    // Validate state/region code for the given country
+    if (data.state && data.country) {
+      return validateRegionCode(data.country, data.state);
+    }
+    return true;
+  },
+  { message: "Invalid state/region code for selected country", path: ["state"] }
+);
+
+export const updateContactSchema = contactBaseSchema.omit({
+  id: true,
+  tenantId: true,
+  createdAt: true,
+  updatedAt: true
+}).partial().refine(
+  (data) => {
+    // Validate country code exists in our list (if provided)
+    if (data.country && !validateCountryCode(data.country)) {
+      return false;
+    }
+    return true;
+  },
+  { message: "Invalid country code", path: ["country"] }
+).refine(
+  (data) => {
+    // Validate postal code format for the given country (if both provided)
+    if (data.postalCode && data.country) {
+      return validatePostalCode(data.postalCode, data.country);
+    }
+    return true;
+  },
+  { message: "Invalid postal code format for selected country", path: ["postalCode"] }
+).refine(
+  (data) => {
+    // Validate state/region code for the given country (if both provided)
+    if (data.state && data.country) {
+      return validateRegionCode(data.country, data.state);
+    }
+    return true;
+  },
+  { message: "Invalid state/region code for selected country", path: ["state"] }
+);
 
 export const createLeadSchema = leadSchema.omit({
   id: true,
@@ -318,16 +520,41 @@ export const createLeadSchema = leadSchema.omit({
 
 export const updateLeadSchema = createLeadSchema.partial();
 
-export const createDealSchema = dealSchema.omit({
+export const createDealSchema = dealBaseSchema.omit({
   id: true,
   tenantId: true,
   createdAt: true,
   updatedAt: true,
   currentStages: true,
   stageHistory: true
-});
+}).refine(
+  (data) => {
+    // Validate currency code exists in our list
+    if (data.currency && !validateCurrencyCode(data.currency)) {
+      return false;
+    }
+    return true;
+  },
+  { message: "Invalid currency code", path: ["currency"] }
+);
 
-export const updateDealSchema = createDealSchema.partial();
+export const updateDealSchema = dealBaseSchema.omit({
+  id: true,
+  tenantId: true,
+  createdAt: true,
+  updatedAt: true,
+  currentStages: true,
+  stageHistory: true
+}).partial().refine(
+  (data) => {
+    // Validate currency code exists in our list (if provided)
+    if (data.currency && !validateCurrencyCode(data.currency)) {
+      return false;
+    }
+    return true;
+  },
+  { message: "Invalid currency code", path: ["currency"] }
+);
 
 export const convertLeadInputSchema = z.object({
   title: z.string().min(1),

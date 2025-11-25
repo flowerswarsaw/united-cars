@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { organisationRepository, jsonPersistence } from '@united-cars/crm-mocks';
 import { ContactMethodType } from '@united-cars/crm-core';
 import { formatContactMethods, formatPhoneForStorage } from '@/lib/phone-formatter';
+import { formatContactMethodsEmails } from '@/lib/email-formatter';
+import { normalizeCountryCode, normalizeRegionCode } from '@/lib/country-validator';
+import { normalizePostalCode } from '@/lib/postal-code-validator';
 
 // Helper function to normalize phone numbers for comparison
 // Strips all non-numeric characters to enable format-agnostic matching
@@ -87,13 +90,21 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
-    // Format contact methods (normalize phone numbers)
-    const formattedContactMethods = body.contactMethods
+    // Format contact methods (normalize phone numbers and emails)
+    let formattedContactMethods = body.contactMethods
       ? formatContactMethods(body.contactMethods)
       : [
           ...(body.email ? [{ id: `cm_${Date.now()}_1`, type: 'EMAIL_WORK', value: body.email, primary: true }] : []),
           ...(body.phone ? [{ id: `cm_${Date.now()}_2`, type: 'PHONE_WORK', value: formatPhoneForStorage(body.phone), primary: true }] : [])
         ];
+
+    // Normalize emails in contact methods
+    formattedContactMethods = formatContactMethodsEmails(formattedContactMethods);
+
+    // Normalize country and region codes
+    const normalizedCountry = body.country ? normalizeCountryCode(body.country) : '';
+    const normalizedState = body.state ? normalizeRegionCode(body.state) : '';
+    const normalizedPostalCode = body.zipCode || body.postalCode ? normalizePostalCode(body.zipCode || body.postalCode) : '';
 
     // Create the new organization object
     const orgData = {
@@ -104,9 +115,9 @@ export async function POST(request: NextRequest) {
       website: body.website || '',
       address: body.address || '',
       city: body.city || '',
-      state: body.state || '',
-      zipCode: body.zipCode || '',
-      country: body.country || '',
+      state: normalizedState,
+      zipCode: normalizedPostalCode,
+      country: normalizedCountry,
       phone: body.phone ? formatPhoneForStorage(body.phone) : '',
       email: body.email || '',
       industry: body.industry || '',
