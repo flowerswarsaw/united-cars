@@ -10,7 +10,7 @@ import { Contact, Organisation, ContactType, ContactMethodType } from '@united-c
 import { AppLayout } from '@/components/layout/app-layout';
 import { PageHeader } from '@/components/layout/page-header';
 import { LoadingState } from '@/components/ui/loading-state';
-import { LocationFieldGroup } from '@/components/location';
+import { LocationFieldGroup, CountrySelector, RegionSelector, CitySelector } from '@/components/location';
 import { COUNTRIES_REGIONS, getCountryByCode, getRegionsByCountryCode, hasRegions, getRegionDisplayName, getCitiesByRegion, hasCities } from '@/lib/countries-regions';
 import {
   Table,
@@ -47,9 +47,13 @@ export default function ContactsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
   const [filters, setFilters] = useState({
+    type: '',
     organisationId: '',
-    country: ''
+    country: '',
+    state: '',
+    city: ''
   });
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [formData, setFormData] = useState({
@@ -95,25 +99,37 @@ export default function ContactsPage() {
   useEffect(() => {
     const loadContacts = async () => {
       try {
-        setLoading(true);
+        setIsSearching(true);
         const params = new URLSearchParams();
-        
+
         if (searchQuery.trim()) {
           params.append('search', searchQuery.trim());
         }
-        
+
+        if (filters.type && filters.type !== 'all') {
+          params.append('type', filters.type);
+        }
+
         if (filters.organisationId && filters.organisationId !== 'all') {
           params.append('organisationId', filters.organisationId);
         }
-        
-        if (filters.country.trim()) {
-          params.append('country', filters.country.trim());
+
+        if (filters.country) {
+          params.append('country', filters.country);
         }
-        
-        const url = params.toString() 
+
+        if (filters.state) {
+          params.append('state', filters.state);
+        }
+
+        if (filters.city) {
+          params.append('city', filters.city);
+        }
+
+        const url = params.toString()
           ? `/api/crm/contacts?${params.toString()}`
           : '/api/crm/contacts';
-        
+
         const response = await fetch(url);
         const data = await response.json();
         setContacts(data || []);
@@ -123,6 +139,7 @@ export default function ContactsPage() {
         setContacts([]);
       } finally {
         setLoading(false);
+        setIsSearching(false);
       }
     };
 
@@ -131,7 +148,7 @@ export default function ContactsPage() {
     }, 300);
 
     return () => clearTimeout(timeoutId);
-  }, [searchQuery, filters.organisationId, filters.country]);
+  }, [searchQuery, filters.type, filters.organisationId, filters.country, filters.state, filters.city]);
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -163,18 +180,42 @@ export default function ContactsPage() {
     return org?.name;
   };
 
+  const getContactTypeLabel = (type?: string) => {
+    if (!type) return null;
+    const labels: Record<string, string> = {
+      [ContactType.CEO]: 'CEO',
+      [ContactType.VP]: 'VP',
+      [ContactType.SALES]: 'Sales',
+      [ContactType.PURCHASING]: 'Purchasing',
+      [ContactType.OPERATIONS]: 'Operations',
+      [ContactType.LOGISTICS]: 'Logistics',
+      [ContactType.FINANCE]: 'Finance',
+      [ContactType.ACCOUNTING]: 'Accounting',
+      [ContactType.MARKETING]: 'Marketing',
+      [ContactType.ADMINISTRATION]: 'Administration',
+      [ContactType.RETAIL_BUYER]: 'Retail Buyer'
+    };
+    return labels[type] || type;
+  };
+
   const clearFilters = () => {
     setSearchQuery('');
     setFilters({
+      type: '',
       organisationId: '',
-      country: ''
+      country: '',
+      state: '',
+      city: ''
     });
   };
 
   const hasActiveFilters = Boolean(
-    searchQuery || 
+    searchQuery ||
+    (filters.type && filters.type !== 'all') ||
     (filters.organisationId && filters.organisationId !== 'all') ||
-    filters.country
+    filters.country ||
+    filters.state ||
+    filters.city
   );
 
   // Helper function to escape regex special characters
@@ -415,7 +456,7 @@ export default function ContactsPage() {
             <Label htmlFor="organisationId">Organisation</Label>
             <Select value={formData.organisationId || undefined} onValueChange={(value) => setFormData({ ...formData, organisationId: value || '' })}>
               <SelectTrigger>
-                <SelectValue placeholder="Select organisation (optional)" />
+                <SelectValue placeholder="Select organisation" />
               </SelectTrigger>
               <SelectContent>
                 {organisations.map(org => (
@@ -471,27 +512,98 @@ export default function ContactsPage() {
       
       <div className="px-4 sm:px-6 lg:px-8 py-6">
         {/* Search and Filter Section */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
-          <div className="px-6 py-4">
-            <div className="flex flex-col sm:flex-row gap-4">
+        <div className="bg-card rounded-lg shadow-sm border border-border mb-6 overflow-hidden">
+          {/* Header Section with Search and Actions */}
+          <div className="px-6 py-4 border-b border-border bg-muted/30">
+            <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
               {/* Search Bar */}
-              <div className="relative flex-1 max-w-md">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+              <div className="relative flex-1 w-full lg:max-w-md">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                 <Input
-                  placeholder="Search by name, phone, or email..."
+                  placeholder="Search contacts..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
+                  className="pl-10 pr-8 h-10 bg-background"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Escape' && searchQuery) {
+                      setSearchQuery('');
+                      e.currentTarget.blur();
+                    }
+                  }}
                 />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-2 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-1 rounded-sm hover:bg-muted"
+                    title="Clear search (Esc)"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
+                {isSearching && (
+                  <div className="absolute right-10 top-1/2 transform -translate-y-1/2">
+                    <div className="h-3.5 w-3.5 border-2 border-muted-foreground border-t-transparent rounded-full animate-spin" />
+                  </div>
+                )}
               </div>
-              
+
+              {/* Action Buttons */}
+              <div className="flex items-center gap-2 flex-shrink-0">
+                {hasActiveFilters && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={clearFilters}
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="h-4 w-4 mr-1.5" />
+                    Clear All
+                  </Button>
+                )}
+                {newContactButton}
+              </div>
+            </div>
+          </div>
+
+          {/* Basic Filters Section */}
+          <div className="px-6 py-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="text-sm font-medium text-muted-foreground mr-2">Filters:</span>
+
+              {/* Contact Type Filter */}
+              <div className="min-w-[160px]">
+                <Select
+                  value={filters.type || 'all'}
+                  onValueChange={(value) => setFilters({ ...filters, type: value === 'all' ? '' : value })}
+                >
+                  <SelectTrigger className="h-9 text-sm">
+                    <SelectValue placeholder="All Types" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Types</SelectItem>
+                    <SelectItem value={ContactType.CEO}>CEO</SelectItem>
+                    <SelectItem value={ContactType.VP}>VP</SelectItem>
+                    <SelectItem value={ContactType.SALES}>Sales</SelectItem>
+                    <SelectItem value={ContactType.PURCHASING}>Purchasing</SelectItem>
+                    <SelectItem value={ContactType.OPERATIONS}>Operations</SelectItem>
+                    <SelectItem value={ContactType.LOGISTICS}>Logistics</SelectItem>
+                    <SelectItem value={ContactType.FINANCE}>Finance</SelectItem>
+                    <SelectItem value={ContactType.ACCOUNTING}>Accounting</SelectItem>
+                    <SelectItem value={ContactType.MARKETING}>Marketing</SelectItem>
+                    <SelectItem value={ContactType.ADMINISTRATION}>Administration</SelectItem>
+                    <SelectItem value={ContactType.RETAIL_BUYER}>Retail Buyer</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
               {/* Organisation Filter */}
-              <div className="min-w-[200px]">
+              <div className="min-w-[180px]">
                 <Select
                   value={filters.organisationId || 'all'}
                   onValueChange={(value) => setFilters({ ...filters, organisationId: value === 'all' ? '' : value })}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="h-9 text-sm">
                     <SelectValue placeholder="All Organisations" />
                   </SelectTrigger>
                   <SelectContent>
@@ -504,39 +616,91 @@ export default function ContactsPage() {
                   </SelectContent>
                 </Select>
               </div>
-              
+
               {/* Country Filter */}
-              <div className="min-w-[150px]">
-                <Input
-                  placeholder="Country..."
+              <div className="min-w-[160px]">
+                <CountrySelector
                   value={filters.country}
-                  onChange={(e) => setFilters({ ...filters, country: e.target.value })}
+                  onValueChange={(country) => setFilters({ ...filters, country, state: '', city: '' })}
+                  placeholder="Country"
                 />
               </div>
-              
-              {/* Clear Filters */}
-              {hasActiveFilters && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={clearFilters}
-                  className="flex items-center gap-2"
-                >
-                  <X className="h-4 w-4" />
-                  Clear
-                </Button>
+
+              {/* State/Region Filter */}
+              {filters.country && (
+                <div className="min-w-[160px]">
+                  <RegionSelector
+                    countryCode={filters.country}
+                    value={filters.state}
+                    onValueChange={(state) => setFilters({ ...filters, state, city: '' })}
+                    placeholder="State/Region"
+                    disabled={!filters.country}
+                  />
+                </div>
               )}
-              
-              {/* New Contact Button */}
-              <div className="flex-shrink-0">
-                {newContactButton}
-              </div>
+
+              {/* City Filter */}
+              {filters.state && (
+                <div className="min-w-[160px]">
+                  <CitySelector
+                    countryCode={filters.country}
+                    regionCode={filters.state}
+                    value={filters.city}
+                    onValueChange={(city) => setFilters({ ...filters, city })}
+                    placeholder="City"
+                    disabled={!filters.state}
+                  />
+                </div>
+              )}
             </div>
+
+            {/* Active Filter Summary */}
+            {(searchQuery || filters.type || filters.organisationId || filters.country || filters.state || filters.city) && (
+              <div className="flex flex-wrap items-center gap-2 mt-4 pt-4 border-t border-border">
+                <span className="text-xs font-medium text-muted-foreground">Active:</span>
+
+                {searchQuery && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-primary/10 text-primary text-xs font-medium">
+                    Search: "{searchQuery}"
+                  </span>
+                )}
+
+                {filters.type && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-primary/10 text-primary text-xs font-medium">
+                    Type: {getContactTypeLabel(filters.type)}
+                  </span>
+                )}
+
+                {filters.organisationId && filters.organisationId !== 'all' && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-primary/10 text-primary text-xs font-medium">
+                    Organisation: {getOrganisationName(filters.organisationId)}
+                  </span>
+                )}
+
+                {filters.country && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-primary/10 text-primary text-xs font-medium">
+                    Country: {filters.country}
+                  </span>
+                )}
+
+                {filters.state && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-primary/10 text-primary text-xs font-medium">
+                    State: {filters.state}
+                  </span>
+                )}
+
+                {filters.city && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-primary/10 text-primary text-xs font-medium">
+                    City: {filters.city}
+                  </span>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
         {/* Main Content */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        <div className="bg-card rounded-lg shadow-sm border border-border overflow-hidden">
           <div className="overflow-x-auto">
             <Table>
           <TableHeader>

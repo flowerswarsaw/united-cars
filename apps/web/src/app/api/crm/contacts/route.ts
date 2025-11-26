@@ -5,28 +5,84 @@ import { formatContactMethodsEmails } from '@/lib/email-formatter';
 import { normalizeCountryCode, normalizeRegionCode } from '@/lib/country-validator';
 import { normalizePostalCode } from '@/lib/postal-code-validator';
 
+// Helper function to normalize phone numbers for comparison
+const normalizePhone = (phone: string): string => {
+  return phone.replace(/\D/g, ''); // Remove all non-digits
+};
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search');
     const organisationId = searchParams.get('organisationId');
+    const type = searchParams.get('type');
+    const country = searchParams.get('country');
+    const state = searchParams.get('state');
+    const city = searchParams.get('city');
     const paginated = searchParams.get('paginated') === 'true';
 
     // Get contacts from repository
     let filteredContacts = await contactRepository.list();
 
-    // Apply filtering
+    // Apply search filter (name, email, phone)
     if (search) {
       const searchLower = search.toLowerCase();
+      const normalizedSearch = normalizePhone(search);
+
+      filteredContacts = filteredContacts.filter(contact => {
+        // Search in name and title
+        if (contact.firstName.toLowerCase().includes(searchLower)) return true;
+        if (contact.lastName.toLowerCase().includes(searchLower)) return true;
+        if (contact.title && contact.title.toLowerCase().includes(searchLower)) return true;
+
+        // Search in contact methods (emails and phones)
+        if (contact.contactMethods && contact.contactMethods.length > 0) {
+          const hasMatchingContact = contact.contactMethods.some(cm => {
+            if (!cm.value) return false;
+
+            // For phone numbers, try both formatted and normalized matching
+            if (cm.type.includes('PHONE')) {
+              return cm.value.toLowerCase().includes(searchLower) ||
+                     normalizePhone(cm.value).includes(normalizedSearch);
+            }
+
+            // For emails, use standard case-insensitive matching
+            return cm.value.toLowerCase().includes(searchLower);
+          });
+          if (hasMatchingContact) return true;
+        }
+
+        return false;
+      });
+    }
+
+    // Filter by organization
+    if (organisationId) {
+      filteredContacts = filteredContacts.filter(contact => contact.organisationId === organisationId);
+    }
+
+    // Filter by contact type
+    if (type) {
+      filteredContacts = filteredContacts.filter(contact => contact.type === type);
+    }
+
+    // Filter by location
+    if (country) {
       filteredContacts = filteredContacts.filter(contact =>
-        contact.firstName.toLowerCase().includes(searchLower) ||
-        contact.lastName.toLowerCase().includes(searchLower) ||
-        (contact.title && contact.title.toLowerCase().includes(searchLower))
+        contact.country && contact.country.toLowerCase() === country.toLowerCase()
       );
     }
 
-    if (organisationId) {
-      filteredContacts = filteredContacts.filter(contact => contact.organisationId === organisationId);
+    if (state) {
+      filteredContacts = filteredContacts.filter(contact =>
+        contact.state && contact.state.toLowerCase() === state.toLowerCase()
+      );
+    }
+
+    if (city) {
+      filteredContacts = filteredContacts.filter(contact =>
+        contact.city && contact.city.toLowerCase() === city.toLowerCase()
+      );
     }
 
     if (paginated) {
@@ -57,24 +113,27 @@ export async function POST(request: NextRequest) {
     // Build contact methods array, ensuring at least one exists
     let contactMethods = body.contactMethods || [];
 
-    // If no contact methods provided but email exists, create one
-    if (contactMethods.length === 0 && body.email) {
-      contactMethods.push({
-        id: `cm_${Date.now()}_1`,
-        type: 'EMAIL_WORK',
-        value: body.email,
-        primary: true
-      });
-    }
+    // If no contact methods provided, build from individual email/phone fields
+    if (contactMethods.length === 0) {
+      // Add email if provided
+      if (body.email) {
+        contactMethods.push({
+          id: `cm_${Date.now()}_email`,
+          type: 'EMAIL',
+          value: body.email,
+          primary: true
+        });
+      }
 
-    // If still no contact methods but phone exists, create one
-    if (contactMethods.length === 0 && body.phone) {
-      contactMethods.push({
-        id: `cm_${Date.now()}_1`,
-        type: 'PHONE_WORK',
-        value: body.phone,
-        primary: true
-      });
+      // Add phone if provided (independent of email)
+      if (body.phone) {
+        contactMethods.push({
+          id: `cm_${Date.now()}_phone`,
+          type: 'PHONE',
+          value: body.phone,
+          primary: !body.email // Primary only if no email exists
+        });
+      }
     }
 
     // If no contact methods at all, return a user-friendly error

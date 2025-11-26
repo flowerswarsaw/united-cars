@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { organisationRepository, jsonPersistence } from '@united-cars/crm-mocks';
-import { ContactMethodType } from '@united-cars/crm-core';
+import { ContactMethodType, CustomFieldType, ORGANIZATION_TYPE_CONFIGS } from '@united-cars/crm-core';
 import { formatContactMethods, formatPhoneForStorage } from '@/lib/phone-formatter';
 import { formatContactMethodsEmails } from '@/lib/email-formatter';
 import { normalizeCountryCode, normalizeRegionCode } from '@/lib/country-validator';
@@ -19,6 +19,8 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search');
     const type = searchParams.get('type');
     const country = searchParams.get('country');
+    const state = searchParams.get('state');
+    const city = searchParams.get('city');
 
     let filteredOrgs = await organisationRepository.list();
 
@@ -72,11 +74,130 @@ export async function GET(request: NextRequest) {
     }
     
     if (country) {
-      filteredOrgs = filteredOrgs.filter(org => 
-        org.country && org.country.toLowerCase().includes(country.toLowerCase())
+      filteredOrgs = filteredOrgs.filter(org =>
+        org.country && org.country.toLowerCase() === country.toLowerCase()
       );
     }
-    
+
+    if (state) {
+      filteredOrgs = filteredOrgs.filter(org =>
+        org.state && org.state.toLowerCase() === state.toLowerCase()
+      );
+    }
+
+    if (city) {
+      filteredOrgs = filteredOrgs.filter(org =>
+        org.city && org.city.toLowerCase() === city.toLowerCase()
+      );
+    }
+
+    // Type-specific field filtering
+    const typeFiltersParam = searchParams.get('typeFilters');
+    if (typeFiltersParam && type) {
+      try {
+        const typeFilters = JSON.parse(typeFiltersParam);
+        const typeConfig = ORGANIZATION_TYPE_CONFIGS[type];
+
+        if (typeConfig && typeConfig.customFields) {
+          filteredOrgs = filteredOrgs.filter(org => {
+            // Check if all type-specific filters match
+            return Object.entries(typeFilters).every(([fieldKey, filterValue]: [string, any]) => {
+              // Find the field definition
+              const fieldDef = typeConfig.customFields?.find(f => f.key === fieldKey);
+              if (!fieldDef) return true; // Skip if field not found
+
+              // Get the actual value from typeSpecificData (or customFields for backward compatibility)
+              const actualValue = org.typeSpecificData?.[fieldKey] ?? org.customFields?.[fieldKey];
+
+              // Handle different field types
+              switch (fieldDef.type) {
+                case CustomFieldType.SELECT:
+                case CustomFieldType.TEXT: {
+                  const filterVal = filterValue.value;
+                  if (!filterVal) return true; // No filter set
+                  if (actualValue === undefined || actualValue === null) return false;
+
+                  // For TEXT, do case-insensitive partial match
+                  if (fieldDef.type === CustomFieldType.TEXT) {
+                    return String(actualValue).toLowerCase().includes(String(filterVal).toLowerCase());
+                  }
+
+                  // For SELECT, exact match
+                  return String(actualValue) === String(filterVal);
+                }
+
+                case CustomFieldType.MULTISELECT: {
+                  const filterVals = filterValue.values;
+                  const matchMode = filterValue.matchMode || 'ANY';
+                  if (!filterVals || filterVals.length === 0) return true; // No filter set
+                  if (!Array.isArray(actualValue)) return false;
+
+                  // ANY mode: at least one filter value must be in actualValue
+                  if (matchMode === 'ANY') {
+                    return filterVals.some((fv: string) => actualValue.includes(fv));
+                  }
+
+                  // ALL mode: all filter values must be in actualValue
+                  return filterVals.every((fv: string) => actualValue.includes(fv));
+                }
+
+                case CustomFieldType.NUMBER: {
+                  const min = filterValue.min;
+                  const max = filterValue.max;
+                  if (min === undefined && max === undefined) return true; // No filter set
+                  if (actualValue === undefined || actualValue === null) return false;
+
+                  const numValue = Number(actualValue);
+                  if (isNaN(numValue)) return false;
+
+                  if (min !== undefined && numValue < min) return false;
+                  if (max !== undefined && numValue > max) return false;
+                  return true;
+                }
+
+                case CustomFieldType.DATE: {
+                  const from = filterValue.from;
+                  const to = filterValue.to;
+                  if (!from && !to) return true; // No filter set
+                  if (!actualValue) return false;
+
+                  const dateValue = new Date(actualValue);
+                  if (isNaN(dateValue.getTime())) return false;
+
+                  if (from) {
+                    const fromDate = new Date(from);
+                    if (dateValue < fromDate) return false;
+                  }
+
+                  if (to) {
+                    const toDate = new Date(to);
+                    // Set to end of day for inclusive comparison
+                    toDate.setHours(23, 59, 59, 999);
+                    if (dateValue > toDate) return false;
+                  }
+
+                  return true;
+                }
+
+                case CustomFieldType.BOOLEAN: {
+                  const boolVal = filterValue.boolValue;
+                  if (boolVal === null || boolVal === undefined) return true; // No filter set (Any)
+                  if (actualValue === undefined || actualValue === null) return false;
+                  return Boolean(actualValue) === Boolean(boolVal);
+                }
+
+                default:
+                  return true; // Unknown type, don't filter
+              }
+            });
+          });
+        }
+      } catch (error) {
+        console.error('Failed to parse type filters:', error);
+        // Continue without type filtering if parsing fails
+      }
+    }
+
     return NextResponse.json(filteredOrgs);
   } catch (error) {
     return NextResponse.json(
@@ -106,6 +227,25 @@ export async function POST(request: NextRequest) {
     const normalizedState = body.state ? normalizeRegionCode(body.state) : '';
     const normalizedPostalCode = body.zipCode || body.postalCode ? normalizePostalCode(body.zipCode || body.postalCode) : '';
 
+    // Separate typeSpecificData from customFields
+    const typeSpecificFields = ['baseConsolidation', 'monthlyVolume', 'auctionsUsed', 'shippingPorts', 'destinationPorts', 'serviceTypes', 'transitTime'];
+    const typeSpecificData: Record<string, any> = {};
+    const customFields: Record<string, any> = {
+      ...(body.industry ? { industry: body.industry } : {}),
+      ...(body.size ? { size: body.size } : {})
+    };
+
+    // Split body.customFields into typeSpecificData and customFields
+    if (body.customFields) {
+      Object.entries(body.customFields).forEach(([key, value]) => {
+        if (typeSpecificFields.includes(key)) {
+          typeSpecificData[key] = value;
+        } else {
+          customFields[key] = value;
+        }
+      });
+    }
+
     // Create the new organization object
     const orgData = {
       name: body.name || '',
@@ -124,10 +264,8 @@ export async function POST(request: NextRequest) {
       size: body.size || '',
       contactMethods: formattedContactMethods,
       socialMediaLinks: body.socialMediaLinks || [],
-      customFields: body.customFields || {
-        ...(body.industry ? { industry: body.industry } : {}),
-        ...(body.size ? { size: body.size } : {})
-      },
+      typeSpecificData: typeSpecificData,
+      customFields: customFields,
       verified: false
     };
 

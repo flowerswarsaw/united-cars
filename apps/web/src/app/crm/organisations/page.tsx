@@ -39,12 +39,15 @@ import {
 } from 'lucide-react';
 import { Organisation, OrganizationType, ContactMethodType } from '@united-cars/crm-core';
 import { COUNTRIES_REGIONS, getCountryByCode, getRegionsByCountryCode, hasRegions, getRegionDisplayName, getCitiesByRegion, hasCities } from '@/lib/countries-regions';
-import { LocationFieldGroup } from '@/components/location';
+import { LocationFieldGroup, CountrySelector, RegionSelector, CitySelector } from '@/components/location';
+import { TypeSpecificFilterPanel, TypeSpecificFilterValue } from '@/components/crm/filters';
 import toast from 'react-hot-toast';
 
 interface OrganisationFilters {
   type: string;
   country: string;
+  state: string;
+  city: string;
 }
 
 // Helper function to escape regex special characters
@@ -59,8 +62,13 @@ export default function OrganisationsPage() {
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [filters, setFilters] = useState<OrganisationFilters>({
     type: '',
-    country: ''
+    country: '',
+    state: '',
+    city: ''
   });
+  const [pendingTypeFilters, setPendingTypeFilters] = useState<Record<string, TypeSpecificFilterValue>>({});
+  const [appliedTypeFilters, setAppliedTypeFilters] = useState<Record<string, TypeSpecificFilterValue>>({});
+  const [isTypeFilterExpanded, setIsTypeFilterExpanded] = useState(false);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [initialLoading, setInitialLoading] = useState(true);
@@ -119,6 +127,19 @@ export default function OrganisationsPage() {
         params.append('country', filters.country.trim());
       }
 
+      if (filters.state.trim()) {
+        params.append('state', filters.state.trim());
+      }
+
+      if (filters.city.trim()) {
+        params.append('city', filters.city.trim());
+      }
+
+      // Add type-specific filters to query params
+      if (Object.keys(appliedTypeFilters).length > 0) {
+        params.append('typeFilters', JSON.stringify(appliedTypeFilters));
+      }
+
       const url = params.toString()
         ? `/api/crm/organisations?${params.toString()}`
         : '/api/crm/organisations';
@@ -134,7 +155,7 @@ export default function OrganisationsPage() {
       setLoading(false);
       setInitialLoading(false);
     }
-  }, [debouncedSearchQuery, filters.type, filters.country]);
+  }, [debouncedSearchQuery, filters.type, filters.country, filters.state, filters.city, appliedTypeFilters]);
 
   // Debounce search query
   useEffect(() => {
@@ -154,6 +175,12 @@ export default function OrganisationsPage() {
   useEffect(() => {
     loadOrganisations();
   }, [loadOrganisations]);
+
+  // Reset type-specific filters when organization type changes
+  useEffect(() => {
+    setPendingTypeFilters({});
+    setAppliedTypeFilters({});
+  }, [filters.type]);
 
   useEffect(() => {
     // Auto-open creation dialog if create parameter is present
@@ -264,14 +291,59 @@ export default function OrganisationsPage() {
     setSearchQuery('');
     setFilters({
       type: '',
-      country: ''
+      country: '',
+      state: '',
+      city: ''
+    });
+    setPendingTypeFilters({});
+    setAppliedTypeFilters({});
+  };
+
+  // Type-specific filter handlers
+  const handleTypeFilterChange = (fieldKey: string, value: TypeSpecificFilterValue) => {
+    setPendingTypeFilters(prev => {
+      // Check if the filter is empty and should be removed
+      const isEmpty =
+        (!value.value || value.value === '') &&
+        (!value.values || value.values.length === 0) &&
+        value.min === undefined &&
+        value.max === undefined &&
+        (!value.from || value.from === '') &&
+        (!value.to || value.to === '') &&
+        (value.boolValue === null || value.boolValue === undefined);
+
+      // If empty, remove the filter; otherwise update it
+      if (isEmpty) {
+        const { [fieldKey]: _, ...rest } = prev;
+        return rest;
+      }
+
+      return {
+        ...prev,
+        [fieldKey]: value
+      };
     });
   };
+
+  const handleApplyTypeFilters = () => {
+    setAppliedTypeFilters(pendingTypeFilters);
+  };
+
+  const handleClearTypeFilters = () => {
+    setPendingTypeFilters({});
+    setAppliedTypeFilters({});
+  };
+
+  // Check if there are unapplied changes
+  const hasUnappliedChanges = JSON.stringify(pendingTypeFilters) !== JSON.stringify(appliedTypeFilters);
 
   const hasActiveFilters = Boolean(
     searchQuery ||
     (filters.type && filters.type !== 'all') ||
-    filters.country
+    filters.country ||
+    filters.state ||
+    filters.city ||
+    Object.keys(appliedTypeFilters).length > 0
   );
 
   const handleDelete = async (org: Organisation, e: React.MouseEvent) => {
@@ -519,17 +591,18 @@ export default function OrganisationsPage() {
       
       <div className="px-4 sm:px-6 lg:px-8 py-6">
         {/* Search and Filter Section */}
-        <div className="bg-card rounded-lg shadow-sm border border-border mb-6">
-          <div className="px-6 py-4">
-            <div className="flex flex-col sm:flex-row gap-4">
+        <div className="bg-card rounded-lg shadow-sm border border-border mb-6 overflow-hidden">
+          {/* Header Section with Search and Actions */}
+          <div className="px-6 py-4 border-b border-border bg-muted/30">
+            <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
               {/* Search Bar */}
-              <div className="relative flex-1 max-w-md">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-text-tertiary h-4 w-4" />
+              <div className="relative flex-1 w-full lg:max-w-md">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                 <Input
-                  placeholder="Search by name, company ID, phone, or email..."
+                  placeholder="Search organisations..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 pr-8"
+                  className="pl-10 pr-8 h-10 bg-background"
                   onKeyDown={(e) => {
                     if (e.key === 'Escape' && searchQuery) {
                       setSearchQuery('');
@@ -540,26 +613,50 @@ export default function OrganisationsPage() {
                 {searchQuery && (
                   <button
                     onClick={() => setSearchQuery('')}
-                    className="absolute right-2 top-1/2 transform -translate-y-1/2 text-text-tertiary hover:text-foreground transition-colors"
-                    title="Clear search"
+                    className="absolute right-2 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-1 rounded-sm hover:bg-muted"
+                    title="Clear search (Esc)"
                   >
-                    <X className="h-4 w-4" />
+                    <X className="h-3.5 w-3.5" />
                   </button>
                 )}
                 {isSearching && (
-                  <div className="absolute right-8 top-1/2 transform -translate-y-1/2">
-                    <div className="h-3 w-3 border-2 border-text-tertiary border-t-transparent rounded-full animate-spin" />
+                  <div className="absolute right-10 top-1/2 transform -translate-y-1/2">
+                    <div className="h-3.5 w-3.5 border-2 border-muted-foreground border-t-transparent rounded-full animate-spin" />
                   </div>
                 )}
               </div>
-              
+
+              {/* Action Buttons */}
+              <div className="flex items-center gap-2 flex-shrink-0">
+                {hasActiveFilters && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={clearFilters}
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="h-4 w-4 mr-1.5" />
+                    Clear All
+                  </Button>
+                )}
+                {newOrgButton}
+              </div>
+            </div>
+          </div>
+
+          {/* Basic Filters Section */}
+          <div className="px-6 py-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="text-sm font-medium text-muted-foreground mr-2">Filters:</span>
+
               {/* Organisation Type Filter */}
-              <div className="min-w-[180px]">
+              <div className="min-w-[160px]">
                 <Select
                   value={filters.type || 'all'}
                   onValueChange={(value) => setFilters({ ...filters, type: value === 'all' ? '' : value })}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="h-9 text-sm">
                     <SelectValue placeholder="All Types" />
                   </SelectTrigger>
                   <SelectContent>
@@ -575,35 +672,103 @@ export default function OrganisationsPage() {
                   </SelectContent>
                 </Select>
               </div>
-              
+
               {/* Country Filter */}
-              <div className="min-w-[150px]">
-                <Input
-                  placeholder="Country..."
+              <div className="min-w-[160px]">
+                <CountrySelector
                   value={filters.country}
-                  onChange={(e) => setFilters({ ...filters, country: e.target.value })}
+                  onValueChange={(country) => setFilters({ ...filters, country, state: '', city: '' })}
+                  placeholder="Country"
                 />
               </div>
-              
-              {/* Clear Filters */}
-              {hasActiveFilters && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={clearFilters}
-                  className="flex items-center gap-2"
-                >
-                  <X className="h-4 w-4" />
-                  Clear
-                </Button>
+
+              {/* State/Region Filter */}
+              {filters.country && (
+                <div className="min-w-[160px]">
+                  <RegionSelector
+                    countryCode={filters.country}
+                    value={filters.state}
+                    onValueChange={(state) => setFilters({ ...filters, state, city: '' })}
+                    placeholder="State/Region"
+                    disabled={!filters.country}
+                  />
+                </div>
               )}
-              
-              {/* New Organisation Button */}
-              <div className="flex-shrink-0">
-                {newOrgButton}
-              </div>
+
+              {/* City Filter */}
+              {filters.state && (
+                <div className="min-w-[160px]">
+                  <CitySelector
+                    countryCode={filters.country}
+                    regionCode={filters.state}
+                    value={filters.city}
+                    onValueChange={(city) => setFilters({ ...filters, city })}
+                    placeholder="City"
+                    disabled={!filters.state}
+                  />
+                </div>
+              )}
             </div>
+
+            {/* Active Filter Summary */}
+            {(searchQuery || filters.type || filters.country || filters.state || filters.city || Object.keys(appliedTypeFilters).length > 0) && (
+              <div className="flex flex-wrap items-center gap-2 mt-4 pt-4 border-t border-border">
+                <span className="text-xs font-medium text-muted-foreground">Active:</span>
+
+                {searchQuery && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-primary/10 text-primary text-xs font-medium">
+                    Search: "{searchQuery}"
+                  </span>
+                )}
+
+                {filters.type && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-primary/10 text-primary text-xs font-medium">
+                    Type: {filters.type}
+                  </span>
+                )}
+
+                {filters.country && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-primary/10 text-primary text-xs font-medium">
+                    Country: {filters.country}
+                  </span>
+                )}
+
+                {filters.state && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-primary/10 text-primary text-xs font-medium">
+                    State: {filters.state}
+                  </span>
+                )}
+
+                {filters.city && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-primary/10 text-primary text-xs font-medium">
+                    City: {filters.city}
+                  </span>
+                )}
+
+                {Object.keys(appliedTypeFilters).length > 0 && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-blue-500/10 text-blue-600 text-xs font-medium">
+                    Advanced: {Object.keys(appliedTypeFilters).length} filter{Object.keys(appliedTypeFilters).length !== 1 ? 's' : ''}
+                  </span>
+                )}
+              </div>
+            )}
           </div>
+
+          {/* Type-Specific Filters Section */}
+          {filters.type && filters.type !== 'all' && (
+            <div className="border-t border-border">
+              <TypeSpecificFilterPanel
+                organizationType={filters.type as OrganizationType}
+                pendingFilters={pendingTypeFilters}
+                onFilterChange={handleTypeFilterChange}
+                onApply={handleApplyTypeFilters}
+                onClear={handleClearTypeFilters}
+                hasUnappliedChanges={hasUnappliedChanges}
+                isExpanded={isTypeFilterExpanded}
+                onToggle={() => setIsTypeFilterExpanded(!isTypeFilterExpanded)}
+              />
+            </div>
+          )}
         </div>
 
         {/* Main Content */}

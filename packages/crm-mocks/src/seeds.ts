@@ -125,13 +125,9 @@ const organisations = [
     state: 'CA',
     country: 'US',
     typeSpecificData: {
-      dealerLicense: 'CA-DL-2024-001',
-      dealerType: 'Both',
-      lotSize: 75,
-      monthlyVolume: 150,
-      creditLimit: 500000,
-      specializations: ['Luxury', 'Import'],
-      paymentTerms: 'Net 30'
+      baseConsolidation: '1/4',
+      monthlyVolume: '100+',
+      auctionsUsed: ['Copart', 'IAA', 'Manheim']
     }
   }),
   makeOrganisation({
@@ -147,13 +143,9 @@ const organisations = [
     state: 'NY',
     country: 'US',
     typeSpecificData: {
-      dealerLicense: 'NY-DL-2024-002',
-      dealerType: 'New Car',
-      lotSize: 200,
-      monthlyVolume: 300,
-      creditLimit: 1000000,
-      specializations: ['Luxury', 'Domestic'],
-      paymentTerms: 'Net 15'
+      baseConsolidation: '1/3',
+      monthlyVolume: '300+',
+      auctionsUsed: ['Copart', 'Manheim']
     }
   }),
   makeOrganisation({
@@ -168,13 +160,9 @@ const organisations = [
     state: 'IL',
     country: 'US',
     typeSpecificData: {
-      dealerLicense: 'IL-DL-2024-003',
-      dealerType: 'Used Car',
-      lotSize: 25,
-      monthlyVolume: 50,
-      creditLimit: 100000,
-      specializations: ['Commercial'],
-      paymentTerms: 'COD'
+      baseConsolidation: '1/4',
+      monthlyVolume: '20-50',
+      auctionsUsed: ['IAA', 'NPA']
     }
   }),
   
@@ -192,17 +180,10 @@ const organisations = [
     state: 'FL',
     country: 'US',
     typeSpecificData: {
-      serviceAreas: ['International', 'East Coast'],
-      equipmentTypes: ['Container', 'RoRo'],
-      capacity: 1000,
-      certifications: ['ISO 9001', 'C-TPAT'],
-      insuranceLimits: '$10M General Liability',
-      transitTimes: {
-        'Europe': '14-21 days',
-        'Asia': '21-35 days',
-        'South America': '10-14 days'
-      },
-      specialServices: ['Customs Clearance', 'White Glove']
+      shippingPorts: ['FL', 'GA', 'NJ'],
+      destinationPorts: ['Klaipeda, LT', 'Poti, GE', 'Bremerhaven, DE'],
+      serviceTypes: ['Container Shipping', 'RoRo Service'],
+      transitTime: 21
     }
   }),
   
@@ -420,7 +401,7 @@ const contacts = [
     id: 'contact_1',
     firstName: 'John',
     lastName: 'Smith',
-
+    type: 'CEO' as any,
     contactMethods: [
       {
         id: 'cc_1_1',
@@ -456,7 +437,7 @@ const contacts = [
     address: '123 Main Street, Suite 100',
     city: 'Los Angeles',
     state: 'CA',
-    country: 'United States',
+    country: 'US',
     postalCode: '90210',
     notes: 'Key decision maker for luxury vehicle imports. Prefers BMW and Mercedes-Benz models. Very responsive to email communication.'
   }),
@@ -464,13 +445,29 @@ const contacts = [
     id: 'contact_2',
     firstName: 'Sarah',
     lastName: 'Johnson',
-
+    type: 'SALES' as any,
+    contactMethods: [
+      {
+        id: 'cc_2_1',
+        type: ContactMethodType.EMAIL,
+        value: 's.johnson@automax.com',
+        isPrimary: true,
+        label: 'Work Email'
+      },
+      {
+        id: 'cc_2_2',
+        type: ContactMethodType.PHONE,
+        value: '+1-555-0201',
+        isPrimary: true,
+        label: 'Office'
+      }
+    ],
     title: 'Sales Director',
     organisationId: 'org_1',
     address: '456 Oak Avenue',
     city: 'Beverly Hills',
     state: 'CA',
-    country: 'United States',
+    country: 'US',
     postalCode: '90211',
     notes: 'Experienced sales professional specializing in high-volume dealer relationships. Excellent at coordinating complex multi-vehicle shipments and logistics.'
   }),
@@ -478,13 +475,29 @@ const contacts = [
     id: 'contact_3',
     firstName: 'Michael',
     lastName: 'Brown',
-
+    type: 'CEO' as any,
+    contactMethods: [
+      {
+        id: 'cc_3_1',
+        type: ContactMethodType.EMAIL,
+        value: 'm.brown@premiermotors.com',
+        isPrimary: true,
+        label: 'Corporate Email'
+      },
+      {
+        id: 'cc_3_2',
+        type: ContactMethodType.PHONE,
+        value: '+1-555-0202',
+        isPrimary: true,
+        label: 'Direct Line'
+      }
+    ],
     title: 'CEO',
     organisationId: 'org_2',
     address: '789 Business Plaza, Floor 15',
     city: 'New York',
     state: 'NY',
-    country: 'United States',
+    country: 'US',
     postalCode: '10001',
     notes: 'CEO of Premium Motors with 20+ years in luxury automotive. Focus on European imports and high-end collector vehicles. Prefers phone calls for urgent matters.'
   }),
@@ -492,13 +505,29 @@ const contacts = [
     id: 'contact_4',
     firstName: 'Emily',
     lastName: 'Davis',
-
+    type: 'OPERATIONS' as any,
+    contactMethods: [
+      {
+        id: 'cc_4_1',
+        type: ContactMethodType.EMAIL,
+        value: 'e.davis@citycarsdirect.com',
+        isPrimary: true,
+        label: 'Work Email'
+      },
+      {
+        id: 'cc_4_2',
+        type: ContactMethodType.PHONE,
+        value: '+1-555-0203',
+        isPrimary: true,
+        label: 'Office'
+      }
+    ],
     title: 'Operations Manager',
     organisationId: 'org_3',
     address: '321 Industrial Way',
     city: 'Chicago',
     state: 'IL',
-    country: 'United States',
+    country: 'US',
     postalCode: '60601',
     notes: 'Detail-oriented operations manager handling inventory and logistics. Expertise in commercial vehicle procurement and fleet management solutions.'
   }),
@@ -506,13 +535,29 @@ const contacts = [
     id: 'contact_5',
     firstName: 'Robert',
     lastName: 'Wilson',
-
+    type: 'LOGISTICS' as any,
+    contactMethods: [
+      {
+        id: 'cc_5_1',
+        type: ContactMethodType.EMAIL,
+        value: 'r.wilson@globalauto.com',
+        isPrimary: true,
+        label: 'Work Email'
+      },
+      {
+        id: 'cc_5_2',
+        type: ContactMethodType.PHONE,
+        value: '+1-555-0204',
+        isPrimary: true,
+        label: 'Office'
+      }
+    ],
     title: 'Import Specialist',
     organisationId: 'org_4',
     address: '555 Harbor Boulevard',
     city: 'Miami',
     state: 'FL',
-    country: 'United States',
+    country: 'US',
     postalCode: '33101',
     notes: 'International shipping expert with extensive knowledge of customs regulations and documentation. Handles complex multi-country vehicle imports efficiently.'
   }),
@@ -520,12 +565,28 @@ const contacts = [
     id: 'contact_6',
     firstName: 'Lisa',
     lastName: 'Anderson',
-
+    type: 'PURCHASING' as any,
+    contactMethods: [
+      {
+        id: 'cc_6_1',
+        type: ContactMethodType.EMAIL,
+        value: 'lisa.anderson@autodeals.com',
+        isPrimary: true,
+        label: 'Business Email'
+      },
+      {
+        id: 'cc_6_2',
+        type: ContactMethodType.PHONE,
+        value: '+1-555-0305',
+        isPrimary: true,
+        label: 'Mobile'
+      }
+    ],
     title: 'Independent Dealer',
     address: '777 Maple Street',
     city: 'Austin',
     state: 'TX',
-    country: 'United States',
+    country: 'US',
     postalCode: '73301',
     notes: 'Independent dealer with a focus on affordable domestic vehicles. Strong relationships with auction houses and quick decision-making process.'
   }),
@@ -533,13 +594,29 @@ const contacts = [
     id: 'contact_7',
     firstName: 'James',
     lastName: 'Taylor',
-
+    type: 'PURCHASING' as any,
+    contactMethods: [
+      {
+        id: 'cc_7_1',
+        type: ContactMethodType.EMAIL,
+        value: 'j.taylor@westsideauto.com',
+        isPrimary: true,
+        label: 'Business Email'
+      },
+      {
+        id: 'cc_7_2',
+        type: ContactMethodType.PHONE,
+        value: '+1-555-0306',
+        isPrimary: true,
+        label: 'Office'
+      }
+    ],
     title: 'Purchasing Manager',
     organisationId: 'org_5',
     address: '888 Sunset Drive',
     city: 'Seattle',
     state: 'WA',
-    country: 'United States',
+    country: 'US',
     postalCode: '98101',
     notes: 'Strategic purchasing manager focused on inventory optimization. Specializes in Japanese imports and hybrid vehicles for the Pacific Northwest market.'
   }),
@@ -547,12 +624,28 @@ const contacts = [
     id: 'contact_8',
     firstName: 'Patricia',
     lastName: 'Martinez',
-
+    type: 'RETAIL_BUYER' as any,
+    contactMethods: [
+      {
+        id: 'cc_8_1',
+        type: ContactMethodType.EMAIL,
+        value: 'p.martinez@classicautos.com',
+        isPrimary: true,
+        label: 'Business Email'
+      },
+      {
+        id: 'cc_8_2',
+        type: ContactMethodType.PHONE,
+        value: '+1-555-0307',
+        isPrimary: true,
+        label: 'Mobile'
+      }
+    ],
     title: 'Solo Trader',
     address: '999 Phoenix Plaza',
     city: 'Phoenix',
     state: 'AZ',
-    country: 'United States',
+    country: 'US',
     postalCode: '85001',
     notes: 'Independent vehicle trader specializing in vintage and classic cars. Excellent network of collectors and restoration specialists throughout the Southwest.'
   })
