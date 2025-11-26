@@ -18,6 +18,7 @@ import { Edit2, Save, X, Building2, DollarSign, Calendar, User, History, CheckSq
 import { Deal, Organisation, Contact, Task, Pipeline, Stage, DealStatus, TaskStatus, TaskPriority, EntityType, LossReason } from '@united-cars/crm-core';
 import { ActivityLog } from '@/components/crm/activity-log';
 import toast from 'react-hot-toast';
+import { getUserName, getUserInitials, CRM_USERS } from '@/lib/crm-users';
 import {
   Dialog,
   DialogContent,
@@ -49,7 +50,8 @@ export default function DealDetailPage() {
   const [editingSections, setEditingSections] = useState({
     basicInfo: false,
     relationships: false,
-    notes: false
+    notes: false,
+    assignment: false
   });
 
   // Section-specific form data
@@ -70,6 +72,10 @@ export default function DealDetailPage() {
 
   const [notesData, setNotesData] = useState({
     notes: ''
+  });
+
+  const [assignmentData, setAssignmentData] = useState({
+    responsibleUserId: ''
   });
 
   const [taskFormData, setTaskFormData] = useState({
@@ -116,6 +122,10 @@ export default function DealDetailPage() {
 
       setNotesData({
         notes: data.notes || ''
+      });
+
+      setAssignmentData({
+        responsibleUserId: data.responsibleUserId || ''
       });
 
       // Load pipelines and set current pipeline and stage
@@ -847,6 +857,67 @@ export default function DealDetailPage() {
                 </CardContent>
               </Card>
 
+              {/* Assignment Card */}
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <div>
+                    <CardTitle>Assignment</CardTitle>
+                    <CardDescription>Responsible user for this deal</CardDescription>
+                  </div>
+                  <SectionEditButtons
+                    section="assignment"
+                    onSave={() => saveSection('assignment', assignmentData)}
+                  />
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <Label htmlFor="responsibleUserId">Assigned To</Label>
+                    {editingSections.assignment ? (
+                      <Select
+                        value={assignmentData.responsibleUserId}
+                        onValueChange={(value) => setAssignmentData({ responsibleUserId: value })}
+                      >
+                        <SelectTrigger className="mt-1">
+                          <SelectValue placeholder="Select a user" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Object.values(CRM_USERS).map((user) => (
+                            <SelectItem key={user.id} value={user.id}>
+                              <div className="flex items-center gap-2">
+                                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary font-medium text-xs">
+                                  {user.initials}
+                                </div>
+                                <span>{user.name}</span>
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <div className="mt-1">
+                        {deal.responsibleUserId ? (
+                          <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-50">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary font-medium">
+                              {getUserInitials(deal.responsibleUserId)}
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium text-gray-900">
+                                {getUserName(deal.responsibleUserId)}
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                {CRM_USERS[deal.responsibleUserId]?.email}
+                              </p>
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="text-sm text-gray-500 mt-1">No user assigned</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
               {/* Notes Card */}
               <Card className="md:col-span-2">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -1032,7 +1103,7 @@ export default function DealDetailPage() {
                 id="taskDescription"
                 value={taskFormData.description}
                 onChange={(e) => setTaskFormData({ ...taskFormData, description: e.target.value })}
-                placeholder="Task description (optional)"
+                placeholder="Task description"
                 rows={3}
               />
             </div>

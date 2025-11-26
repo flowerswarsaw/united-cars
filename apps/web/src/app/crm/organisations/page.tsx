@@ -39,6 +39,7 @@ import {
 } from 'lucide-react';
 import { Organisation, OrganizationType, ContactMethodType } from '@united-cars/crm-core';
 import { COUNTRIES_REGIONS, getCountryByCode, getRegionsByCountryCode, hasRegions, getRegionDisplayName, getCitiesByRegion, hasCities } from '@/lib/countries-regions';
+import { getUserName, getUserInitials } from '@/lib/crm-users';
 import { LocationFieldGroup, CountrySelector, RegionSelector, CitySelector } from '@/components/location';
 import { TypeSpecificFilterPanel, TypeSpecificFilterValue } from '@/components/crm/filters';
 import toast from 'react-hot-toast';
@@ -782,13 +783,14 @@ export default function OrganisationsPage() {
               <TableHead>Type</TableHead>
               <TableHead>Country</TableHead>
               <TableHead>Contact Info</TableHead>
+              <TableHead>Assigned To</TableHead>
               <TableHead className="w-[50px]"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {organisations.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8">
+                <TableCell colSpan={7} className="text-center py-8">
                   <div className="flex flex-col items-center space-y-3">
                     <Building2 className="h-12 w-12 text-text-tertiary" />
                     <div className="text-text-secondary">
@@ -876,6 +878,24 @@ export default function OrganisationsPage() {
                         );
                       })()}
                     </div>
+                  </TableCell>
+                  <TableCell>
+                    {(() => {
+                      const userId = org.responsibleUserId || org.assigneeId;
+                      if (!userId) {
+                        return <span className="text-sm text-gray-400">Unassigned</span>;
+                      }
+                      const userName = getUserName(userId);
+                      const userInitials = getUserInitials(userId);
+                      return (
+                        <div className="flex items-center gap-2">
+                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary font-medium text-xs">
+                            {userInitials}
+                          </div>
+                          <span className="text-sm">{userName}</span>
+                        </div>
+                      );
+                    })()}
                   </TableCell>
                   <TableCell>
                     <Button

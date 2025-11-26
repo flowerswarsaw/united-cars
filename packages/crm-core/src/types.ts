@@ -188,23 +188,37 @@ export interface OrganisationBusinessInfo {
   typeSpecificData?: Record<string, any>;
 }
 
+export interface OrganisationRelationships {
+  // The user responsible for this organization (account manager, admin, etc.)
+  responsibleUserId?: string;
+  // Legacy field - same as responsibleUserId for backward compatibility
+  assigneeId?: string;
+}
+
 // Main Organisation interface composed of focused components
-export interface Organisation extends BaseEntity, OrganisationCore, OrganisationContactInfo, OrganisationBusinessInfo, Address, EntityMetadata {}
+export interface Organisation extends BaseEntity, OrganisationCore, OrganisationContactInfo, OrganisationBusinessInfo, OrganisationRelationships, Address, EntityMetadata {}
 
 // Contact-specific focused interfaces
 export interface ContactCore {
   firstName: string;
   lastName: string;
   type: ContactType;
-  organisationId?: string;
 }
 
 export interface ContactInfo {
   contactMethods: ContactMethod[];
 }
 
+export interface ContactRelationships {
+  organisationId?: string;
+  // The user responsible for this contact (sales manager, admin, etc.)
+  responsibleUserId?: string;
+  // Legacy field - same as responsibleUserId for backward compatibility
+  assigneeId?: string;
+}
+
 // Main Contact interface composed of focused components
-export interface Contact extends BaseEntity, ContactCore, ContactInfo, Address, EntityMetadata {}
+export interface Contact extends BaseEntity, ContactCore, ContactInfo, ContactRelationships, Address, EntityMetadata {}
 
 // Lead-specific focused interfaces
 export interface LeadCore {
@@ -233,6 +247,10 @@ export interface LeadRelationships {
   organisationId?: string;
   contactId?: string;
   convertedDealId?: string;
+  // The user responsible for this lead (sales manager, admin, etc.)
+  responsibleUserId?: string;
+  // Legacy field - same as responsibleUserId for backward compatibility
+  assigneeId?: string;
 }
 
 export interface LeadArchive {
@@ -566,4 +584,274 @@ export interface RuleEvaluationResult {
   matched: boolean;
   actions: RuleAction[];
   rule?: ConfigurableRule;
+}
+
+// ============================================================================
+// CRM USER MANAGEMENT SYSTEM - Custom Roles, Teams, User Profiles
+// ============================================================================
+
+/**
+ * Entity-level CRUD permissions
+ * Used in CustomRole to define what operations are allowed per entity type
+ */
+export interface EntityPermissions {
+  canCreate: boolean;
+  canRead: boolean;
+  canUpdate: boolean;
+  canDelete: boolean;
+  canReadAll: boolean; // Can view all entities in tenant (not just assigned)
+}
+
+/**
+ * CRM User Status
+ * Separate from platform user status for CRM-specific lifecycle
+ */
+export enum CRMUserStatus {
+  ACTIVE = 'ACTIVE',
+  INACTIVE = 'INACTIVE'
+}
+
+/**
+ * Team member role within a team
+ */
+export enum TeamMemberRole {
+  LEADER = 'LEADER',
+  MEMBER = 'MEMBER'
+}
+
+/**
+ * Custom Role - Dynamic permission system
+ * Replaces hardcoded UserRole enum with flexible role management
+ */
+export interface CustomRole extends BaseEntity {
+  // Role Identity
+  name: string; // "Regional Sales Manager"
+  description?: string; // "Manages regional sales team..."
+  color?: string; // "#3b82f6" for UI badges
+  isSystem: boolean; // true for migrated hardcoded roles (cannot be deleted)
+
+  // Permissions Matrix - 6 entities × 5 permissions = 30 total permissions
+  permissions: {
+    organisations: EntityPermissions;
+    contacts: EntityPermissions;
+    deals: EntityPermissions;
+    leads: EntityPermissions;
+    tasks: EntityPermissions;
+    pipelines: EntityPermissions;
+  };
+
+  // Metadata
+  isActive: boolean;
+}
+
+/**
+ * CRM User Profile - Sales-focused user data
+ * Links to platform user via platformUserId
+ * Maintains separation between auth (platform) and sales (CRM)
+ */
+export interface CRMUserProfile extends BaseEntity {
+  // Platform Link
+  platformUserId: string; // Links to MockUser.id or future User.id
+
+  // Display & Identity
+  displayName: string; // "Sarah Johnson"
+  email: string; // Synced from platform user
+  avatar?: string; // Avatar URL or data URI
+  title?: string; // "Senior Sales Manager"
+  department?: string; // "Sales - West Coast"
+
+  // Role & Permissions
+  customRoleId: string; // Links to CustomRole
+  permissionOverrides?: {
+    // Individual user permission overrides on top of role
+    organisations?: Partial<EntityPermissions>;
+    contacts?: Partial<EntityPermissions>;
+    deals?: Partial<EntityPermissions>;
+    leads?: Partial<EntityPermissions>;
+    tasks?: Partial<EntityPermissions>;
+    pipelines?: Partial<EntityPermissions>;
+  };
+
+  // Hierarchy & Teams
+  managerId?: string; // Reports to this CRM user
+  teamIds: string[]; // Member of these teams
+
+  // Status
+  status: CRMUserStatus; // CRM-specific status
+  isActive: boolean; // Quick check for active status
+
+  // Metadata already provided by BaseEntity (createdAt, updatedAt, createdBy, updatedBy)
+}
+
+/**
+ * Team - Organizational grouping of users
+ * Enables team-based assignment and reporting
+ */
+export interface Team extends BaseEntity {
+  // Team Identity
+  name: string; // "West Coast Sales"
+  description?: string;
+  color?: string; // For UI visualization
+
+  // Leadership
+  leaderId?: string; // CRM user ID
+
+  // Members tracked via TeamMembership
+  // memberIds derived from memberships for quick access
+
+  // Metadata
+  isActive: boolean;
+}
+
+/**
+ * Team Membership - Junction table for team members
+ * Tracks when users joined teams and their role within the team
+ */
+export interface TeamMembership {
+  id: string;
+  teamId: string;
+  userId: string; // CRM user ID
+  role: TeamMemberRole; // LEADER or MEMBER
+  joinedAt: Date;
+  tenantId: string;
+}
+
+/**
+ * User Activity - Audit trail of user actions
+ * Tracks all significant CRM operations for reporting and compliance
+ */
+export interface UserActivity {
+  id: string;
+  userId: string; // CRM user ID who performed the action
+  tenantId: string;
+
+  // Activity Details
+  action: ActivityType; // Reuse existing ActivityType enum
+  entityType: EntityType;
+  entityId: string;
+  entityName?: string; // For display without lookup
+
+  // Change Details
+  changes?: Array<{
+    field: string;
+    oldValue?: any;
+    newValue?: any;
+  }>;
+
+  // Context
+  timestamp: Date;
+  ipAddress?: string;
+  userAgent?: string;
+  metadata?: Record<string, any>;
+}
+
+/**
+ * CRM User Statistics - Performance metrics
+ * Calculated on-demand for user profile dashboards
+ */
+export interface CRMUserStats {
+  userId: string;
+
+  // Deal Metrics
+  dealsCreated: number;
+  dealsWon: number;
+  dealsLost: number;
+  dealsTotalValue: number;
+  dealsWonValue: number;
+
+  // Contact Metrics
+  contactsManaged: number;
+  contactsCreated: number;
+
+  // Lead Metrics
+  leadsCreated: number;
+  leadsConverted: number;
+  conversionRate: number; // Percentage
+
+  // Task Metrics
+  tasksCreated: number;
+  tasksCompleted: number;
+  tasksOverdue: number;
+
+  // Organisation Metrics
+  organisationsManaged: number;
+
+  // Time Range
+  calculatedAt: Date;
+  periodStart?: Date;
+  periodEnd?: Date;
+}
+
+/**
+ * User Hierarchy Node - For org chart visualization
+ * Represents a user and their direct reports in tree structure
+ */
+export interface UserHierarchyNode {
+  user: CRMUserProfile;
+  directReports: UserHierarchyNode[];
+  level: number; // Depth in hierarchy (0 = root)
+}
+
+/**
+ * Platform User Link - Metadata for sync tracking
+ * Tracks synchronization between platform users and CRM profiles
+ */
+export interface PlatformUserLink {
+  platformUserId: string;
+  crmUserProfileId: string;
+  lastSyncedAt: Date;
+  syncSource: 'AUTO' | 'MANUAL';
+  syncStatus: 'SYNCED' | 'PENDING' | 'ERROR';
+  errorMessage?: string;
+}
+
+/**
+ * Team with members populated
+ * Used in API responses when returning team details
+ */
+export interface TeamWithMembers extends Team {
+  members: Array<{
+    membership: TeamMembership;
+    user: CRMUserProfile;
+  }>;
+  memberCount: number;
+}
+
+/**
+ * Custom Role with user count
+ * Used in role management UI to show how many users have each role
+ */
+export interface CustomRoleWithStats extends CustomRole {
+  userCount: number;
+}
+
+/**
+ * CRM User with resolved role and permissions
+ * Used in API/auth layer after fetching user profile and role
+ */
+export interface CRMUserWithRole {
+  id: string;
+  platformUserId: string;
+  email: string;
+  displayName: string;
+  tenantId: string;
+  customRole: CustomRole;
+  permissionOverrides?: CRMUserProfile['permissionOverrides'];
+  managerId?: string;
+  teamIds: string[];
+}
+
+/**
+ * User Summary - Lightweight user info for dropdowns/lists
+ * Avoids loading full profile when only basic info needed
+ */
+export interface CRMUserSummary {
+  id: string;
+  displayName: string;
+  email: string;
+  avatar?: string;
+  customRoleId: string;
+  customRoleName?: string;
+  customRoleColor?: string;
+  isActive: boolean;
 }

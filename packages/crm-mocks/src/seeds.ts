@@ -49,6 +49,10 @@ import { EnhancedPersistenceManager } from './persistence/enhanced-persistence';
 import { UniquenessManager } from '@united-cars/crm-core/src/uniqueness';
 import { HistoryLogger } from '@united-cars/crm-core/src/history';
 import dealsData from './deals-seed';
+import { TEST_USERS } from './enhanced-seeds';
+
+// Mock tenant ID for all seed data
+const DEFAULT_TENANT = 'org-admin';
 
 // Seed data with organization types
 const organisations = [
@@ -128,7 +132,11 @@ const organisations = [
       baseConsolidation: '1/4',
       monthlyVolume: '100+',
       auctionsUsed: ['Copart', 'IAA', 'Manheim']
-    }
+    },
+    tenantId: DEFAULT_TENANT,
+    responsibleUserId: TEST_USERS.SENIOR_MANAGER.id,
+    createdBy: TEST_USERS.ADMIN.id,
+    updatedBy: TEST_USERS.ADMIN.id
   }),
   makeOrganisation({
     id: 'org_2',
@@ -146,7 +154,11 @@ const organisations = [
       baseConsolidation: '1/3',
       monthlyVolume: '300+',
       auctionsUsed: ['Copart', 'Manheim']
-    }
+    },
+    tenantId: DEFAULT_TENANT,
+    responsibleUserId: TEST_USERS.SENIOR_MANAGER_2.id,
+    createdBy: TEST_USERS.SENIOR_MANAGER_2.id,
+    updatedBy: TEST_USERS.SENIOR_MANAGER_2.id
   }),
   makeOrganisation({
     id: 'org_3',
@@ -163,9 +175,13 @@ const organisations = [
       baseConsolidation: '1/4',
       monthlyVolume: '20-50',
       auctionsUsed: ['IAA', 'NPA']
-    }
+    },
+    tenantId: DEFAULT_TENANT,
+    responsibleUserId: TEST_USERS.JUNIOR_MANAGER.id,
+    createdBy: TEST_USERS.JUNIOR_MANAGER.id,
+    updatedBy: TEST_USERS.JUNIOR_MANAGER.id
   }),
-  
+
   // SHIPPER Organization
   makeOrganisation({
     id: 'org_4',
@@ -184,7 +200,11 @@ const organisations = [
       destinationPorts: ['Klaipeda, LT', 'Poti, GE', 'Bremerhaven, DE'],
       serviceTypes: ['Container Shipping', 'RoRo Service'],
       transitTime: 21
-    }
+    },
+    tenantId: DEFAULT_TENANT,
+    responsibleUserId: TEST_USERS.SENIOR_MANAGER.id,
+    createdBy: TEST_USERS.ADMIN.id,
+    updatedBy: TEST_USERS.SENIOR_MANAGER.id
   }),
   
   // TRANSPORTER Organization
@@ -206,7 +226,11 @@ const organisations = [
       certifications: ['FMCSA', 'DOT'],
       insuranceLimits: '$2M Cargo Insurance',
       specialServices: ['Expedited', 'White Glove']
-    }
+    },
+    tenantId: DEFAULT_TENANT,
+    responsibleUserId: TEST_USERS.JUNIOR_MANAGER_2.id,
+    createdBy: TEST_USERS.JUNIOR_MANAGER_2.id,
+    updatedBy: TEST_USERS.JUNIOR_MANAGER_2.id
   }),
 
   // RETAIL_CLIENT Organizations
@@ -226,9 +250,13 @@ const organisations = [
       timeline: '1-3 months',
       deliveryLocation: 'Denver, CO',
       previousPurchases: 2
-    }
+    },
+    tenantId: DEFAULT_TENANT,
+    responsibleUserId: TEST_USERS.ADMIN.id,
+    createdBy: TEST_USERS.ADMIN.id,
+    updatedBy: TEST_USERS.ADMIN.id
   }),
-  
+
   // AUCTION Organization
   makeOrganisation({
     id: 'org_7',
@@ -248,7 +276,11 @@ const organisations = [
       volumePerWeek: 5000,
       specialtyCategories: ['Salvage', 'Classic', 'Luxury'],
       locations: ['California', 'Nevada', 'Oregon', 'Washington']
-    }
+    },
+    tenantId: DEFAULT_TENANT,
+    responsibleUserId: TEST_USERS.ADMIN.id,
+    createdBy: TEST_USERS.ADMIN.id,
+    updatedBy: TEST_USERS.ADMIN.id
   }),
 
   // EXPEDITOR Organization
@@ -271,7 +303,11 @@ const organisations = [
       certifications: ['FMCSA', 'DOT', 'ISO 9001'],
       insuranceLimits: '$5M Combined',
       specialServices: ['Expedited', 'Warehouse Storage']
-    }
+    },
+    tenantId: DEFAULT_TENANT,
+    responsibleUserId: TEST_USERS.SENIOR_MANAGER.id,
+    createdBy: TEST_USERS.ADMIN.id,
+    updatedBy: TEST_USERS.SENIOR_MANAGER.id
   }),
 
   // PROCESSOR Organization
@@ -292,7 +328,11 @@ const organisations = [
       statesCovered: ['CA', 'TX', 'FL', 'NY', 'IL', 'OH', 'PA', 'MI', 'GA', 'NC'],
       turnaroundTime: '3-7 days',
       capacity: 1000
-    }
+    },
+    tenantId: DEFAULT_TENANT,
+    responsibleUserId: TEST_USERS.SENIOR_MANAGER_2.id,
+    createdBy: TEST_USERS.ADMIN.id,
+    updatedBy: TEST_USERS.SENIOR_MANAGER_2.id
   })
 ];
 
@@ -439,7 +479,11 @@ const contacts = [
     state: 'CA',
     country: 'US',
     postalCode: '90210',
-    notes: 'Key decision maker for luxury vehicle imports. Prefers BMW and Mercedes-Benz models. Very responsive to email communication.'
+    notes: 'Key decision maker for luxury vehicle imports. Prefers BMW and Mercedes-Benz models. Very responsive to email communication.',
+    tenantId: DEFAULT_TENANT,
+    responsibleUserId: TEST_USERS.SENIOR_MANAGER.id,
+    createdBy: TEST_USERS.SENIOR_MANAGER.id,
+    updatedBy: TEST_USERS.SENIOR_MANAGER.id
   }),
   makeContact({
     id: 'contact_2',
@@ -469,7 +513,11 @@ const contacts = [
     state: 'CA',
     country: 'US',
     postalCode: '90211',
-    notes: 'Experienced sales professional specializing in high-volume dealer relationships. Excellent at coordinating complex multi-vehicle shipments and logistics.'
+    notes: 'Experienced sales professional specializing in high-volume dealer relationships. Excellent at coordinating complex multi-vehicle shipments and logistics.',
+    tenantId: DEFAULT_TENANT,
+    responsibleUserId: TEST_USERS.SENIOR_MANAGER.id,
+    createdBy: TEST_USERS.ADMIN.id,
+    updatedBy: TEST_USERS.SENIOR_MANAGER.id
   }),
   makeContact({
     id: 'contact_3',
@@ -499,7 +547,11 @@ const contacts = [
     state: 'NY',
     country: 'US',
     postalCode: '10001',
-    notes: 'CEO of Premium Motors with 20+ years in luxury automotive. Focus on European imports and high-end collector vehicles. Prefers phone calls for urgent matters.'
+    notes: 'CEO of Premium Motors with 20+ years in luxury automotive. Focus on European imports and high-end collector vehicles. Prefers phone calls for urgent matters.',
+    tenantId: DEFAULT_TENANT,
+    responsibleUserId: TEST_USERS.SENIOR_MANAGER_2.id,
+    createdBy: TEST_USERS.SENIOR_MANAGER_2.id,
+    updatedBy: TEST_USERS.SENIOR_MANAGER_2.id
   }),
   makeContact({
     id: 'contact_4',
@@ -529,7 +581,11 @@ const contacts = [
     state: 'IL',
     country: 'US',
     postalCode: '60601',
-    notes: 'Detail-oriented operations manager handling inventory and logistics. Expertise in commercial vehicle procurement and fleet management solutions.'
+    notes: 'Detail-oriented operations manager handling inventory and logistics. Expertise in commercial vehicle procurement and fleet management solutions.',
+    tenantId: DEFAULT_TENANT,
+    responsibleUserId: TEST_USERS.JUNIOR_MANAGER.id,
+    createdBy: TEST_USERS.JUNIOR_MANAGER.id,
+    updatedBy: TEST_USERS.JUNIOR_MANAGER.id
   }),
   makeContact({
     id: 'contact_5',
@@ -559,7 +615,11 @@ const contacts = [
     state: 'FL',
     country: 'US',
     postalCode: '33101',
-    notes: 'International shipping expert with extensive knowledge of customs regulations and documentation. Handles complex multi-country vehicle imports efficiently.'
+    notes: 'International shipping expert with extensive knowledge of customs regulations and documentation. Handles complex multi-country vehicle imports efficiently.',
+    tenantId: DEFAULT_TENANT,
+    responsibleUserId: TEST_USERS.SENIOR_MANAGER.id,
+    createdBy: TEST_USERS.ADMIN.id,
+    updatedBy: TEST_USERS.SENIOR_MANAGER.id
   }),
   makeContact({
     id: 'contact_6',
@@ -588,7 +648,11 @@ const contacts = [
     state: 'TX',
     country: 'US',
     postalCode: '73301',
-    notes: 'Independent dealer with a focus on affordable domestic vehicles. Strong relationships with auction houses and quick decision-making process.'
+    notes: 'Independent dealer with a focus on affordable domestic vehicles. Strong relationships with auction houses and quick decision-making process.',
+    tenantId: DEFAULT_TENANT,
+    responsibleUserId: TEST_USERS.JUNIOR_MANAGER_2.id,
+    createdBy: TEST_USERS.JUNIOR_MANAGER_2.id,
+    updatedBy: TEST_USERS.JUNIOR_MANAGER_2.id
   }),
   makeContact({
     id: 'contact_7',
@@ -618,7 +682,11 @@ const contacts = [
     state: 'WA',
     country: 'US',
     postalCode: '98101',
-    notes: 'Strategic purchasing manager focused on inventory optimization. Specializes in Japanese imports and hybrid vehicles for the Pacific Northwest market.'
+    notes: 'Strategic purchasing manager focused on inventory optimization. Specializes in Japanese imports and hybrid vehicles for the Pacific Northwest market.',
+    tenantId: DEFAULT_TENANT,
+    responsibleUserId: TEST_USERS.JUNIOR_MANAGER_2.id,
+    createdBy: TEST_USERS.ADMIN.id,
+    updatedBy: TEST_USERS.JUNIOR_MANAGER_2.id
   }),
   makeContact({
     id: 'contact_8',
@@ -647,7 +715,11 @@ const contacts = [
     state: 'AZ',
     country: 'US',
     postalCode: '85001',
-    notes: 'Independent vehicle trader specializing in vintage and classic cars. Excellent network of collectors and restoration specialists throughout the Southwest.'
+    notes: 'Independent vehicle trader specializing in vintage and classic cars. Excellent network of collectors and restoration specialists throughout the Southwest.',
+    tenantId: DEFAULT_TENANT,
+    responsibleUserId: TEST_USERS.ADMIN.id,
+    createdBy: TEST_USERS.ADMIN.id,
+    updatedBy: TEST_USERS.ADMIN.id
   })
 ];
 
@@ -988,7 +1060,11 @@ const leads = [
     state: 'CA',
     city: 'Los Angeles',
     zipCode: '90001',
-    notes: 'Looking to expand their inventory with imported vehicles'
+    notes: 'Looking to expand their inventory with imported vehicles',
+    tenantId: DEFAULT_TENANT,
+    responsibleUserId: TEST_USERS.SENIOR_MANAGER.id,
+    createdBy: TEST_USERS.SENIOR_MANAGER.id,
+    updatedBy: TEST_USERS.SENIOR_MANAGER.id
   }),
   makeLead({
     id: 'lead_2',
@@ -1001,7 +1077,11 @@ const leads = [
     state: 'NY',
     city: 'New York',
     zipCode: '10001',
-    notes: 'Referred by existing client, high potential'
+    notes: 'Referred by existing client, high potential',
+    tenantId: DEFAULT_TENANT,
+    responsibleUserId: TEST_USERS.JUNIOR_MANAGER_2.id,
+    createdBy: TEST_USERS.ADMIN.id,
+    updatedBy: TEST_USERS.JUNIOR_MANAGER_2.id
   }),
   makeLead({
     id: 'lead_3',
@@ -1014,7 +1094,11 @@ const leads = [
     state: 'TX',
     city: 'Austin',
     zipCode: '78701',
-    notes: 'Not ready yet, follow up in 6 months'
+    notes: 'Not ready yet, follow up in 6 months',
+    tenantId: DEFAULT_TENANT,
+    responsibleUserId: TEST_USERS.JUNIOR_MANAGER.id,
+    createdBy: TEST_USERS.JUNIOR_MANAGER.id,
+    updatedBy: TEST_USERS.JUNIOR_MANAGER.id
   }),
   makeLead({
     id: 'lead_4',
@@ -1027,7 +1111,11 @@ const leads = [
     state: 'FL',
     city: 'Miami',
     zipCode: '33101',
-    notes: 'Met at auto trade show, very interested'
+    notes: 'Met at auto trade show, very interested',
+    tenantId: DEFAULT_TENANT,
+    responsibleUserId: TEST_USERS.SENIOR_MANAGER.id,
+    createdBy: TEST_USERS.ADMIN.id,
+    updatedBy: TEST_USERS.SENIOR_MANAGER.id
   }),
   makeLead({
     id: 'lead_5',
@@ -1040,7 +1128,11 @@ const leads = [
     state: 'IL',
     city: 'Chicago',
     zipCode: '60601',
-    notes: 'Individual buyer, not our target market'
+    notes: 'Individual buyer, not our target market',
+    tenantId: DEFAULT_TENANT,
+    responsibleUserId: TEST_USERS.ADMIN.id,
+    createdBy: TEST_USERS.ADMIN.id,
+    updatedBy: TEST_USERS.ADMIN.id
   }),
   makeLead({
     id: 'lead_6',
@@ -1053,7 +1145,11 @@ const leads = [
     state: 'WA',
     city: 'Seattle',
     zipCode: '98101',
-    notes: 'Interested but needs more information'
+    notes: 'Interested but needs more information',
+    tenantId: DEFAULT_TENANT,
+    responsibleUserId: TEST_USERS.JUNIOR_MANAGER_2.id,
+    createdBy: TEST_USERS.SENIOR_MANAGER_2.id,
+    updatedBy: TEST_USERS.JUNIOR_MANAGER_2.id
   })
 ];
 
@@ -1145,7 +1241,10 @@ const tasks = [
     description: 'Gather all necessary import documents for AutoMax',
     status: TaskStatus.IN_PROGRESS,
     priority: TaskPriority.HIGH,
-    dueDate: new Date('2024-02-15')
+    dueDate: new Date('2024-02-15'),
+    tenantId: DEFAULT_TENANT,
+    createdBy: TEST_USERS.SENIOR_MANAGER.id,
+    updatedBy: TEST_USERS.SENIOR_MANAGER.id
   }),
   makeTask(EntityType.DEAL, 'deal_2', {
     id: 'task_2',
@@ -1153,7 +1252,10 @@ const tasks = [
     description: 'Set up final negotiation meeting with Premier Motors',
     status: TaskStatus.TODO,
     priority: TaskPriority.URGENT,
-    dueDate: new Date('2024-02-10')
+    dueDate: new Date('2024-02-10'),
+    tenantId: DEFAULT_TENANT,
+    createdBy: TEST_USERS.SENIOR_MANAGER_2.id,
+    updatedBy: TEST_USERS.SENIOR_MANAGER_2.id
   }),
   makeTask(EntityType.ORGANISATION, 'org_3', {
     id: 'task_3',
@@ -1161,7 +1263,10 @@ const tasks = [
     description: 'Email updated company brochure to City Cars',
     status: TaskStatus.DONE,
     priority: TaskPriority.MEDIUM,
-    completedAt: new Date('2024-01-25')
+    completedAt: new Date('2024-01-25'),
+    tenantId: DEFAULT_TENANT,
+    createdBy: TEST_USERS.JUNIOR_MANAGER.id,
+    updatedBy: TEST_USERS.JUNIOR_MANAGER.id
   }),
   makeTask(EntityType.CONTACT, 'contact_6', {
     id: 'task_4',
@@ -1169,14 +1274,20 @@ const tasks = [
     description: 'Check in on their interest level',
     status: TaskStatus.TODO,
     priority: TaskPriority.LOW,
-    dueDate: new Date('2024-02-20')
+    dueDate: new Date('2024-02-20'),
+    tenantId: DEFAULT_TENANT,
+    createdBy: TEST_USERS.JUNIOR_MANAGER_2.id,
+    updatedBy: TEST_USERS.JUNIOR_MANAGER_2.id
   }),
   makeTask(EntityType.DEAL, 'deal_4', {
     id: 'task_5',
     title: 'Onboarding checklist',
     description: 'Complete onboarding process for Global Auto',
     status: TaskStatus.IN_PROGRESS,
-    priority: TaskPriority.HIGH
+    priority: TaskPriority.HIGH,
+    tenantId: DEFAULT_TENANT,
+    createdBy: TEST_USERS.ADMIN.id,
+    updatedBy: TEST_USERS.SENIOR_MANAGER.id
   })
 ];
 

@@ -84,37 +84,207 @@ export function canUserAccessEntity(
     if (entityPermissions.canReadAll) {
       return true;
     }
-    
+
     // For non-admin users, check if entity is assigned to them or if they created it
     if (entityId && (
-      user.assignedEntityIds?.includes(entityId) || 
+      user.assignedEntityIds?.includes(entityId) ||
       entityAssignedUserId === user.id
     )) {
       return true;
     }
-    
+
     return false;
   }
 
   // For update/delete operations on deals/leads/tasks, check assignment
-  if ((operation === 'canUpdate' || operation === 'canDelete') && 
+  if ((operation === 'canUpdate' || operation === 'canDelete') &&
       (entityType === 'deals' || entityType === 'leads' || entityType === 'tasks')) {
-    
+
     // Admins can do anything
     if (user.role === UserRole.ADMIN) {
       return true;
     }
-    
+
     // For managers, they can only update/delete entities assigned to them
     if (entityId && (
-      user.assignedEntityIds?.includes(entityId) || 
+      user.assignedEntityIds?.includes(entityId) ||
       entityAssignedUserId === user.id
     )) {
       return true;
     }
-    
+
     return false;
   }
 
   return true;
+}
+
+// ============================================================================
+// ENHANCED RBAC - Custom Roles & Permission Resolution
+// ============================================================================
+
+/**
+ * CRM User with Custom Role - Enhanced user type for new RBAC system
+ */
+export interface CRMRBACUser {
+  id: string;
+  customRoleId: string;
+  permissionOverrides?: {
+    organisations?: Partial<EntityPermissions>;
+    contacts?: Partial<EntityPermissions>;
+    deals?: Partial<EntityPermissions>;
+    leads?: Partial<EntityPermissions>;
+    tasks?: Partial<EntityPermissions>;
+    pipelines?: Partial<EntityPermissions>;
+  };
+  assignedEntityIds?: string[];
+}
+
+/**
+ * Custom Role with Permissions
+ */
+export interface CustomRolePermissions {
+  permissions: RBACPermissions;
+}
+
+/**
+ * Resolve final user permissions by merging role permissions with user overrides
+ *
+ * Priority:
+ * 1. User permission overrides (highest)
+ * 2. Custom role permissions (fallback)
+ *
+ * @param crmUser - CRM user with custom role and optional overrides
+ * @param customRole - The user's assigned custom role with permissions
+ * @returns Resolved permissions with overrides applied
+ */
+export function resolveUserPermissions(
+  crmUser: CRMRBACUser,
+  customRole: CustomRolePermissions
+): RBACPermissions {
+  const basePermissions = customRole.permissions;
+  const overrides = crmUser.permissionOverrides;
+
+  // If no overrides, return role permissions as-is
+  if (!overrides) {
+    return basePermissions;
+  }
+
+  // Merge overrides with base permissions
+  const resolved: RBACPermissions = {
+    organisations: {
+      ...basePermissions.organisations,
+      ...overrides.organisations
+    },
+    contacts: {
+      ...basePermissions.contacts,
+      ...overrides.contacts
+    },
+    deals: {
+      ...basePermissions.deals,
+      ...overrides.deals
+    },
+    leads: {
+      ...basePermissions.leads,
+      ...overrides.leads
+    },
+    tasks: {
+      ...basePermissions.tasks,
+      ...overrides.tasks
+    },
+    pipelines: {
+      ...basePermissions.pipelines,
+      ...overrides.pipelines
+    }
+  };
+
+  return resolved;
+}
+
+/**
+ * Check if a CRM user can access an entity based on custom role and overrides
+ *
+ * @param crmUser - CRM user with custom role and optional overrides
+ * @param customRole - The user's assigned custom role
+ * @param entityType - Type of entity to check access for
+ * @param operation - Permission operation to check
+ * @param entityId - Optional entity ID for assignment checks
+ * @param entityAssignedUserId - Optional user ID of entity assignee
+ * @returns True if user has permission
+ */
+export function canCRMUserAccessEntity(
+  crmUser: CRMRBACUser,
+  customRole: CustomRolePermissions,
+  entityType: keyof RBACPermissions,
+  operation: keyof EntityPermissions,
+  entityId?: string,
+  entityAssignedUserId?: string
+): boolean {
+  // Resolve final permissions
+  const permissions = resolveUserPermissions(crmUser, customRole);
+  const entityPermissions = permissions[entityType];
+
+  // Check basic permission
+  if (!entityPermissions[operation]) {
+    return false;
+  }
+
+  // For read operations, check if user can read all or if entity is assigned to them
+  if (operation === 'canRead' || operation === 'canReadAll') {
+    if (entityPermissions.canReadAll) {
+      return true;
+    }
+
+    // For users without canReadAll, check if entity is assigned to them
+    if (entityId && (
+      crmUser.assignedEntityIds?.includes(entityId) ||
+      entityAssignedUserId === crmUser.id
+    )) {
+      return true;
+    }
+
+    return false;
+  }
+
+  // For update/delete operations on deals/leads/tasks, check assignment if needed
+  if ((operation === 'canUpdate' || operation === 'canDelete') &&
+      (entityType === 'deals' || entityType === 'leads' || entityType === 'tasks')) {
+
+    // If user has the permission, they still might need assignment check
+    // This depends on whether they have canReadAll (full access) or not (limited access)
+    if (entityPermissions.canReadAll) {
+      // Full access - can update/delete any entity
+      return true;
+    }
+
+    // Limited access - can only update/delete entities assigned to them
+    if (entityId && (
+      crmUser.assignedEntityIds?.includes(entityId) ||
+      entityAssignedUserId === crmUser.id
+    )) {
+      return true;
+    }
+
+    return false;
+  }
+
+  return true;
+}
+
+/**
+ * Helper to convert CustomRole to CustomRolePermissions interface
+ */
+export function customRoleToPermissions(role: {
+  permissions: {
+    organisations: EntityPermissions;
+    contacts: EntityPermissions;
+    deals: EntityPermissions;
+    leads: EntityPermissions;
+    tasks: EntityPermissions;
+    pipelines: EntityPermissions;
+  };
+}): CustomRolePermissions {
+  return {
+    permissions: role.permissions
+  };
 }

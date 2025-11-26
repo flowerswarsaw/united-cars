@@ -3,9 +3,19 @@ import { leadRepository } from '@united-cars/crm-mocks';
 import { formatPhoneForStorage } from '@/lib/phone-formatter';
 import { normalizeCountryCode, normalizeRegionCode } from '@/lib/country-validator';
 import { normalizePostalCode } from '@/lib/postal-code-validator';
+import { getCRMUser, checkEntityAccess, filterByUserAccess } from '@/lib/crm-auth';
 
 export async function GET(request: NextRequest) {
   try {
+    // 1. Extract user session
+    const userOrError = await getCRMUser(request);
+    if (userOrError instanceof NextResponse) return userOrError;
+    const user = userOrError;
+
+    // 2. Check read permission
+    const accessCheck = checkEntityAccess(user, 'Lead', 'canRead');
+    if (accessCheck instanceof NextResponse) return accessCheck;
+
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search');
     const isTarget = searchParams.get('isTarget');
@@ -17,8 +27,13 @@ export async function GET(request: NextRequest) {
     const maxScore = searchParams.get('maxScore');
 
     // Get leads from repository
-    const allLeads = await leadRepository.list();
-    let filteredLeads = allLeads;
+    let filteredLeads = await leadRepository.list();
+
+    // 3. Filter by tenantId
+    filteredLeads = filteredLeads.filter(lead => lead.tenantId === user.tenantId);
+
+    // 4. Filter by user access (assignment-based for junior managers)
+    filteredLeads = filterByUserAccess(filteredLeads, user, 'Lead');
 
     // Filter by archive status
     if (isArchived !== null) {
@@ -79,6 +94,15 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    // 1. Extract user session
+    const userOrError = await getCRMUser(request);
+    if (userOrError instanceof NextResponse) return userOrError;
+    const user = userOrError;
+
+    // 2. Check create permission
+    const accessCheck = checkEntityAccess(user, 'Lead', 'canCreate');
+    if (accessCheck instanceof NextResponse) return accessCheck;
+
     const body = await request.json();
 
     // Normalize location fields
@@ -106,6 +130,12 @@ export async function POST(request: NextRequest) {
       city: body.city,
       zipCode: normalizedZipCode,
       customFields: body.customFields || {},
+      // Add tenant and user tracking
+      tenantId: user.tenantId,
+      createdBy: user.id,
+      updatedBy: user.id,
+      // If no assignee specified, assign to creator
+      responsibleUserId: body.responsibleUserId || user.id
     });
 
     return NextResponse.json(newLead, { status: 201 });

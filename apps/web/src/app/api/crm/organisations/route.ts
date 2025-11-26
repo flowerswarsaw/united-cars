@@ -5,6 +5,7 @@ import { formatContactMethods, formatPhoneForStorage } from '@/lib/phone-formatt
 import { formatContactMethodsEmails } from '@/lib/email-formatter';
 import { normalizeCountryCode, normalizeRegionCode } from '@/lib/country-validator';
 import { normalizePostalCode } from '@/lib/postal-code-validator';
+import { getCRMUser, checkEntityAccess, filterByUserAccess } from '@/lib/crm-auth';
 
 // Helper function to normalize phone numbers for comparison
 // Strips all non-numeric characters to enable format-agnostic matching
@@ -14,6 +15,15 @@ const normalizePhone = (phone: string): string => {
 
 export async function GET(request: NextRequest) {
   try {
+    // 1. Extract user session
+    const userOrError = await getCRMUser(request);
+    if (userOrError instanceof NextResponse) return userOrError;
+    const user = userOrError;
+
+    // 2. Check read permission
+    const accessCheck = checkEntityAccess(user, 'Organisation', 'canRead');
+    if (accessCheck instanceof NextResponse) return accessCheck;
+
     // Apply filtering if needed
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search');
@@ -23,6 +33,12 @@ export async function GET(request: NextRequest) {
     const city = searchParams.get('city');
 
     let filteredOrgs = await organisationRepository.list();
+
+    // 3. Filter by tenantId
+    filteredOrgs = filteredOrgs.filter(org => org.tenantId === user.tenantId);
+
+    // 4. Filter by user access (assignment-based for junior managers)
+    filteredOrgs = filterByUserAccess(filteredOrgs, user, 'Organisation');
 
     if (search) {
       const searchLower = search.toLowerCase();
@@ -209,6 +225,15 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    // 1. Extract user session
+    const userOrError = await getCRMUser(request);
+    if (userOrError instanceof NextResponse) return userOrError;
+    const user = userOrError;
+
+    // 2. Check create permission
+    const accessCheck = checkEntityAccess(user, 'Organisation', 'canCreate');
+    if (accessCheck instanceof NextResponse) return accessCheck;
+
     const body = await request.json();
 
     // Format contact methods (normalize phone numbers and emails)
@@ -266,7 +291,13 @@ export async function POST(request: NextRequest) {
       socialMediaLinks: body.socialMediaLinks || [],
       typeSpecificData: typeSpecificData,
       customFields: customFields,
-      verified: false
+      verified: false,
+      // Add tenant and user tracking
+      tenantId: user.tenantId,
+      createdBy: user.id,
+      updatedBy: user.id,
+      // If no assignee specified, assign to creator
+      responsibleUserId: body.responsibleUserId || user.id
     };
 
     // Add to the repository

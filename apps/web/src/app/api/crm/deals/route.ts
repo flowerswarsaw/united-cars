@@ -1,8 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { dealRepository, jsonPersistence } from '@united-cars/crm-mocks';
+import { getCRMUser, checkEntityAccess, filterByUserAccess } from '@/lib/crm-auth';
 
 export async function GET(request: NextRequest) {
   try {
+    // 1. Extract user session
+    const userOrError = await getCRMUser(request);
+    if (userOrError instanceof NextResponse) return userOrError;
+    const user = userOrError;
+
+    // 2. Check read permission
+    const accessCheck = checkEntityAccess(user, 'Deal', 'canRead');
+    if (accessCheck instanceof NextResponse) return accessCheck;
+
     const { searchParams } = new URL(request.url);
     const pipeline = searchParams.get('pipeline');
     const pipelineId = searchParams.get('pipelineId') || pipeline;
@@ -12,26 +22,20 @@ export async function GET(request: NextRequest) {
     const contactId = searchParams.get('contactId');
 
     // Use the repository method if filtering by pipeline/stage
+    let deals;
     if (pipelineId) {
-      const deals = await dealRepository.getByPipelineAndStage(pipelineId, stageId || undefined);
-
-      // Apply additional filters
-      let filteredDeals = deals;
-
-      if (status) {
-        filteredDeals = filteredDeals.filter(deal => deal.status === status);
-      }
-
-      if (contactId) {
-        filteredDeals = filteredDeals.filter(deal => deal.contactId === contactId);
-      }
-
-      return NextResponse.json(filteredDeals);
+      deals = await dealRepository.getByPipelineAndStage(pipelineId, stageId || undefined);
+    } else {
+      deals = await dealRepository.list();
     }
 
-    // No pipeline filter - get all deals and apply other filters
-    let deals = await dealRepository.list();
+    // 3. Filter by tenantId
+    deals = deals.filter(deal => deal.tenantId === user.tenantId);
 
+    // 4. Filter by user access (assignment-based for junior managers)
+    deals = filterByUserAccess(deals, user, 'Deal');
+
+    // 5. Apply additional filters
     if (status) {
       deals = deals.filter(deal => deal.status === status);
     }
@@ -51,11 +55,20 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    // 1. Extract user session
+    const userOrError = await getCRMUser(request);
+    if (userOrError instanceof NextResponse) return userOrError;
+    const user = userOrError;
+
+    // 2. Check create permission
+    const accessCheck = checkEntityAccess(user, 'Deal', 'canCreate');
+    if (accessCheck instanceof NextResponse) return accessCheck;
+
     const body = await request.json();
 
     console.log('Deal creation request received:', JSON.stringify(body, null, 2));
 
-    // Create deal data using the CRM repository
+    // 3. Create deal data with tenant and user tracking
     const dealData = {
       title: body.title || '',
       description: body.description || '',
@@ -70,7 +83,13 @@ export async function POST(request: NextRequest) {
       expectedCloseDate: body.expectedCloseDate ? new Date(body.expectedCloseDate) : null,
       probability: body.probability || 0,
       notes: body.notes || '',
-      customFields: body.customFields || {}
+      customFields: body.customFields || {},
+      // Add tenant and user tracking
+      tenantId: user.tenantId,
+      createdBy: user.id,
+      updatedBy: user.id,
+      // If no assignee specified, assign to creator
+      responsibleUserId: body.responsibleUserId || user.id
     };
 
     const newDeal = await dealRepository.create(dealData);

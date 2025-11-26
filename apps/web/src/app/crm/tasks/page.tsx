@@ -402,7 +402,7 @@ export default function TasksPage() {
               id="description"
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              placeholder="Task description (optional)"
+              placeholder="Task description"
               rows={3}
             />
           </div>
@@ -455,7 +455,7 @@ export default function TasksPage() {
               <Label htmlFor="targetId">Target</Label>
               <Select value={formData.targetId || undefined} onValueChange={(value) => setFormData({ ...formData, targetId: value || '' })}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select target (optional)" />
+                  <SelectValue placeholder="Select target" />
                 </SelectTrigger>
                 <SelectContent>
                   {formData.targetType === EntityType.DEAL && deals.map(deal => (
@@ -740,7 +740,7 @@ export default function TasksPage() {
                   id="editDescription"
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  placeholder="Task description (optional)"
+                  placeholder="Task description"
                   rows={3}
                 />
               </div>
@@ -793,7 +793,7 @@ export default function TasksPage() {
                   <Label htmlFor="editTargetId">Target</Label>
                   <Select value={formData.targetId || undefined} onValueChange={(value) => setFormData({ ...formData, targetId: value || '' })}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select target (optional)" />
+                      <SelectValue placeholder="Select target" />
                     </SelectTrigger>
                     <SelectContent>
                       {formData.targetType === EntityType.DEAL && deals.map(deal => (

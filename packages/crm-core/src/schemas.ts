@@ -11,7 +11,9 @@ import {
   ContactMethodType,
   ContactType,
   SocialPlatform,
-  OrganisationRelationType
+  OrganisationRelationType,
+  CRMUserStatus,
+  TeamMemberRole
 } from './types';
 import {
   validatePostalCode,
@@ -78,6 +80,10 @@ const organisationBaseSchema = z.object({
   notes: z.string().optional(),
   tags: z.array(z.string()).optional(),
   typeSpecificData: z.record(z.any()).optional(),
+  // The user responsible for this organization (account manager)
+  responsibleUserId: z.string().optional(),
+  // Legacy field for backward compatibility
+  assigneeId: z.string().optional(),
   createdAt: z.date(),
   updatedAt: z.date()
 });
@@ -134,6 +140,10 @@ const contactBaseSchema = z.object({
   postalCode: z.string().optional(),
   notes: z.string().optional(),
   tags: z.array(z.string()).optional(),
+  // The user responsible for this contact
+  responsibleUserId: z.string().optional(),
+  // Legacy field for backward compatibility
+  assigneeId: z.string().optional(),
   createdAt: z.date(),
   updatedAt: z.date()
 });
@@ -198,6 +208,10 @@ export const leadSchema = z.object({
   archivedBy: z.string().optional(),
   notes: z.string().optional(),
   tags: z.array(z.string()).optional(),
+  // The user responsible for this lead
+  responsibleUserId: z.string().optional(),
+  // Legacy field for backward compatibility
+  assigneeId: z.string().optional(),
   createdAt: z.date(),
   updatedAt: z.date()
 });
@@ -683,6 +697,229 @@ export const organizationTypeConfigSchema = z.object({
   features: z.array(organizationFeatureSchema)
 });
 
+// ============================================================================
+// USER MANAGEMENT & RBAC SCHEMAS
+// ============================================================================
+
+// Entity-level CRUD permissions
+export const entityPermissionsSchema = z.object({
+  canCreate: z.boolean(),
+  canRead: z.boolean(),
+  canUpdate: z.boolean(),
+  canDelete: z.boolean(),
+  canReadAll: z.boolean()
+});
+
+// Custom role permissions matrix
+export const customRolePermissionsSchema = z.object({
+  organisations: entityPermissionsSchema,
+  contacts: entityPermissionsSchema,
+  deals: entityPermissionsSchema,
+  leads: entityPermissionsSchema,
+  tasks: entityPermissionsSchema,
+  pipelines: entityPermissionsSchema
+});
+
+// Permission overrides for individual users
+export const permissionOverrideSchema = z.object({
+  organisations: entityPermissionsSchema.partial().optional(),
+  contacts: entityPermissionsSchema.partial().optional(),
+  deals: entityPermissionsSchema.partial().optional(),
+  leads: entityPermissionsSchema.partial().optional(),
+  tasks: entityPermissionsSchema.partial().optional(),
+  pipelines: entityPermissionsSchema.partial().optional()
+});
+
+// Custom Role schema
+export const customRoleSchema = z.object({
+  id: z.string(),
+  tenantId: z.string(),
+  name: z.string().min(1, 'Role name is required'),
+  description: z.string().optional(),
+  color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Color must be a valid hex color').optional(),
+  isSystem: z.boolean().default(false),
+  permissions: customRolePermissionsSchema,
+  isActive: z.boolean().default(true),
+  createdAt: z.coerce.date(),
+  updatedAt: z.coerce.date(),
+  createdBy: z.string().optional(),
+  updatedBy: z.string().optional()
+});
+
+// Create custom role input
+export const createCustomRoleSchema = z.object({
+  name: z.string().min(1, 'Role name is required').max(100, 'Role name too long'),
+  description: z.string().max(500, 'Description too long').optional(),
+  color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Color must be a valid hex color').optional(),
+  permissions: customRolePermissionsSchema
+});
+
+// Update custom role input
+export const updateCustomRoleSchema = z.object({
+  name: z.string().min(1, 'Role name is required').max(100, 'Role name too long').optional(),
+  description: z.string().max(500, 'Description too long').optional(),
+  color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Color must be a valid hex color').optional(),
+  permissions: customRolePermissionsSchema.optional(),
+  isActive: z.boolean().optional()
+});
+
+// CRM User Profile schema
+export const crmUserProfileSchema = z.object({
+  id: z.string(),
+  tenantId: z.string(),
+  platformUserId: z.string(),
+  displayName: z.string().min(1, 'Display name is required'),
+  email: z.string().email('Invalid email address'),
+  avatar: z.string().url('Avatar must be a valid URL').optional(),
+  title: z.string().max(100, 'Title too long').optional(),
+  department: z.string().max(100, 'Department too long').optional(),
+  customRoleId: z.string(),
+  permissionOverrides: permissionOverrideSchema.optional(),
+  managerId: z.string().optional(),
+  teamIds: z.array(z.string()).default([]),
+  status: z.nativeEnum(CRMUserStatus).default('ACTIVE'),
+  isActive: z.boolean().default(true),
+  createdAt: z.coerce.date(),
+  updatedAt: z.coerce.date(),
+  createdBy: z.string().optional(),
+  updatedBy: z.string().optional()
+});
+
+// Create CRM user profile input
+export const createCRMUserProfileSchema = z.object({
+  platformUserId: z.string(),
+  displayName: z.string().min(1, 'Display name is required').max(100, 'Display name too long'),
+  email: z.string().email('Invalid email address'),
+  avatar: z.string().url('Avatar must be a valid URL').optional(),
+  title: z.string().max(100, 'Title too long').optional(),
+  department: z.string().max(100, 'Department too long').optional(),
+  customRoleId: z.string(),
+  permissionOverrides: permissionOverrideSchema.optional(),
+  managerId: z.string().optional(),
+  teamIds: z.array(z.string()).default([])
+});
+
+// Update CRM user profile input
+export const updateCRMUserProfileSchema = z.object({
+  displayName: z.string().min(1, 'Display name is required').max(100, 'Display name too long').optional(),
+  email: z.string().email('Invalid email address').optional(),
+  avatar: z.string().url('Avatar must be a valid URL').optional(),
+  title: z.string().max(100, 'Title too long').optional(),
+  department: z.string().max(100, 'Department too long').optional(),
+  customRoleId: z.string().optional(),
+  permissionOverrides: permissionOverrideSchema.optional(),
+  managerId: z.string().optional(),
+  teamIds: z.array(z.string()).optional(),
+  status: z.nativeEnum(CRMUserStatus).optional(),
+  isActive: z.boolean().optional()
+});
+
+// Team schema
+export const teamSchema = z.object({
+  id: z.string(),
+  tenantId: z.string(),
+  name: z.string().min(1, 'Team name is required'),
+  description: z.string().optional(),
+  color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Color must be a valid hex color').optional(),
+  leaderId: z.string().optional(),
+  isActive: z.boolean().default(true),
+  createdAt: z.coerce.date(),
+  updatedAt: z.coerce.date(),
+  createdBy: z.string().optional(),
+  updatedBy: z.string().optional()
+});
+
+// Create team input
+export const createTeamSchema = z.object({
+  name: z.string().min(1, 'Team name is required').max(100, 'Team name too long'),
+  description: z.string().max(500, 'Description too long').optional(),
+  color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Color must be a valid hex color').optional(),
+  leaderId: z.string().optional()
+});
+
+// Update team input
+export const updateTeamSchema = z.object({
+  name: z.string().min(1, 'Team name is required').max(100, 'Team name too long').optional(),
+  description: z.string().max(500, 'Description too long').optional(),
+  color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Color must be a valid hex color').optional(),
+  leaderId: z.string().optional(),
+  isActive: z.boolean().optional()
+});
+
+// Team membership schema
+export const teamMembershipSchema = z.object({
+  id: z.string(),
+  teamId: z.string(),
+  userId: z.string(),
+  role: z.nativeEnum(TeamMemberRole),
+  joinedAt: z.coerce.date(),
+  tenantId: z.string()
+});
+
+// Add team member input
+export const addTeamMemberSchema = z.object({
+  userId: z.string(),
+  role: z.nativeEnum(TeamMemberRole).default('MEMBER')
+});
+
+// Update team member input
+export const updateTeamMemberSchema = z.object({
+  role: z.nativeEnum(TeamMemberRole)
+});
+
+// User activity schema
+export const userActivitySchema = z.object({
+  id: z.string(),
+  userId: z.string(),
+  tenantId: z.string(),
+  action: z.nativeEnum(ActivityType),
+  entityType: z.nativeEnum(EntityType),
+  entityId: z.string(),
+  entityName: z.string().optional(),
+  changes: z.array(z.object({
+    field: z.string(),
+    oldValue: z.any().optional(),
+    newValue: z.any().optional()
+  })).optional(),
+  timestamp: z.coerce.date(),
+  ipAddress: z.string().optional(),
+  userAgent: z.string().optional(),
+  metadata: z.record(z.any()).optional()
+});
+
+// CRM user statistics schema
+export const crmUserStatsSchema = z.object({
+  userId: z.string(),
+  dealsCreated: z.number().int().nonnegative(),
+  dealsWon: z.number().int().nonnegative(),
+  dealsLost: z.number().int().nonnegative(),
+  dealsTotalValue: z.number().nonnegative(),
+  dealsWonValue: z.number().nonnegative(),
+  contactsManaged: z.number().int().nonnegative(),
+  contactsCreated: z.number().int().nonnegative(),
+  leadsCreated: z.number().int().nonnegative(),
+  leadsConverted: z.number().int().nonnegative(),
+  conversionRate: z.number().min(0).max(100),
+  tasksCreated: z.number().int().nonnegative(),
+  tasksCompleted: z.number().int().nonnegative(),
+  tasksOverdue: z.number().int().nonnegative(),
+  organisationsManaged: z.number().int().nonnegative(),
+  calculatedAt: z.coerce.date(),
+  periodStart: z.coerce.date().optional(),
+  periodEnd: z.coerce.date().optional()
+});
+
 // Type inference exports
 export type ConvertLeadInput = z.infer<typeof convertLeadInputSchema>;
 export type MoveDealInput = z.infer<typeof moveDealInputSchema>;
+export type EntityPermissions = z.infer<typeof entityPermissionsSchema>;
+export type CustomRolePermissions = z.infer<typeof customRolePermissionsSchema>;
+export type PermissionOverride = z.infer<typeof permissionOverrideSchema>;
+export type CreateCustomRoleInput = z.infer<typeof createCustomRoleSchema>;
+export type UpdateCustomRoleInput = z.infer<typeof updateCustomRoleSchema>;
+export type CreateCRMUserProfileInput = z.infer<typeof createCRMUserProfileSchema>;
+export type UpdateCRMUserProfileInput = z.infer<typeof updateCRMUserProfileSchema>;
+export type CreateTeamInput = z.infer<typeof createTeamSchema>;
+export type UpdateTeamInput = z.infer<typeof updateTeamSchema>;
+export type AddTeamMemberInput = z.infer<typeof addTeamMemberSchema>;
+export type UpdateTeamMemberInput = z.infer<typeof updateTeamMemberSchema>;

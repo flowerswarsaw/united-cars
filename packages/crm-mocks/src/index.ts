@@ -1,3 +1,6 @@
+// Initialize user management seed data immediately
+import './init-user-management';
+
 export * from './base-repository';
 export * from './change-tracker';
 export * from './organization-scoped-repositories';
@@ -15,6 +18,12 @@ export { TaskRepository } from './repositories/task-repository';
 export { CustomFieldRepository } from './repositories/custom-field-repository';
 export { ActivityRepository } from './repositories/activity-repository';
 
+// Export user management repository classes
+export { CRMUserRepository } from './repositories/crm-user-repository';
+export { CustomRoleRepository } from './repositories/custom-role-repository';
+export { TeamRepository } from './repositories/team-repository';
+export { UserActivityRepository } from './repositories/user-activity-repository';
+
 // Export specific seeded repository instances and functions from seeds
 export {
   organisationRepository,
@@ -30,6 +39,15 @@ export {
   resetSeeds
 } from './seeds';
 
+// Export user management repository instances
+export { crmUserRepository } from './repositories/crm-user-repository';
+export { customRoleRepository } from './repositories/custom-role-repository';
+export { teamRepository } from './repositories/team-repository';
+export { userActivityRepository } from './repositories/user-activity-repository';
+
+// Export user management seed data
+export * from './user-management-seeds';
+
 // Export enhanced seeds exports
 export * from './enhanced-seeds';
 
@@ -43,19 +61,19 @@ let dataInitialized = false;
 // Synchronous initialization function
 function initializeData() {
   if (dataInitialized) return;
-  
+
   try {
     // Try to load persisted data synchronously using fs
     const fs = require('fs');
     const path = require('path');
     const dataFile = path.join(process.cwd(), '.crm-data', 'data.json');
-    
+
     if (fs.existsSync(dataFile)) {
       const dataStr = fs.readFileSync(dataFile, 'utf-8');
       const data = JSON.parse(dataStr);
-      
+
       // Load data into repositories synchronously
-      const { 
+      const {
         organisationRepository,
         organisationConnectionRepository,
         contactRepository,
@@ -67,7 +85,7 @@ function initializeData() {
         activityRepository
       } = require('./seeds');
       const { changeLogRepository } = require('./repositories/change-log-repository');
-      
+
       organisationRepository.fromJSON(data.organisations || []);
       organisationConnectionRepository.fromJSON(data.organisationConnections || []);
       contactRepository.fromJSON(data.contacts || []);
@@ -79,7 +97,7 @@ function initializeData() {
       customFieldRepository.fromJSON(data.customFields || { fieldDefs: [], fieldValues: [] });
       activityRepository.fromJSON(data.activities || []);
       changeLogRepository.fromJSON(data.changeLogs || []);
-      
+
       console.log('Loaded persisted CRM data synchronously');
       dataInitialized = true;
     } else {
@@ -140,6 +158,25 @@ function initializeData() {
       ];
       pipelineRepo.stagesFromJSON(allStages);
 
+      // Load user management data
+      const { USER_MANAGEMENT_SEEDS } = require('./user-management-seeds');
+      const { crmUserRepository: userRepo } = require('./repositories/crm-user-repository');
+      const { customRoleRepository: roleRepo } = require('./repositories/custom-role-repository');
+      const { teamRepository: teamRepo } = require('./repositories/team-repository');
+
+      console.log('Loading user management seeds:', {
+        roles: USER_MANAGEMENT_SEEDS.roles?.length,
+        users: USER_MANAGEMENT_SEEDS.users?.length,
+        teams: USER_MANAGEMENT_SEEDS.teams?.length,
+        memberships: USER_MANAGEMENT_SEEDS.teamMemberships?.length
+      });
+
+      roleRepo.fromJSON(USER_MANAGEMENT_SEEDS.roles || []);
+      userRepo.fromJSON(USER_MANAGEMENT_SEEDS.users || []);
+      teamRepo.fromJSON(USER_MANAGEMENT_SEEDS.teams || []);
+      teamRepo.initializeMemberships(USER_MANAGEMENT_SEEDS.teamMemberships || []);
+
+      console.log('User management data loaded successfully');
       console.log('CRM data seeded successfully');
       dataInitialized = true;
     }
@@ -200,6 +237,26 @@ function initializeData() {
       ...(auctionIntegrationStages || [])
     ];
     pipelineRepo.stagesFromJSON(allStages);
+
+    // Load user management data
+    const { USER_MANAGEMENT_SEEDS } = require('./user-management-seeds');
+    const { crmUserRepository: userRepo } = require('./repositories/crm-user-repository');
+    const { customRoleRepository: roleRepo } = require('./repositories/custom-role-repository');
+    const { teamRepository: teamRepo } = require('./repositories/team-repository');
+
+    console.log('[Fallback] Loading user management seeds:', {
+      roles: USER_MANAGEMENT_SEEDS.roles?.length,
+      users: USER_MANAGEMENT_SEEDS.users?.length,
+      teams: USER_MANAGEMENT_SEEDS.teams?.length,
+      memberships: USER_MANAGEMENT_SEEDS.teamMemberships?.length
+    });
+
+    roleRepo.fromJSON(USER_MANAGEMENT_SEEDS.roles || []);
+    userRepo.fromJSON(USER_MANAGEMENT_SEEDS.users || []);
+    teamRepo.fromJSON(USER_MANAGEMENT_SEEDS.teams || []);
+    teamRepo.initializeMemberships(USER_MANAGEMENT_SEEDS.teamMemberships || []);
+
+    console.log('[Fallback] User management data loaded successfully');
 
     dataInitialized = true;
   }

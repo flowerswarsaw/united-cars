@@ -22,6 +22,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { COUNTRIES_REGIONS, getCountryByCode, getRegionsByCountryCode, hasRegions, getRegionDisplayName, getCitiesByRegion, hasCities } from '@/lib/countries-regions';
 import { LocationFieldGroup } from '@/components/location';
+import { getUserName, getUserInitials, CRM_USERS } from '@/lib/crm-users';
 import toast from 'react-hot-toast';
 
 export default function ContactDetailPage() {
@@ -42,7 +43,8 @@ export default function ContactDetailPage() {
     basicInfo: false,
     contactInfo: false,
     address: false,
-    notes: false
+    notes: false,
+    assignment: false
   });
 
   // Section-specific form data
@@ -67,6 +69,10 @@ export default function ContactDetailPage() {
   
   const [notesData, setNotesData] = useState({
     notes: ''
+  });
+
+  const [assignmentData, setAssignmentData] = useState({
+    responsibleUserId: ''
   });
 
   // Deal creation dialog state
@@ -129,6 +135,10 @@ export default function ContactDetailPage() {
         
         setNotesData({
           notes: data.notes || ''
+        });
+
+        setAssignmentData({
+          responsibleUserId: data.responsibleUserId || ''
         });
 
         // Fetch organization if contact has one
@@ -310,6 +320,11 @@ export default function ContactDetailPage() {
       case 'notes':
         setNotesData({
           notes: contact.notes || ''
+        });
+        break;
+      case 'assignment':
+        setAssignmentData({
+          responsibleUserId: contact.responsibleUserId || ''
         });
         break;
     }
@@ -576,7 +591,7 @@ export default function ContactDetailPage() {
           </div>
 
           <TabsContent value="details" className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <div>
@@ -760,7 +775,7 @@ export default function ContactDetailPage() {
                                 />
                               </div>
                               <div>
-                                <Label className="text-xs">Label (optional)</Label>
+                                <Label className="text-xs">Label</Label>
                                 <Input
                                   value={method.label || ''}
                                   onChange={(e) => updateContactMethod(method.id!, { label: e.target.value })}
@@ -826,14 +841,75 @@ export default function ContactDetailPage() {
                 </CardContent>
               </Card>
 
+              {/* Assignment Card */}
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <div>
+                    <CardTitle>Assignment</CardTitle>
+                    <CardDescription>Responsible user for this contact</CardDescription>
+                  </div>
+                  <SectionEditButtons
+                    section="assignment"
+                    onSave={() => saveSection('assignment', assignmentData)}
+                  />
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <Label htmlFor="responsibleUserId">Assigned To</Label>
+                    {editingSections.assignment ? (
+                      <Select
+                        value={assignmentData.responsibleUserId}
+                        onValueChange={(value) => setAssignmentData({ responsibleUserId: value })}
+                      >
+                        <SelectTrigger className="mt-1">
+                          <SelectValue placeholder="Select a user" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Object.values(CRM_USERS).map((user) => (
+                            <SelectItem key={user.id} value={user.id}>
+                              <div className="flex items-center gap-2">
+                                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary font-medium text-xs">
+                                  {user.initials}
+                                </div>
+                                <span>{user.name}</span>
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <div className="mt-1">
+                        {contact.responsibleUserId ? (
+                          <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-50">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary font-medium">
+                              {getUserInitials(contact.responsibleUserId)}
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium text-gray-900">
+                                {getUserName(contact.responsibleUserId)}
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                {CRM_USERS[contact.responsibleUserId]?.email}
+                              </p>
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="text-sm text-gray-500 mt-1">No user assigned</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <div>
                     <CardTitle>Address Information</CardTitle>
                     <CardDescription>Contact location and address details</CardDescription>
                   </div>
-                  <SectionEditButtons 
-                    section="address" 
+                  <SectionEditButtons
+                    section="address"
                     onSave={() => saveSection('address', addressData)}
                   />
                 </CardHeader>

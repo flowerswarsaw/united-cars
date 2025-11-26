@@ -1,5 +1,8 @@
 import { Deal, DealStatus, LossReason } from '@united-cars/crm-core';
 import { makeDeal, makeDealCurrentStage, makeDealStageHistory } from '@united-cars/crm-core';
+import { TEST_USERS } from './enhanced-seeds';
+
+const DEFAULT_TENANT = 'org-admin';
 
 // Clean, consistent deals with proper pipeline assignments
 export const cleanDeals = [
@@ -14,7 +17,11 @@ export const cleanDeals = [
     contactId: 'contact_1',
     status: DealStatus.OPEN,
     probability: 65,
-    notes: 'Large fleet expansion for Q1, interested in 50+ vehicles from Japan auctions'
+    notes: 'Large fleet expansion for Q1, interested in 50+ vehicles from Japan auctions',
+    tenantId: DEFAULT_TENANT,
+    responsibleUserId: TEST_USERS.SENIOR_MANAGER.id,
+    createdBy: TEST_USERS.SENIOR_MANAGER.id,
+    updatedBy: TEST_USERS.SENIOR_MANAGER.id
   }),
   makeDeal({
     id: 'deal_2',
@@ -26,7 +33,11 @@ export const cleanDeals = [
     contactId: 'contact_2',
     status: DealStatus.OPEN,
     probability: 80,
-    notes: 'High-end luxury vehicles from German auctions, focus on BMW and Mercedes'
+    notes: 'High-end luxury vehicles from German auctions, focus on BMW and Mercedes',
+    tenantId: DEFAULT_TENANT,
+    responsibleUserId: TEST_USERS.SENIOR_MANAGER_2.id,
+    createdBy: TEST_USERS.SENIOR_MANAGER_2.id,
+    updatedBy: TEST_USERS.SENIOR_MANAGER_2.id
   }),
   makeDeal({
     id: 'deal_3',
@@ -38,7 +49,11 @@ export const cleanDeals = [
     contactId: 'contact_3',
     status: DealStatus.OPEN,
     probability: 40,
-    notes: 'Budget-friendly compact cars for city dealership'
+    notes: 'Budget-friendly compact cars for city dealership',
+    tenantId: DEFAULT_TENANT,
+    responsibleUserId: TEST_USERS.JUNIOR_MANAGER.id,
+    createdBy: TEST_USERS.JUNIOR_MANAGER.id,
+    updatedBy: TEST_USERS.JUNIOR_MANAGER.id
   }),
 
   // Won Deal - Now in Integration Pipeline
@@ -53,7 +68,11 @@ export const cleanDeals = [
     status: DealStatus.WON,
     probability: 100,
     closeDate: new Date('2024-12-15'),
-    notes: 'Major partnership signed, now in integration phase'
+    notes: 'Major partnership signed, now in integration phase',
+    tenantId: DEFAULT_TENANT,
+    responsibleUserId: TEST_USERS.SENIOR_MANAGER.id,
+    createdBy: TEST_USERS.ADMIN.id,
+    updatedBy: TEST_USERS.SENIOR_MANAGER.id
   }),
 
   // Retail Sales Pipeline Deals
@@ -67,7 +86,11 @@ export const cleanDeals = [
     contactId: 'contact_7',
     status: DealStatus.OPEN,
     probability: 70,
-    notes: 'Individual buyer looking for 2024 BMW X5'
+    notes: 'Individual buyer looking for 2024 BMW X5',
+    tenantId: DEFAULT_TENANT,
+    responsibleUserId: TEST_USERS.ADMIN.id,
+    createdBy: TEST_USERS.ADMIN.id,
+    updatedBy: TEST_USERS.ADMIN.id
   }),
 
   // Vendor Onboarding Pipeline Deal
@@ -81,7 +104,11 @@ export const cleanDeals = [
     contactId: 'contact_5',
     status: DealStatus.OPEN,
     probability: 60,
-    notes: 'New shipping partner for East Coast routes'
+    notes: 'New shipping partner for East Coast routes',
+    tenantId: DEFAULT_TENANT,
+    responsibleUserId: TEST_USERS.SENIOR_MANAGER.id,
+    createdBy: TEST_USERS.ADMIN.id,
+    updatedBy: TEST_USERS.SENIOR_MANAGER.id
   }),
 
   // More Dealer Deals
@@ -93,7 +120,11 @@ export const cleanDeals = [
     currency: 'USD',
     status: DealStatus.OPEN,
     probability: 90,
-    notes: 'Existing client expanding to new location'
+    notes: 'Existing client expanding to new location',
+    tenantId: DEFAULT_TENANT,
+    responsibleUserId: TEST_USERS.SENIOR_MANAGER_2.id,
+    createdBy: TEST_USERS.SENIOR_MANAGER_2.id,
+    updatedBy: TEST_USERS.SENIOR_MANAGER_2.id
   }),
 
   // Lost Deal Example
@@ -106,7 +137,11 @@ export const cleanDeals = [
     status: DealStatus.LOST,
     probability: 0,
     lossReason: LossReason.REJECTION,
-    notes: 'Lost to competitor due to pricing'
+    notes: 'Lost to competitor due to pricing',
+    tenantId: DEFAULT_TENANT,
+    responsibleUserId: TEST_USERS.JUNIOR_MANAGER_2.id,
+    createdBy: TEST_USERS.JUNIOR_MANAGER_2.id,
+    updatedBy: TEST_USERS.JUNIOR_MANAGER_2.id
   })
 ];
 

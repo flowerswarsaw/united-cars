@@ -104,6 +104,7 @@ const getNavigation = (userRoles: string[] = []): NavSection[] => {
         { label: 'Leads', href: '/crm/leads', icon: Users },
         { label: 'Tasks', href: '/crm/tasks', icon: CheckSquare },
         { label: 'Pipelines', href: '/crm/pipelines', icon: GitBranch },
+        { label: 'Administration', href: '/crm/admin', icon: Settings },
       ]
     },
     {

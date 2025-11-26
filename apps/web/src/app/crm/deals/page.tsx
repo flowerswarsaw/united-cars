@@ -889,7 +889,7 @@ export default function DealsPage() {
                     });
                   }}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select organisation (optional)" />
+                      <SelectValue placeholder="Select organisation" />
                     </SelectTrigger>
                     <SelectContent>
                       {organisations.map(org => (
@@ -916,7 +916,7 @@ export default function DealsPage() {
                       <SelectValue placeholder={
                         formData.organisationId 
                           ? "Select contact from organisation" 
-                          : "Select any contact (optional)"
+                          : "Select any contact"
                       } />
                     </SelectTrigger>
                     <SelectContent>
@@ -1378,7 +1378,7 @@ export default function DealsPage() {
                 id="pipelineDescription"
                 value={pipelineFormData.description}
                 onChange={(e) => setPipelineFormData({ ...pipelineFormData, description: e.target.value })}
-                placeholder="Pipeline description (optional)"
+                placeholder="Pipeline description"
                 rows={3}
               />
             </div>

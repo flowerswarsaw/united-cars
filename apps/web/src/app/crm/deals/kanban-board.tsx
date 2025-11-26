@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/select';
 import { Building2, User, DollarSign, Clock, Calendar, Plus, CheckCircle2, Circle, ChevronLeft, ChevronRight, Minimize2, Maximize2, Trash2, History, CheckSquare, Square, Trophy, X, AlertCircle, AlertTriangle, ChevronsLeft, ChevronsRight, Eye, EyeOff } from 'lucide-react';
 import { LossReason, DealStatus, Organisation, Contact, Task, TaskStatus, TaskPriority, EntityType, Deal, Pipeline, Stage } from '@united-cars/crm-core';
+import { getUserName, getUserInitials } from '@/lib/crm-users';
 
 // Extend Window interface for native drag and drop
 declare global {
@@ -269,7 +270,23 @@ function DealCardComponent({ deal, organisations, contacts, tasks, onClick, onOr
             </button>
           )}
         </div>
-        
+
+        {/* Assigned User */}
+        {(() => {
+          const userId = deal.responsibleUserId || deal.assigneeId;
+          if (!userId) return null;
+          const userName = getUserName(userId);
+          const userInitials = getUserInitials(userId);
+          return (
+            <div className="flex items-center gap-2 px-2 py-1.5 bg-indigo-50/60 dark:bg-indigo-950/30 rounded-md border border-indigo-200/50 dark:border-indigo-800/50">
+              <div className="flex h-6 w-6 items-center justify-center rounded-full bg-indigo-500/90 text-white font-medium text-xs">
+                {userInitials}
+              </div>
+              <span className="text-xs font-medium text-indigo-700 dark:text-indigo-300">{userName}</span>
+            </div>
+          );
+        })()}
+
         {/* Tasks Section */}
         {taskCounts.total > 0 && (
           <div className="mt-2 p-2 bg-slate-50/60 dark:bg-slate-800/40 rounded-md border border-slate-200/50 dark:border-slate-700/50">
@@ -1118,7 +1135,7 @@ export default function KanbanBoard({ pipeline, deals, organisations, contacts, 
                   })}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select organisation (optional)" />
+                    <SelectValue placeholder="Select organisation" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">No Organisation</SelectItem>
@@ -1144,7 +1161,7 @@ export default function KanbanBoard({ pipeline, deals, organisations, contacts, 
                     <SelectValue placeholder={
                       dealFormData.organisationId && dealFormData.organisationId !== "none" 
                         ? "Select contact from organisation" 
-                        : "Select any contact (optional)"
+                        : "Select any contact"
                     } />
                   </SelectTrigger>
                   <SelectContent>
@@ -1327,7 +1344,7 @@ export default function KanbanBoard({ pipeline, deals, organisations, contacts, 
                 id="taskDescription"
                 value={taskFormData.description}
                 onChange={(e) => setTaskFormData({ ...taskFormData, description: e.target.value })}
-                placeholder="Task description (optional)"
+                placeholder="Task description"
                 rows={3}
               />
             </div>

@@ -22,6 +22,7 @@ import { Organisation, Contact, Deal, OrganizationType, ContactMethod, ContactMe
 import { COUNTRIES_REGIONS, getCountryByCode, getRegionsByCountryCode, hasRegions, getRegionDisplayName, getCitiesByRegion, hasCities } from '@/lib/countries-regions';
 import { CrmBadge } from '@united-cars/ui';
 import toast from 'react-hot-toast';
+import { getUserName, getUserInitials, CRM_USERS } from '@/lib/crm-users';
 
 export default function OrganisationDetailPage() {
   const params = useParams();
@@ -100,7 +101,8 @@ export default function OrganisationDetailPage() {
     address: false,
     socialMedia: false,
     typeSpecific: false,
-    notes: false
+    notes: false,
+    assignment: false
   });
 
   // Section-specific form data
@@ -133,6 +135,10 @@ export default function OrganisationDetailPage() {
 
   const [notesData, setNotesData] = useState({
     notes: ''
+  });
+
+  const [assignmentData, setAssignmentData] = useState({
+    responsibleUserId: ''
   });
 
   useEffect(() => {
@@ -232,6 +238,10 @@ export default function OrganisationDetailPage() {
 
         setNotesData({
           notes: data.notes || ''
+        });
+
+        setAssignmentData({
+          responsibleUserId: data.responsibleUserId || ''
         });
       } else {
         toast.error(`Failed to fetch organisation: ${data.error}`);
@@ -1024,7 +1034,7 @@ export default function OrganisationDetailPage() {
                                 />
                               </div>
                               <div>
-                                <Label className="text-xs">Label (optional)</Label>
+                                <Label className="text-xs">Label</Label>
                                 <Input
                                   value={method.label || ''}
                                   onChange={(e) => updateContactMethod(index, 'label', e.target.value)}
@@ -1078,6 +1088,67 @@ export default function OrganisationDetailPage() {
                           </div>
                         ) : (
                           <p className="text-sm text-gray-500">No contact methods available</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Assignment Card */}
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <div>
+                    <CardTitle>Assignment</CardTitle>
+                    <CardDescription>Responsible user for this organisation</CardDescription>
+                  </div>
+                  <SectionEditButtons
+                    section="assignment"
+                    onSave={() => saveSection('assignment', assignmentData)}
+                  />
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <Label htmlFor="responsibleUserId">Assigned To</Label>
+                    {editingSections.assignment ? (
+                      <Select
+                        value={assignmentData.responsibleUserId}
+                        onValueChange={(value) => setAssignmentData({ responsibleUserId: value })}
+                      >
+                        <SelectTrigger className="mt-1">
+                          <SelectValue placeholder="Select a user" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Object.values(CRM_USERS).map((user) => (
+                            <SelectItem key={user.id} value={user.id}>
+                              <div className="flex items-center gap-2">
+                                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary font-medium text-xs">
+                                  {user.initials}
+                                </div>
+                                <span>{user.name}</span>
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <div className="mt-1">
+                        {organisation.responsibleUserId ? (
+                          <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-50">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary font-medium">
+                              {getUserInitials(organisation.responsibleUserId)}
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium text-gray-900">
+                                {getUserName(organisation.responsibleUserId)}
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                {CRM_USERS[organisation.responsibleUserId]?.email}
+                              </p>
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="text-sm text-gray-500 mt-1">No user assigned</p>
                         )}
                       </div>
                     )}
@@ -2449,7 +2520,7 @@ export default function OrganisationDetailPage() {
                 onValueChange={(value) => setDealFormData({ ...dealFormData, contactId: value })}
               >
                 <SelectTrigger className="mt-1">
-                  <SelectValue placeholder="Select contact (optional)" />
+                  <SelectValue placeholder="Select contact" />
                 </SelectTrigger>
                 <SelectContent>
                   {contacts.map((contact) => (

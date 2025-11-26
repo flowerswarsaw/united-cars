@@ -1,7 +1,9 @@
 import {
   Lead, Deal, Pipeline, Stage, Task, CustomFieldDef, CustomFieldValue, Activity, ChangeLog,
   EntityType, DealStatus, LossReason, TaskStatus, TaskPriority, CustomFieldType,
-  PaginatedResult, ListQuery
+  PaginatedResult, ListQuery,
+  CRMUserProfile, CustomRole, Team, TeamMembership, UserActivity, CRMUserStats,
+  UserHierarchyNode, CRMUserWithRole, CRMUserSummary, TeamWithMembers, CustomRoleWithStats
 } from './types';
 import { ConvertLeadInput, MoveDealInput } from './schemas';
 
@@ -68,4 +70,124 @@ export interface ChangeLogRepository {
   getChangesForEntity(entityType: EntityType, entityId: string, limit?: number): Promise<ChangeLog[]>;
   getChangesByUser(userId: string, limit?: number): Promise<ChangeLog[]>;
   getRecentChanges(limit?: number): Promise<ChangeLog[]>;
+}
+
+// ============================================================================
+// USER MANAGEMENT REPOSITORIES
+// ============================================================================
+
+/**
+ * CRM User Repository - Manages CRM user profiles with hierarchy and permissions
+ */
+export interface CRMUserRepository extends Repository<CRMUserProfile> {
+  // Basic user queries
+  getByPlatformUserId(platformUserId: string): Promise<CRMUserProfile | undefined>;
+  getByEmail(email: string): Promise<CRMUserProfile | undefined>;
+  getWithRole(id: string): Promise<CRMUserWithRole | undefined>;
+  listWithRoles(filter?: Partial<CRMUserProfile>): Promise<CRMUserWithRole[]>;
+  getSummaries(): Promise<CRMUserSummary[]>;
+
+  // Hierarchy methods
+  getSubordinates(userId: string, includeIndirect?: boolean): Promise<CRMUserProfile[]>;
+  getManager(userId: string): Promise<CRMUserProfile | undefined>;
+  setManager(userId: string, managerId: string | null): Promise<CRMUserProfile | undefined>;
+  getHierarchy(rootUserId?: string): Promise<UserHierarchyNode[]>;
+
+  // Team methods
+  getTeamMembers(teamId: string): Promise<CRMUserProfile[]>;
+  addToTeam(userId: string, teamId: string): Promise<boolean>;
+  removeFromTeam(userId: string, teamId: string): Promise<boolean>;
+
+  // Permission methods
+  setPermissionOverrides(userId: string, overrides: CRMUserProfile['permissionOverrides']): Promise<CRMUserProfile | undefined>;
+  clearPermissionOverrides(userId: string): Promise<CRMUserProfile | undefined>;
+
+  // Role methods
+  assignRole(userId: string, roleId: string): Promise<CRMUserProfile | undefined>;
+  getUsersByRole(roleId: string): Promise<CRMUserProfile[]>;
+
+  // Status management
+  activate(userId: string): Promise<CRMUserProfile | undefined>;
+  deactivate(userId: string): Promise<CRMUserProfile | undefined>;
+
+  // Statistics
+  getStats(userId: string, periodStart?: Date, periodEnd?: Date): Promise<CRMUserStats>;
+  bulkGetStats(userIds: string[], periodStart?: Date, periodEnd?: Date): Promise<Map<string, CRMUserStats>>;
+}
+
+/**
+ * Custom Role Repository - Manages custom roles and their permissions
+ */
+export interface CustomRoleRepository extends Repository<CustomRole> {
+  // Role queries
+  getByName(name: string): Promise<CustomRole | undefined>;
+  getActiveRoles(): Promise<CustomRole[]>;
+  getSystemRoles(): Promise<CustomRole[]>;
+  getCustomRoles(): Promise<CustomRole[]>;
+  getWithStats(id: string): Promise<CustomRoleWithStats | undefined>;
+  listWithStats(): Promise<CustomRoleWithStats[]>;
+
+  // Role management
+  activate(roleId: string): Promise<CustomRole | undefined>;
+  deactivate(roleId: string): Promise<CustomRole | undefined>;
+
+  // Permission methods
+  updatePermissions(roleId: string, permissions: CustomRole['permissions']): Promise<CustomRole | undefined>;
+
+  // User count
+  getUserCount(roleId: string): Promise<number>;
+
+  // System role protection
+  canDelete(roleId: string): Promise<boolean>;
+}
+
+/**
+ * Team Repository - Manages teams and their memberships
+ */
+export interface TeamRepository extends Repository<Team> {
+  // Team queries
+  getByName(name: string): Promise<Team | undefined>;
+  getActiveTeams(): Promise<Team[]>;
+  getWithMembers(id: string): Promise<TeamWithMembers | undefined>;
+  listWithMembers(): Promise<TeamWithMembers[]>;
+
+  // Member management
+  addMember(teamId: string, userId: string, role: TeamMembership['role']): Promise<TeamMembership>;
+  removeMember(teamId: string, userId: string): Promise<boolean>;
+  updateMemberRole(teamId: string, userId: string, role: TeamMembership['role']): Promise<TeamMembership | undefined>;
+  getMembers(teamId: string): Promise<TeamMembership[]>;
+  getMemberCount(teamId: string): Promise<number>;
+
+  // Leader management
+  setLeader(teamId: string, userId: string): Promise<Team | undefined>;
+  removeLeader(teamId: string): Promise<Team | undefined>;
+
+  // User teams
+  getUserTeams(userId: string): Promise<Team[]>;
+  getUserMemberships(userId: string): Promise<TeamMembership[]>;
+
+  // Team status
+  activate(teamId: string): Promise<Team | undefined>;
+  deactivate(teamId: string): Promise<Team | undefined>;
+}
+
+/**
+ * User Activity Repository - Manages user activity logs and audit trails
+ */
+export interface UserActivityRepository {
+  // Activity logging
+  logActivity(activity: Omit<UserActivity, 'id' | 'timestamp'>): Promise<UserActivity>;
+
+  // Activity queries
+  getUserActivities(userId: string, limit?: number, offset?: number): Promise<UserActivity[]>;
+  getEntityActivities(entityType: EntityType, entityId: string, limit?: number): Promise<UserActivity[]>;
+  getRecentActivities(limit?: number): Promise<UserActivity[]>;
+
+  // Filtered queries
+  getActivitiesByAction(userId: string, action: UserActivity['action'], limit?: number): Promise<UserActivity[]>;
+  getActivitiesByDateRange(userId: string, startDate: Date, endDate: Date): Promise<UserActivity[]>;
+
+  // Statistics
+  getActivityCount(userId: string, startDate?: Date, endDate?: Date): Promise<number>;
+  getActivityBreakdown(userId: string, startDate?: Date, endDate?: Date): Promise<Record<string, number>>;
 }

@@ -11,3 +11,6 @@ export * from './history';
 export * from './history-analytics';
 export * from './history-reporting';
 export * from './conflict-resolution';
+
+// User Management & RBAC
+export * from './user-sync';

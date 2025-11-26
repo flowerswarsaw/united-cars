@@ -12,6 +12,7 @@ import { PageHeader } from '@/components/layout/page-header';
 import { LoadingState } from '@/components/ui/loading-state';
 import { LocationFieldGroup, CountrySelector, RegionSelector, CitySelector } from '@/components/location';
 import { COUNTRIES_REGIONS, getCountryByCode, getRegionsByCountryCode, hasRegions, getRegionDisplayName, getCitiesByRegion, hasCities } from '@/lib/countries-regions';
+import { getUserName, getUserInitials } from '@/lib/crm-users';
 import {
   Table,
   TableBody,
@@ -86,11 +87,20 @@ export default function ContactsPage() {
   useEffect(() => {
     const loadOrganisations = async () => {
       try {
-        const data = await fetch('/api/crm/organisations').then(r => r.json());
+        const response = await fetch('/api/crm/organisations');
+        const data = await response.json();
+
+        // Check if response is an error or if data is not an array
+        if (!response.ok || !Array.isArray(data)) {
+          console.error('Failed to load organisations:', data);
+          setOrganisations([]);
+          return;
+        }
+
         setOrganisations(data);
       } catch (error) {
         console.error('Failed to load organisations:', error);
-        toast.error('Failed to load organisations');
+        setOrganisations([]);
       }
     };
     loadOrganisations();
@@ -129,6 +139,9 @@ export default function ContactsPage() {
         const url = params.toString()
           ? `/api/crm/contacts?${params.toString()}`
           : '/api/crm/contacts';
+
+        console.log('📡 Fetching contacts with URL:', url);
+        console.log('🔎 Filter values:', { country: filters.country, state: filters.state, city: filters.city, type: filters.type });
 
         const response = await fetch(url);
         const data = await response.json();
@@ -621,7 +634,10 @@ export default function ContactsPage() {
               <div className="min-w-[160px]">
                 <CountrySelector
                   value={filters.country}
-                  onValueChange={(country) => setFilters({ ...filters, country, state: '', city: '' })}
+                  onValueChange={(country) => {
+                    console.log('🌍 Country selected:', country);
+                    setFilters({ ...filters, country, state: '', city: '' });
+                  }}
                   placeholder="Country"
                 />
               </div>
@@ -710,13 +726,14 @@ export default function ContactsPage() {
               <TableHead>Organisation</TableHead>
               <TableHead>Country</TableHead>
               <TableHead>Contact</TableHead>
+              <TableHead>Assigned To</TableHead>
               <TableHead className="w-[100px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {contacts.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8">
+                <TableCell colSpan={7} className="text-center py-8">
                   <div className="flex flex-col items-center space-y-3">
                     <User className="h-12 w-12 text-gray-300" />
                     <div className="text-gray-500">
@@ -813,6 +830,24 @@ export default function ContactsPage() {
                         );
                       })()}
                     </div>
+                  </TableCell>
+                  <TableCell>
+                    {(() => {
+                      const userId = contact.responsibleUserId || contact.assigneeId;
+                      if (!userId) {
+                        return <span className="text-sm text-gray-400">Unassigned</span>;
+                      }
+                      const userName = getUserName(userId);
+                      const userInitials = getUserInitials(userId);
+                      return (
+                        <div className="flex items-center gap-2">
+                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary font-medium text-xs">
+                            {userInitials}
+                          </div>
+                          <span className="text-sm">{userName}</span>
+                        </div>
+                      );
+                    })()}
                   </TableCell>
                   <TableCell>
                     <Button

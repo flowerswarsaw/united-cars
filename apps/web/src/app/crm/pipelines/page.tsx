@@ -1085,7 +1085,7 @@ export default function PipelinesPage() {
                   id="manageDescription"
                   value={managePipelineData.description}
                   onChange={(e) => setManagePipelineData({ ...managePipelineData, description: e.target.value })}
-                  placeholder="Pipeline description (optional)"
+                  placeholder="Pipeline description"
                   rows={3}
                 />
               </div>
@@ -1309,7 +1309,7 @@ export default function PipelinesPage() {
                 id="description"
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder={activeTab === 'templates' ? 'Template description (optional)' : 'Pipeline description (optional)'}
+                placeholder={activeTab === 'templates' ? 'Template description' : 'Pipeline description'}
                 rows={3}
               />
             </div>
