@@ -23,6 +23,7 @@ export interface CountrySelectorProps {
   required?: boolean;
   className?: string;
   showPopular?: boolean;
+  showAllOption?: boolean;
 }
 
 export function CountrySelector({
@@ -32,7 +33,8 @@ export function CountrySelector({
   disabled = false,
   required = false,
   className,
-  showPopular = true
+  showPopular = true,
+  showAllOption = false
 }: CountrySelectorProps) {
   const countries = useMemo(() => LocationService.getAllCountries(), []);
   const popularCountryCodes = useMemo(() => LocationService.getPopularCountries(), []);
@@ -51,7 +53,7 @@ export function CountrySelector({
 
   // Get display value
   const displayValue = useMemo(() => {
-    if (!value) return placeholder;
+    if (!value || value === 'all') return placeholder;
     const country = LocationService.getCountry(value);
     return country ? country.name : value;
   }, [value, placeholder]);
@@ -69,6 +71,12 @@ export function CountrySelector({
         </SelectValue>
       </SelectTrigger>
       <SelectContent>
+        {showAllOption && (
+          <>
+            <SelectItem value="all">All Countries</SelectItem>
+            <div className="my-1 h-px bg-gray-200" />
+          </>
+        )}
         {showPopular && popularCountries.length > 0 && (
           <>
             <div className="px-2 py-1.5 text-xs font-semibold text-gray-500">

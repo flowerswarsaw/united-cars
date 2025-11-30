@@ -122,6 +122,7 @@ export const organisationSchema = organisationBaseSchema.refine(
 const contactBaseSchema = z.object({
   id: z.string(),
   tenantId: z.string(),
+  contactId: z.string().optional(),
   firstName: z.string().min(1),
   lastName: z.string().min(1),
   contactMethods: z.array(contactMethodSchema).min(1).refine((methods) =>
@@ -285,6 +286,11 @@ const dealBaseSchema = z.object({
   closeDate: z.date().optional(),
   probability: z.number().min(0).max(100).optional(),
   lossReason: z.nativeEnum(LossReason).optional(),
+  // Deal Recovery & Audit Fields
+  originalDealId: z.string().optional(),
+  supersededByDealId: z.string().optional(),
+  unassignedAt: z.date().optional(),
+  unassignedReason: z.string().optional(),
   notes: z.string().optional(),
   tags: z.array(z.string()).optional(),
   // The user responsible for this deal

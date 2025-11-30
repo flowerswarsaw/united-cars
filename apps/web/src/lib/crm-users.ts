@@ -37,12 +37,12 @@ export const CRM_USERS: Record<string, CRMUser> = {
     email: 'emma.r@unitedcars.com',
     initials: 'ER'
   },
-  // Development admin user
+  // Development admin user (now same as production admin-user-001)
   'admin-dev-user': {
     id: 'admin-dev-user',
-    name: 'Development Admin',
+    name: 'System Administrator',
     email: 'admin@unitedcars.com',
-    initials: 'DA'
+    initials: 'SA'
   }
 };
 

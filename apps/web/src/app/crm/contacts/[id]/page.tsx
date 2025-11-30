@@ -49,6 +49,7 @@ export default function ContactDetailPage() {
 
   // Section-specific form data
   const [basicInfoData, setBasicInfoData] = useState({
+    contactId: '',
     firstName: '',
     lastName: '',
     type: '',
@@ -297,6 +298,7 @@ export default function ContactDetailPage() {
     switch (section) {
       case 'basicInfo':
         setBasicInfoData({
+          contactId: contact.contactId || '',
           firstName: contact.firstName || '',
           lastName: contact.lastName || '',
           type: contact.type || '',
@@ -604,6 +606,23 @@ export default function ContactDetailPage() {
                   />
                 </CardHeader>
                 <CardContent className="space-y-4">
+                  <div>
+                    <Label htmlFor="contactId">Contact ID</Label>
+                    {editingSections.basicInfo ? (
+                      <Input
+                        id="contactId"
+                        value={basicInfoData.contactId}
+                        onChange={(e) => setBasicInfoData({ ...basicInfoData, contactId: e.target.value })}
+                        placeholder="e.g. CNT-001"
+                        className="mt-1"
+                      />
+                    ) : (
+                      <p className="text-sm text-gray-900 mt-1">
+                        {contact.contactId || 'Not assigned'}
+                      </p>
+                    )}
+                  </div>
+
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="firstName">First Name</Label>

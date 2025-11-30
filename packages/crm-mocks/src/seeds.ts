@@ -37,7 +37,7 @@ import {
   makeDealStageHistory,
   EntityType
 } from '@united-cars/crm-core';
-import { 
+import {
   EnhancedOrganisationRepository,
   EnhancedContactRepository,
   EnhancedLeadRepository,
@@ -51,8 +51,8 @@ import { HistoryLogger } from '@united-cars/crm-core/src/history';
 import dealsData from './deals-seed';
 import { TEST_USERS } from './enhanced-seeds';
 
-// Mock tenant ID for all seed data
-const DEFAULT_TENANT = 'org-admin';
+// Mock tenant ID for all seed data (matches platform orgId)
+const DEFAULT_TENANT = 'united-cars';
 
 // Seed data with organization types
 const organisations = [
@@ -80,21 +80,21 @@ const organisations = [
       {
         id: 'cm_1_3',
         type: ContactMethodType.PHONE,
-        value: '+1-555-0100',
+        value: '+15550100',
         isPrimary: true,
         label: 'Main Office'
       },
       {
         id: 'cm_1_4',
         type: ContactMethodType.PHONE,
-        value: '+1-555-0199',
+        value: '+15550199',
         isPrimary: false,
         label: 'Emergency Line'
       },
       {
         id: 'cm_1_5',
         type: ContactMethodType.PHONE,
-        value: '+1-555-0101',
+        value: '+15550101',
         isPrimary: false,
         label: 'Fax'
       }
@@ -341,7 +341,7 @@ const organisationConnections = [
   // Dealer-Shipper partnerships (common business relationships)
   {
     id: 'conn_1',
-    tenantId: 'default-tenant',
+    tenantId: DEFAULT_TENANT,
     fromOrganisationId: 'org_1', // AutoMax Dealership
     toOrganisationId: 'org_4',   // FastShip Logistics (Shipper)
     type: OrganisationRelationType.SHIPPER_DEALER,
@@ -360,7 +360,7 @@ const organisationConnections = [
   // Dealer-Auction partnerships
   {
     id: 'conn_2',
-    tenantId: 'default-tenant',
+    tenantId: DEFAULT_TENANT,
     fromOrganisationId: 'org_2', // Premier Motors
     toOrganisationId: 'org_6',   // National Auto Auction
     type: OrganisationRelationType.AUCTION_DEALER,
@@ -380,7 +380,7 @@ const organisationConnections = [
   // Business partnership between similar organizations
   {
     id: 'conn_3',
-    tenantId: 'default-tenant',
+    tenantId: DEFAULT_TENANT,
     fromOrganisationId: 'org_1', // AutoMax Dealership
     toOrganisationId: 'org_2',   // Premier Motors
     type: OrganisationRelationType.PARTNER,
@@ -399,7 +399,7 @@ const organisationConnections = [
   // Vendor relationship
   {
     id: 'conn_4',
-    tenantId: 'default-tenant',
+    tenantId: DEFAULT_TENANT,
     fromOrganisationId: 'org_3', // City Cars Direct
     toOrganisationId: 'org_5',   // Elite Expediting
     type: OrganisationRelationType.VENDOR,
@@ -418,7 +418,7 @@ const organisationConnections = [
   // Client relationship
   {
     id: 'conn_5',
-    tenantId: 'default-tenant',
+    tenantId: DEFAULT_TENANT,
     fromOrganisationId: 'org_9', // TitleMax Processing
     toOrganisationId: 'org_1',   // AutoMax Dealership
     type: OrganisationRelationType.CLIENT,
@@ -439,6 +439,7 @@ const organisationConnections = [
 const contacts = [
   makeContact({
     id: 'contact_1',
+    contactId: 'CNT-001',
     firstName: 'John',
     lastName: 'Smith',
     type: 'CEO' as any,
@@ -460,14 +461,14 @@ const contacts = [
       {
         id: 'cc_1_3',
         type: ContactMethodType.PHONE,
-        value: '+1-555-0200',
+        value: '+15550200',
         isPrimary: true,
         label: 'Office Direct'
       },
       {
         id: 'cc_1_4',
         type: ContactMethodType.PHONE,
-        value: '+1-555-0299',
+        value: '+15550299',
         isPrimary: false,
         label: 'Mobile'
       }
@@ -487,6 +488,7 @@ const contacts = [
   }),
   makeContact({
     id: 'contact_2',
+    contactId: 'CNT-002',
     firstName: 'Sarah',
     lastName: 'Johnson',
     type: 'SALES' as any,
@@ -501,7 +503,7 @@ const contacts = [
       {
         id: 'cc_2_2',
         type: ContactMethodType.PHONE,
-        value: '+1-555-0201',
+        value: '+15550201',
         isPrimary: true,
         label: 'Office'
       }
@@ -521,6 +523,7 @@ const contacts = [
   }),
   makeContact({
     id: 'contact_3',
+    contactId: 'CNT-003',
     firstName: 'Michael',
     lastName: 'Brown',
     type: 'CEO' as any,
@@ -535,7 +538,7 @@ const contacts = [
       {
         id: 'cc_3_2',
         type: ContactMethodType.PHONE,
-        value: '+1-555-0202',
+        value: '+15550202',
         isPrimary: true,
         label: 'Direct Line'
       }
@@ -555,6 +558,7 @@ const contacts = [
   }),
   makeContact({
     id: 'contact_4',
+    contactId: 'CNT-004',
     firstName: 'Emily',
     lastName: 'Davis',
     type: 'OPERATIONS' as any,
@@ -569,7 +573,7 @@ const contacts = [
       {
         id: 'cc_4_2',
         type: ContactMethodType.PHONE,
-        value: '+1-555-0203',
+        value: '+15550203',
         isPrimary: true,
         label: 'Office'
       }
@@ -589,6 +593,7 @@ const contacts = [
   }),
   makeContact({
     id: 'contact_5',
+    contactId: 'CNT-005',
     firstName: 'Robert',
     lastName: 'Wilson',
     type: 'LOGISTICS' as any,
@@ -603,7 +608,7 @@ const contacts = [
       {
         id: 'cc_5_2',
         type: ContactMethodType.PHONE,
-        value: '+1-555-0204',
+        value: '+15550204',
         isPrimary: true,
         label: 'Office'
       }
@@ -623,6 +628,7 @@ const contacts = [
   }),
   makeContact({
     id: 'contact_6',
+    contactId: 'CNT-006',
     firstName: 'Lisa',
     lastName: 'Anderson',
     type: 'PURCHASING' as any,
@@ -637,7 +643,7 @@ const contacts = [
       {
         id: 'cc_6_2',
         type: ContactMethodType.PHONE,
-        value: '+1-555-0305',
+        value: '+15550305',
         isPrimary: true,
         label: 'Mobile'
       }
@@ -656,6 +662,7 @@ const contacts = [
   }),
   makeContact({
     id: 'contact_7',
+    contactId: 'CNT-007',
     firstName: 'James',
     lastName: 'Taylor',
     type: 'PURCHASING' as any,
@@ -670,7 +677,7 @@ const contacts = [
       {
         id: 'cc_7_2',
         type: ContactMethodType.PHONE,
-        value: '+1-555-0306',
+        value: '+15550306',
         isPrimary: true,
         label: 'Office'
       }
@@ -690,6 +697,7 @@ const contacts = [
   }),
   makeContact({
     id: 'contact_8',
+    contactId: 'CNT-008',
     firstName: 'Patricia',
     lastName: 'Martinez',
     type: 'RETAIL_BUYER' as any,
@@ -704,7 +712,7 @@ const contacts = [
       {
         id: 'cc_8_2',
         type: ContactMethodType.PHONE,
-        value: '+1-555-0307',
+        value: '+15550307',
         isPrimary: true,
         label: 'Mobile'
       }

@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
           id: 'admin-dev-user',
           email: 'admin@unitedcars.com',
           name: 'Development Admin',
-          orgId: 'org-admin',
+          orgId: 'united-cars',
           orgName: 'United Cars Admin',
           orgType: 'ADMIN',
           roles: ['ADMIN', 'SUPER_ADMIN', 'USER']

@@ -30,11 +30,13 @@ import {
   CheckSquare,
   Database,
   AlertTriangle,
-  Activity
+  Activity,
+  LifeBuoy,
+  UsersRound
 } from 'lucide-react'
 import { ThemeToggleCompact } from '@/components/ui/theme-toggle'
 import { RealTimeStatus } from '@/components/ui/real-time-notifications'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useLayoutEffect } from 'react'
 import { useAuth } from '@/contexts/auth-context'
 
 interface NavItem {
@@ -42,6 +44,7 @@ interface NavItem {
   href: string
   icon: React.ComponentType<{ className?: string }>
   badge?: number
+  children?: NavItem[]
 }
 
 interface NavSection {
@@ -100,11 +103,28 @@ const getNavigation = (userRoles: string[] = []): NavSection[] => {
         { label: 'Dashboard', href: '/crm', icon: Home },
         { label: 'Organisations', href: '/crm/organisations', icon: Building2 },
         { label: 'Contacts', href: '/crm/contacts', icon: UserCheck },
-        { label: 'Deals', href: '/crm/deals', icon: TrendingUp },
+        {
+          label: 'Deals',
+          href: '/crm/deals/kanban',
+          icon: TrendingUp,
+          children: [
+            { label: 'Kanban', href: '/crm/deals/kanban', icon: TrendingUp },
+            { label: 'Recovery', href: '/crm/deals/recovery', icon: LifeBuoy }
+          ]
+        },
         { label: 'Leads', href: '/crm/leads', icon: Users },
         { label: 'Tasks', href: '/crm/tasks', icon: CheckSquare },
         { label: 'Pipelines', href: '/crm/pipelines', icon: GitBranch },
-        { label: 'Administration', href: '/crm/admin', icon: Settings },
+        {
+          label: 'Settings',
+          href: '/crm/settings/users',
+          icon: Settings,
+          children: [
+            { label: 'Users', href: '/crm/settings/users', icon: UsersRound },
+            { label: 'Roles', href: '/crm/settings/roles', icon: Shield },
+            { label: 'Teams', href: '/crm/settings/teams', icon: Users }
+          ]
+        },
       ]
     },
     {
@@ -151,14 +171,30 @@ export function Sidebar({ user: userProp, isCollapsed = false, onToggleCollapse 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [isClient, setIsClient] = useState(false)
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({})
+  const [collapsedItems, setCollapsedItems] = useState<Record<string, boolean>>({})
   const navRef = useRef<HTMLDivElement>(null)
   const mobileNavRef = useRef<HTMLDivElement>(null)
+  const scrollLockRef = useRef(false)
+  const scrollPositionRef = useRef<number>(0)
   const { user: authUser, isAuthenticated } = useAuth()
-  
+
   // Use auth context user if no prop user provided
   const user = userProp || authUser
   const userRoles = user?.roles || []
   const navigation = getNavigation(userRoles)
+
+  // Ref callback to set scroll immediately when element is attached
+  const navRefCallback = (node: HTMLDivElement | null) => {
+    if (node) {
+      navRef.current = node
+      // Set scroll position immediately, before any paint
+      const savedScroll = localStorage.getItem('sidebar-scroll-position')
+      if (savedScroll) {
+        node.scrollTop = parseInt(savedScroll, 10)
+        scrollPositionRef.current = parseInt(savedScroll, 10)
+      }
+    }
+  }
   
   const filteredNavigation = navigation.filter(section => {
     if (!section.roles) return true
@@ -169,37 +205,34 @@ export function Sidebar({ user: userProp, isCollapsed = false, onToggleCollapse 
   useEffect(() => {
     setIsClient(true)
 
-    const restoreScrollPosition = () => {
-      if (navRef.current) {
-        const savedScrollPosition = localStorage.getItem('sidebar-scroll-position')
-        if (savedScrollPosition) {
-          navRef.current.scrollTop = parseInt(savedScrollPosition, 10)
-        }
-      }
-    }
-
     // Restore collapsed sections state
-    const restoreCollapsedSections = () => {
-      try {
-        const savedCollapsedSections = localStorage.getItem('sidebar-collapsed-sections')
-        if (savedCollapsedSections) {
-          setCollapsedSections(JSON.parse(savedCollapsedSections))
-        }
-      } catch (error) {
-        console.error('Error loading collapsed sections from localStorage:', error)
+    try {
+      const savedCollapsedSections = localStorage.getItem('sidebar-collapsed-sections')
+      if (savedCollapsedSections) {
+        setCollapsedSections(JSON.parse(savedCollapsedSections))
       }
+    } catch (error) {
+      console.error('Error loading collapsed sections from localStorage:', error)
     }
 
-    restoreCollapsedSections()
-    // Restore scroll position after component mounts
-    setTimeout(restoreScrollPosition, 100)
+    // Restore collapsed items state
+    try {
+      const savedCollapsedItems = localStorage.getItem('sidebar-collapsed-items')
+      if (savedCollapsedItems) {
+        setCollapsedItems(JSON.parse(savedCollapsedItems))
+      }
+    } catch (error) {
+      console.error('Error loading collapsed items from localStorage:', error)
+    }
   }, [])
 
   // Save scroll position when user scrolls
   useEffect(() => {
     const handleScroll = () => {
-      if (navRef.current) {
-        localStorage.setItem('sidebar-scroll-position', navRef.current.scrollTop.toString())
+      if (navRef.current && !scrollLockRef.current) {
+        const scrollTop = navRef.current.scrollTop
+        scrollPositionRef.current = scrollTop
+        localStorage.setItem('sidebar-scroll-position', scrollTop.toString())
       }
     }
 
@@ -210,15 +243,15 @@ export function Sidebar({ user: userProp, isCollapsed = false, onToggleCollapse 
     }
   }, [isClient])
 
-  // Restore scroll position after navigation
-  useEffect(() => {
-    if (isClient && navRef.current) {
-      const savedScrollPosition = localStorage.getItem('sidebar-scroll-position')
-      if (savedScrollPosition) {
-        navRef.current.scrollTop = parseInt(savedScrollPosition, 10)
+  // Backup restoration on pathname change - ref callback should handle it first
+  useLayoutEffect(() => {
+    // The ref callback already set the scroll position, this is just a safety net
+    if (navRef.current && scrollPositionRef.current > 0) {
+      if (navRef.current.scrollTop !== scrollPositionRef.current) {
+        navRef.current.scrollTop = scrollPositionRef.current
       }
     }
-  }, [pathname, isClient])
+  }, [pathname])
 
   const isActiveRoute = (href: string) => {
     // Exact match for root dashboard
@@ -245,6 +278,30 @@ export function Sidebar({ user: userProp, isCollapsed = false, onToggleCollapse 
       localStorage.setItem('sidebar-collapsed-sections', JSON.stringify(newCollapsedSections))
     } catch (error) {
       console.error('Error saving collapsed sections to localStorage:', error)
+    }
+  }
+
+  const toggleItemCollapse = (itemHref: string) => {
+    const newCollapsedItems = {
+      ...collapsedItems,
+      [itemHref]: !collapsedItems[itemHref]
+    }
+    setCollapsedItems(newCollapsedItems)
+
+    // Save to localStorage
+    try {
+      localStorage.setItem('sidebar-collapsed-items', JSON.stringify(newCollapsedItems))
+    } catch (error) {
+      console.error('Error saving collapsed items to localStorage:', error)
+    }
+  }
+
+  const handleLinkClick = () => {
+    // Save current scroll position before navigation
+    if (navRef.current) {
+      const scrollTop = navRef.current.scrollTop
+      scrollPositionRef.current = scrollTop
+      localStorage.setItem('sidebar-scroll-position', scrollTop.toString())
     }
   }
 
@@ -293,12 +350,20 @@ export function Sidebar({ user: userProp, isCollapsed = false, onToggleCollapse 
       )}
 
       {/* Navigation */}
-      <nav 
-        {...(navRef ? { ref: navRef } : {})}
+      <nav
+        ref={navRefCallback}
         className={clsx(
-          "flex-1 overflow-y-auto transition-all duration-200 scroll-smooth",
+          "flex-1 overflow-y-auto",
           collapsed ? "px-2 py-3 space-y-2" : "px-3 py-4 space-y-6"
         )}
+        style={{
+          overflowAnchor: 'none',
+          scrollBehavior: 'auto',
+          contain: 'layout style paint',
+          willChange: 'scroll-position',
+          transform: 'translateZ(0)',
+          backfaceVisibility: 'hidden'
+        }}
       >
         {filteredNavigation.map((section, sectionIndex) => {
           const isSectionCollapsed = collapsedSections[section.title]
@@ -330,52 +395,150 @@ export function Sidebar({ user: userProp, isCollapsed = false, onToggleCollapse 
                   {section.items.map((item) => {
                     const Icon = item.icon
                     const isActive = isActiveRoute(item.href)
+                    const hasChildren = item.children && item.children.length > 0
+                    const isItemCollapsed = collapsedItems[item.href]
 
                     return (
-                      <Link
-                        key={item.href}
-                        href={item.href}
-                        prefetch={true}
-                        className={clsx(
-                          'group flex items-center text-sm font-medium rounded-lg transition-colors duration-150 relative will-change-auto',
-                          collapsed
-                            ? 'p-3 justify-center'
-                            : 'px-3 py-2',
-                          isActive
-                            ? collapsed
-                              ? 'bg-primary/10 text-primary shadow-sm'
-                              : 'bg-primary/5 text-primary border-l-2 border-primary'
-                            : 'text-text-secondary hover:bg-hover-overlay hover:text-foreground'
-                        )}
-                        onClick={() => setIsMobileMenuOpen(false)}
-                        title={collapsed ? item.label : undefined}
-                      >
-                        <Icon
-                          className={clsx(
-                            'h-5 w-5 transition-colors duration-150 flex-shrink-0',
-                            !collapsed && 'mr-3',
-                            isActive
-                              ? 'text-primary'
-                              : 'text-text-tertiary group-hover:text-foreground'
-                          )}
-                        />
-                        {!collapsed && (
-                          <>
-                            {item.label}
-                            {item.badge && (
-                              <span className="ml-auto bg-primary/10 text-primary py-0.5 px-2 rounded-full text-xs font-medium">
-                                {item.badge}
-                              </span>
+                      <div key={item.href}>
+                        {hasChildren ? (
+                          <div
+                            className={clsx(
+                              'group flex items-center text-sm font-medium rounded-lg relative  cursor-pointer',
+                              collapsed
+                                ? 'p-3 justify-center'
+                                : 'px-3 py-2',
+                              isActive
+                                ? collapsed
+                                  ? 'bg-primary/10 text-primary shadow-sm'
+                                  : 'bg-primary/5 text-primary border-l-2 border-primary'
+                                : 'text-text-secondary hover:bg-hover-overlay hover:text-foreground'
                             )}
-                            {isActive && (
-                              <ChevronRight className="ml-auto h-4 w-4 text-primary flex-shrink-0" />
+                            onClick={(e) => {
+                              e.preventDefault()
+                              toggleItemCollapse(item.href)
+                            }}
+                            title={collapsed ? item.label : undefined}
+                          >
+                            <Icon
+                              className={clsx(
+                                'h-5 w-5  flex-shrink-0',
+                                !collapsed && 'mr-3',
+                                isActive
+                                  ? 'text-primary'
+                                  : 'text-text-tertiary group-hover:text-foreground'
+                              )}
+                            />
+                            {!collapsed && (
+                              <>
+                                {item.label}
+                                {item.badge && (
+                                  <span className="ml-auto bg-primary/10 text-primary py-0.5 px-2 rounded-full text-xs font-medium">
+                                    {item.badge}
+                                  </span>
+                                )}
+                                <div className="ml-auto">
+                                  {isItemCollapsed ? (
+                                    <ChevronRight className="h-4 w-4 text-text-tertiary flex-shrink-0" />
+                                  ) : (
+                                    <ChevronDown className="h-4 w-4 text-text-tertiary flex-shrink-0" />
+                                  )}
+                                </div>
+                              </>
                             )}
-                          </>
+                            {collapsed && isActive && (
+                              <div className="absolute -right-1 top-1/2 transform -translate-y-1/2 w-1 h-8 bg-primary rounded-full" />
+                            )}
+                          </div>
+                        ) : (
+                          <Link
+                            href={item.href}
+                            prefetch={true}
+                            className={clsx(
+                              'group flex items-center text-sm font-medium rounded-lg  relative ',
+                              collapsed
+                                ? 'p-3 justify-center'
+                                : 'px-3 py-2',
+                              isActive
+                                ? collapsed
+                                  ? 'bg-primary/10 text-primary shadow-sm'
+                                  : 'bg-primary/5 text-primary border-l-2 border-primary'
+                                : 'text-text-secondary hover:bg-hover-overlay hover:text-foreground'
+                            )}
+                            onClick={() => {
+                              handleLinkClick()
+                              setIsMobileMenuOpen(false)
+                            }}
+                            title={collapsed ? item.label : undefined}
+                          >
+                            <Icon
+                              className={clsx(
+                                'h-5 w-5  flex-shrink-0',
+                                !collapsed && 'mr-3',
+                                isActive
+                                  ? 'text-primary'
+                                  : 'text-text-tertiary group-hover:text-foreground'
+                              )}
+                            />
+                            {!collapsed && (
+                              <>
+                                {item.label}
+                                {item.badge && (
+                                  <span className="ml-auto bg-primary/10 text-primary py-0.5 px-2 rounded-full text-xs font-medium">
+                                    {item.badge}
+                                  </span>
+                                )}
+                                {isActive && (
+                                  <ChevronRight className="ml-auto h-4 w-4 text-primary flex-shrink-0" />
+                                )}
+                              </>
+                            )}
+                            {collapsed && isActive && (
+                              <div className="absolute -right-1 top-1/2 transform -translate-y-1/2 w-1 h-8 bg-primary rounded-full" />
+                            )}
+                          </Link>
                         )}
-                        {collapsed && isActive && (
-                          <div className="absolute -right-1 top-1/2 transform -translate-y-1/2 w-1 h-8 bg-primary rounded-full" />
+
+                        {/* Render child items */}
+                        {!collapsed && hasChildren && !isItemCollapsed && (
+                          <div className="ml-6 mt-1 space-y-1">
+                            {item.children.map((child) => {
+                              const ChildIcon = child.icon
+                              const isChildActive = isActiveRoute(child.href)
+
+                              return (
+                                <Link
+                                  key={child.href}
+                                  href={child.href}
+                                  prefetch={true}
+                                  className={clsx(
+                                    'group flex items-center text-sm font-medium rounded-lg  px-3 py-1.5',
+                                    isChildActive
+                                      ? 'bg-primary/5 text-primary border-l-2 border-primary'
+                                      : 'text-text-secondary hover:bg-hover-overlay hover:text-foreground'
+                                  )}
+                                  onClick={() => {
+                                    handleLinkClick()
+                                    setIsMobileMenuOpen(false)
+                                  }}
+                                >
+                                  <ChildIcon
+                                    className={clsx(
+                                      'h-4 w-4 mr-3  flex-shrink-0',
+                                      isChildActive
+                                        ? 'text-primary'
+                                        : 'text-text-tertiary group-hover:text-foreground'
+                                    )}
+                                  />
+                                  {child.label}
+                                  {isChildActive && (
+                                    <ChevronRight className="ml-auto h-3 w-3 text-primary flex-shrink-0" />
+                                  )}
+                                </Link>
+                              )
+                            })}
+                          </div>
                         )}
-                      </Link>
+                      </div>
                     )
                   })}
                 </div>
@@ -392,18 +555,21 @@ export function Sidebar({ user: userProp, isCollapsed = false, onToggleCollapse 
                         href={item.href}
                         prefetch={true}
                         className={clsx(
-                          'group flex items-center text-sm font-medium rounded-lg transition-colors duration-150 relative will-change-auto',
+                          'group flex items-center text-sm font-medium rounded-lg  relative ',
                           'p-3 justify-center',
                           isActive
                             ? 'bg-primary/10 text-primary shadow-sm'
                             : 'text-text-secondary hover:bg-hover-overlay hover:text-foreground'
                         )}
-                        onClick={() => setIsMobileMenuOpen(false)}
+                        onClick={() => {
+                          handleLinkClick()
+                          setIsMobileMenuOpen(false)
+                        }}
                         title={item.label}
                       >
                         <Icon
                           className={clsx(
-                            'h-5 w-5 transition-colors duration-150 flex-shrink-0',
+                            'h-5 w-5  flex-shrink-0',
                             isActive
                               ? 'text-primary'
                               : 'text-text-tertiary group-hover:text-foreground'
@@ -520,10 +686,16 @@ export function Sidebar({ user: userProp, isCollapsed = false, onToggleCollapse 
 
       {/* Desktop sidebar */}
       <div className="hidden lg:flex lg:flex-shrink-0 h-screen w-full">
-        <div className={clsx(
-          "flex flex-col border-r border-border bg-background transition-all duration-200 h-full",
-          isCollapsed ? "w-16" : "w-56"
-        )}>
+        <div
+          className={clsx(
+            "flex flex-col border-r border-border bg-background transition-all duration-200 h-full",
+            isCollapsed ? "w-16" : "w-56"
+          )}
+          style={{
+            transform: 'translateZ(0)',
+            willChange: 'width'
+          }}
+        >
           <NavContent collapsed={isCollapsed} navRef={navRef} />
         </div>
       </div>

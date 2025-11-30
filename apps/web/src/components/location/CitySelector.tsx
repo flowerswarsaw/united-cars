@@ -25,6 +25,7 @@ export interface CitySelectorProps {
   required?: boolean;
   className?: string;
   allowCustom?: boolean; // Allow custom input when no predefined cities
+  showAllOption?: boolean;
 }
 
 export function CitySelector({
@@ -36,7 +37,8 @@ export function CitySelector({
   disabled = false,
   required = false,
   className,
-  allowCustom = true
+  allowCustom = true,
+  showAllOption = false
 }: CitySelectorProps) {
   const [showCustomInput, setShowCustomInput] = useState(false);
 
@@ -135,10 +137,16 @@ export function CitySelector({
       >
         <SelectTrigger className={className}>
           <SelectValue placeholder={placeholder}>
-            {value || placeholder}
+            {(value && value !== 'all') ? value : placeholder}
           </SelectValue>
         </SelectTrigger>
         <SelectContent>
+          {showAllOption && (
+            <>
+              <SelectItem value="all">All Cities</SelectItem>
+              <div className="my-1 h-px bg-gray-200" />
+            </>
+          )}
           {cities.map(city => (
             <SelectItem key={city.name} value={city.name}>
               {city.name}

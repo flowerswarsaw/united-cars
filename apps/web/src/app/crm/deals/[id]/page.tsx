@@ -104,6 +104,11 @@ export default function DealDetailPage() {
       const data = await response.json();
       setDeal(data);
 
+      // Extract pipelineId and stageId from currentStages array
+      const currentStage = data.currentStages?.[0];
+      const extractedPipelineId = currentStage?.pipelineId || '';
+      const extractedStageId = currentStage?.stageId || '';
+
       // Initialize section-specific data
       setBasicInfoData({
         title: data.title || '',
@@ -111,8 +116,8 @@ export default function DealDetailPage() {
         currency: data.currency || 'USD',
         probability: data.probability?.toString() || '',
         description: data.description || '',
-        pipelineId: data.pipelineId || '',
-        stageId: data.stageId || ''
+        pipelineId: extractedPipelineId,
+        stageId: extractedStageId
       });
 
       setRelationshipsData({
@@ -133,11 +138,11 @@ export default function DealDetailPage() {
       const pipelinesData = await pipelineResponse.json();
       setPipelines(pipelinesData);
 
-      if (data.pipelineId) {
-        const dealPipeline = pipelinesData.find((p: Pipeline) => p.id === data.pipelineId);
+      if (extractedPipelineId) {
+        const dealPipeline = pipelinesData.find((p: Pipeline) => p.id === extractedPipelineId);
         if (dealPipeline) {
           setPipeline(dealPipeline);
-          const dealStage = dealPipeline.stages?.find((s: Stage) => s.id === data.stageId);
+          const dealStage = dealPipeline.stages?.find((s: Stage) => s.id === extractedStageId);
           setStage(dealStage || null);
         }
       }
@@ -331,6 +336,24 @@ export default function DealDetailPage() {
   const handleMarkLost = async () => {
     if (!deal || !lossReason) return;
 
+    // Find the lost stage in the current pipeline
+    const currentStage = deal.currentStages?.[0];
+    const currentPipelineId = currentStage?.pipelineId || pipeline?.id;
+
+    if (!currentPipelineId) {
+      toast.error('Cannot mark deal as lost: No pipeline assigned');
+      return;
+    }
+
+    // Get the pipeline to find the lost stage
+    const dealPipeline = pipelines.find(p => p.id === currentPipelineId);
+    const lostStage = dealPipeline?.stages?.find(s => s.isLost);
+
+    if (!lostStage) {
+      toast.error('Cannot mark deal as lost: No lost stage found in pipeline');
+      return;
+    }
+
     try {
       const response = await fetch(`/api/crm/deals/${dealId}`, {
         method: 'PATCH',
@@ -341,7 +364,10 @@ export default function DealDetailPage() {
           lostAt: new Date().toISOString(),
           lossReason,
           isFrozen: true,
-          ...(lostNote && { lostNote })
+          ...(lostNote && { lostNote }),
+          // Move to lost stage
+          pipelineId: currentPipelineId,
+          stageId: lostStage.id
         })
       });
 

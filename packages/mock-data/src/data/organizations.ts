@@ -2,8 +2,8 @@ import { Org } from '../types';
 
 export const organizations: Org[] = [
   {
-    id: 'org-admin',
-    name: 'United Cars Admin',
+    id: 'united-cars',
+    name: 'United Cars',
     type: 'ADMIN',
     parentOrgId: null,
     createdAt: new Date('2024-01-01'),

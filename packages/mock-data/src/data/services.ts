@@ -69,7 +69,7 @@ export const serviceRequests: ServiceRequest[] = [
   },
   {
     id: 'service-vip-fastest-2',
-    orgId: 'org-admin',
+    orgId: 'united-cars',
     vehicleId: 'vehicle-9',
     type: 'vip_fastest',
     status: 'pending',
@@ -83,7 +83,7 @@ export const serviceRequests: ServiceRequest[] = [
   // Plastic Covering Services
   {
     id: 'service-plastic-1',
-    orgId: 'org-admin',
+    orgId: 'united-cars',
     vehicleId: 'vehicle-10',
     type: 'plastic_covering',
     status: 'completed',
@@ -121,7 +121,7 @@ export const serviceRequests: ServiceRequest[] = [
   },
   {
     id: 'service-photos-2',
-    orgId: 'org-admin',
+    orgId: 'united-cars',
     vehicleId: 'vehicle-12',
     type: 'extra_photos',
     status: 'completed',
@@ -147,7 +147,7 @@ export const serviceRequests: ServiceRequest[] = [
   },
   {
     id: 'service-window-2',
-    orgId: 'org-admin',
+    orgId: 'united-cars',
     vehicleId: 'vehicle-11',
     type: 'window_covering',
     status: 'completed',
@@ -162,7 +162,7 @@ export const serviceRequests: ServiceRequest[] = [
   // Moisture Absorber Services
   {
     id: 'service-moisture-1',
-    orgId: 'org-admin',
+    orgId: 'united-cars',
     vehicleId: 'vehicle-2',
     type: 'moisture_absorber',
     status: 'completed',

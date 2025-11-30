@@ -4,7 +4,7 @@ export const vehicles: Vehicle[] = [
   // Admin org vehicles (for testing admin view)
   {
     id: 'vehicle-1',
-    orgId: 'org-admin',
+    orgId: 'united-cars',
     vin: '1HGCM82633A123456',
     make: 'Honda',
     model: 'Accord',
@@ -38,7 +38,7 @@ export const vehicles: Vehicle[] = [
   },
   {
     id: 'vehicle-2',
-    orgId: 'org-admin',
+    orgId: 'united-cars',
     vin: '2T1BURHE8JC123457',
     make: 'Toyota',
     model: 'Corolla',
@@ -79,7 +79,7 @@ export const vehicles: Vehicle[] = [
   },
   {
     id: 'vehicle-3',
-    orgId: 'org-admin',
+    orgId: 'united-cars',
     vin: '3VWLL7AJ9BM053541',
     make: 'Volkswagen',
     model: 'Jetta',
@@ -320,7 +320,7 @@ export const vehicles: Vehicle[] = [
   // Vehicles with various statuses for testing
   {
     id: 'vehicle-9',
-    orgId: 'org-admin',
+    orgId: 'united-cars',
     vin: '1FTFW1ET5DFC48291',
     make: 'Ford',
     model: 'F-150',
@@ -333,7 +333,7 @@ export const vehicles: Vehicle[] = [
   },
   {
     id: 'vehicle-10',
-    orgId: 'org-admin',
+    orgId: 'united-cars',
     vin: 'JM3KFBDM1J0392847',
     make: 'Mazda',
     model: 'CX-5',
@@ -346,7 +346,7 @@ export const vehicles: Vehicle[] = [
   },
   {
     id: 'vehicle-11',
-    orgId: 'org-admin',
+    orgId: 'united-cars',
     vin: 'KMHD84LF1HU283746',
     make: 'Hyundai',
     model: 'Sonata',
@@ -359,7 +359,7 @@ export const vehicles: Vehicle[] = [
   },
   {
     id: 'vehicle-12',
-    orgId: 'org-admin',
+    orgId: 'united-cars',
     vin: '2HGFC2F53JH579324',
     make: 'Honda',
     model: 'Civic',

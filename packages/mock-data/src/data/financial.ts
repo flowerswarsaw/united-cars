@@ -4,7 +4,7 @@ export const invoices: Invoice[] = [
   // Admin org vehicles comprehensive billing
   {
     id: 'invoice-1',
-    orgId: 'org-admin',
+    orgId: 'united-cars',
     number: 'INV-2024-001',
     status: 'PAID',
     currency: 'USD',
@@ -63,7 +63,7 @@ export const invoices: Invoice[] = [
   },
   {
     id: 'invoice-2',
-    orgId: 'org-admin',
+    orgId: 'united-cars',
     number: 'INV-2024-002',
     status: 'PENDING',
     currency: 'USD',
@@ -115,7 +115,7 @@ export const invoices: Invoice[] = [
   },
   {
     id: 'invoice-3',
-    orgId: 'org-admin',
+    orgId: 'united-cars',
     number: 'INV-2024-003',
     status: 'PAID',
     currency: 'USD',
@@ -167,7 +167,7 @@ export const invoices: Invoice[] = [
   },
   {
     id: 'invoice-9',
-    orgId: 'org-admin',
+    orgId: 'united-cars',
     number: 'INV-2024-009',
     status: 'PENDING',
     currency: 'USD',
@@ -226,7 +226,7 @@ export const invoices: Invoice[] = [
   },
   {
     id: 'invoice-10',
-    orgId: 'org-admin',
+    orgId: 'united-cars',
     number: 'INV-2024-010',
     status: 'PENDING',
     currency: 'USD',
@@ -285,7 +285,7 @@ export const invoices: Invoice[] = [
   },
   {
     id: 'invoice-11',
-    orgId: 'org-admin',
+    orgId: 'united-cars',
     number: 'INV-2024-011',
     status: 'PAID',
     currency: 'USD',
@@ -337,7 +337,7 @@ export const invoices: Invoice[] = [
   },
   {
     id: 'invoice-12',
-    orgId: 'org-admin',
+    orgId: 'united-cars',
     number: 'INV-2024-012',
     status: 'PENDING',
     currency: 'USD',
@@ -946,7 +946,7 @@ export const paymentIntents: PaymentIntent[] = [
   },
   {
     id: 'payment-2',
-    orgId: 'org-admin',
+    orgId: 'united-cars',
     invoiceId: 'invoice-1',
     method: 'balance',
     amount: 15750,

@@ -57,7 +57,7 @@ export const enhancedOrganisations: EnhancedOrganisation[] = [
   // Admin-owned verified organization
   {
     id: 'org-admin-001',
-    tenantId: 'default-tenant',
+    tenantId: 'united-cars',
     name: 'AutoMax Luxury Dealership',
     type: 'DEALER' as any,
     description: 'Premier luxury vehicle dealership specializing in European imports',
@@ -115,7 +115,7 @@ export const enhancedOrganisations: EnhancedOrganisation[] = [
   // Senior Manager organization
   {
     id: 'org-senior-001',
-    tenantId: 'default-tenant',
+    tenantId: 'united-cars',
     name: 'Premier Motors East Coast',
     type: 'DEALER' as any,
     description: 'High-volume dealership serving the East Coast market',
@@ -154,7 +154,7 @@ export const enhancedOrganisations: EnhancedOrganisation[] = [
   // Junior Manager organization - unverified for testing
   {
     id: 'org-junior-001',
-    tenantId: 'default-tenant',
+    tenantId: 'united-cars',
     name: 'City Cars Direct',
     type: 'DEALER' as any,
     description: 'Small volume dealer focusing on pre-owned vehicles',
@@ -195,14 +195,14 @@ export const enhancedOrganisations: EnhancedOrganisation[] = [
 export const enhancedPipelines: EnhancedPipeline[] = [
   {
     id: 'pipeline-dealer-acquisition',
-    tenantId: 'default-tenant',
+    tenantId: 'united-cars',
     name: 'Dealer Acquisition Pipeline',
     description: 'Main pipeline for acquiring new dealer partners',
     isActive: true,
     stages: [
       {
         id: 'stage-da-prospect',
-        tenantId: 'default-tenant',
+        tenantId: 'united-cars',
         pipelineId: 'pipeline-dealer-acquisition',
         name: 'Prospecting',
         description: 'Initial prospect identification',
@@ -218,7 +218,7 @@ export const enhancedPipelines: EnhancedPipeline[] = [
       },
       {
         id: 'stage-da-won',
-        tenantId: 'default-tenant',
+        tenantId: 'united-cars',
         pipelineId: 'pipeline-dealer-acquisition',
         name: 'Closed Won',
         description: 'Deal successfully closed',

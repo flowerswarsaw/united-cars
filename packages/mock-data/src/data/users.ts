@@ -9,11 +9,11 @@ const claimsPasswordHash = bcrypt.hashSync('claims123', 10);
 
 export const users: User[] = [
   {
-    id: 'user-admin-1',
-    email: 'admin@demo.com',
-    name: 'Admin User',
+    id: 'admin-user-001',
+    email: 'admin@unitedcars.com',
+    name: 'System Administrator',
     passwordHash: adminPasswordHash,
-    orgId: 'org-admin',
+    orgId: 'united-cars',
     status: 'ACTIVE',
     balance: 0,
     createdAt: new Date('2024-01-01'),
@@ -37,7 +37,7 @@ export const users: User[] = [
     email: 'ops@demo.com',
     name: 'Operations User',
     passwordHash: opsPasswordHash,
-    orgId: 'org-admin',
+    orgId: 'united-cars',
     status: 'ACTIVE',
     balance: 0,
     createdAt: new Date('2024-01-10'),
@@ -49,7 +49,7 @@ export const users: User[] = [
     email: 'claims@demo.com',
     name: 'Claims Specialist',
     passwordHash: claimsPasswordHash,
-    orgId: 'org-admin',
+    orgId: 'united-cars',
     status: 'ACTIVE',
     balance: 0,
     createdAt: new Date('2024-01-05'),
@@ -73,16 +73,16 @@ export const userRoles: UserRole[] = [
   // Admin user has admin role
   {
     id: 'user-role-1',
-    userId: 'user-admin-1',
+    userId: 'admin-user-001',
     roleId: 'role-admin',
-    orgId: 'org-admin'
+    orgId: 'united-cars'
   },
   // Admin user also has accounting role
   {
     id: 'user-role-2',
-    userId: 'user-admin-1',
+    userId: 'admin-user-001',
     roleId: 'role-accounting',
-    orgId: 'org-admin'
+    orgId: 'united-cars'
   },
   // Dealer user has dealer role
   {
@@ -96,13 +96,13 @@ export const userRoles: UserRole[] = [
     id: 'user-role-4',
     userId: 'user-ops-1',
     roleId: 'role-ops',
-    orgId: 'org-admin'
+    orgId: 'united-cars'
   },
   // Claims user has claims role
   {
     id: 'user-role-5',
     userId: 'user-claims-1',
     roleId: 'role-claims',
-    orgId: 'org-admin'
+    orgId: 'united-cars'
   }
 ];

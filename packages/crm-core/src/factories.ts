@@ -23,7 +23,7 @@ import {
   DealStageHistory
 } from './types';
 
-const DEFAULT_TENANT_ID = 'tenant_001';
+const DEFAULT_TENANT_ID = 'united-cars';
 
 export function makeOrganisation(partial?: Partial<Organisation>): Organisation {
   const now = new Date();

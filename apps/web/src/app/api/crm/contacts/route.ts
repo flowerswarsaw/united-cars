@@ -29,6 +29,7 @@ export async function GET(request: NextRequest) {
     const country = searchParams.get('country');
     const state = searchParams.get('state');
     const city = searchParams.get('city');
+    const assignedTo = searchParams.get('assignedTo');
     const paginated = searchParams.get('paginated') === 'true';
 
     // Get contacts from repository
@@ -40,30 +41,56 @@ export async function GET(request: NextRequest) {
     // 4. Filter by user access (assignment-based for junior managers)
     filteredContacts = filterByUserAccess(filteredContacts, user, 'Contact');
 
-    // Apply search filter (name, email, phone)
+    // Apply search filter (name, contactId, organisation name, contact details: email/phone)
     if (search) {
       const searchLower = search.toLowerCase();
       const normalizedSearch = normalizePhone(search);
 
-      filteredContacts = filteredContacts.filter(contact => {
-        // Search in name and title
-        if (contact.firstName.toLowerCase().includes(searchLower)) return true;
-        if (contact.lastName.toLowerCase().includes(searchLower)) return true;
-        if (contact.title && contact.title.toLowerCase().includes(searchLower)) return true;
+      // Get organisations for name lookup (filtered by tenant)
+      const { organisationRepository } = await import('@united-cars/crm-mocks');
+      const allOrganisations = await organisationRepository.list();
+      const organisations = allOrganisations.filter(org => org.tenantId === user.tenantId);
+      const orgMap = new Map(organisations.map(org => [org.id, org]));
 
-        // Search in contact methods (emails and phones)
+      filteredContacts = filteredContacts.filter(contact => {
+        // Search in contact name (with null safety)
+        if (contact.firstName && contact.firstName.toLowerCase().includes(searchLower)) return true;
+        if (contact.lastName && contact.lastName.toLowerCase().includes(searchLower)) return true;
+        if (contact.firstName && contact.lastName) {
+          const fullName = `${contact.firstName} ${contact.lastName}`.toLowerCase();
+          if (fullName.includes(searchLower)) return true;
+        }
+
+        // Search in custom contact ID
+        if (contact.contactId && contact.contactId.toLowerCase().includes(searchLower)) return true;
+
+        // Search in organisation name
+        if (contact.organisationId) {
+          const org = orgMap.get(contact.organisationId);
+          if (org && org.name && org.name.toLowerCase().includes(searchLower)) return true;
+        }
+
+        // Search in contact methods (emails and phones only)
         if (contact.contactMethods && contact.contactMethods.length > 0) {
           const hasMatchingContact = contact.contactMethods.some(cm => {
-            if (!cm.value) return false;
+            if (!cm.value || !cm.type) return false;
+
+            const cmType = typeof cm.type === 'string' ? cm.type : String(cm.type);
 
             // For phone numbers, try both formatted and normalized matching
-            if (cm.type.includes('PHONE')) {
+            if (cmType.includes('PHONE')) {
+              // Only use normalized matching if search has digits (avoid empty string matching)
+              const hasDigits = normalizedSearch.length > 0;
               return cm.value.toLowerCase().includes(searchLower) ||
-                     normalizePhone(cm.value).includes(normalizedSearch);
+                     (hasDigits && normalizePhone(cm.value).includes(normalizedSearch));
             }
 
             // For emails, use standard case-insensitive matching
-            return cm.value.toLowerCase().includes(searchLower);
+            if (cmType.includes('EMAIL')) {
+              return cm.value.toLowerCase().includes(searchLower);
+            }
+
+            return false;
           });
           if (hasMatchingContact) return true;
         }
@@ -84,14 +111,9 @@ export async function GET(request: NextRequest) {
 
     // Filter by location
     if (country) {
-      console.log('🔍 Country filter - Searching for:', country);
-      console.log('📋 Sample contact countries:', filteredContacts.slice(0, 3).map(c => ({ name: `${c.firstName} ${c.lastName}`, country: c.country })));
-
       filteredContacts = filteredContacts.filter(contact =>
         contact.country && contact.country.toLowerCase() === country.toLowerCase()
       );
-
-      console.log('✅ Contacts after country filter:', filteredContacts.length);
     }
 
     if (state) {
@@ -104,6 +126,17 @@ export async function GET(request: NextRequest) {
       filteredContacts = filteredContacts.filter(contact =>
         contact.city && contact.city.toLowerCase() === city.toLowerCase()
       );
+    }
+
+    // Filter by assigned user
+    if (assignedTo) {
+      console.log('🎯 Filtering by assignedTo:', assignedTo);
+      console.log('📊 Sample contacts responsibleUserIds:', filteredContacts.slice(0, 3).map(c => ({
+        name: `${c.firstName} ${c.lastName}`,
+        responsibleUserId: c.responsibleUserId
+      })));
+      filteredContacts = filteredContacts.filter(contact => contact.responsibleUserId === assignedTo);
+      console.log('✅ Contacts after assignedTo filter:', filteredContacts.length);
     }
 
     if (paginated) {

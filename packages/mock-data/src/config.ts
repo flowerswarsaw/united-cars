@@ -14,7 +14,7 @@ export const DATA_CONFIG = {
   
   // Demo credentials
   DEMO_USERS: {
-    ADMIN: { email: 'admin@demo.com', password: 'admin123' },
+    ADMIN: { email: 'admin@unitedcars.com', password: 'admin123' },
     DEALER: { email: 'dealer@demo.com', password: 'dealer123' },
     OPS: { email: 'ops@demo.com', password: 'ops123' }
   }

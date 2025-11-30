@@ -18,6 +18,7 @@ export async function GET(
     if (accessCheck instanceof NextResponse) return accessCheck;
 
     const { id } = await params;
+
     const deal = await dealRepository.get(id);
 
     if (!deal) {

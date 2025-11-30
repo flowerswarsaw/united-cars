@@ -2,7 +2,7 @@ import { Deal, DealStatus, LossReason } from '@united-cars/crm-core';
 import { makeDeal, makeDealCurrentStage, makeDealStageHistory } from '@united-cars/crm-core';
 import { TEST_USERS } from './enhanced-seeds';
 
-const DEFAULT_TENANT = 'org-admin';
+const DEFAULT_TENANT = 'united-cars';
 
 // Clean, consistent deals with proper pipeline assignments
 export const cleanDeals = [

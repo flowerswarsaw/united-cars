@@ -20,7 +20,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Search, UserPlus, Filter, Mail, Users as UsersIcon } from 'lucide-react';
+import { Search, UserPlus, Filter, Mail, Users as UsersIcon, UserX, Loader2, AlertTriangle } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 
@@ -47,6 +55,12 @@ export function UsersTab() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [roleFilter, setRoleFilter] = useState<string>('all');
+  const [deactivatingUser, setDeactivatingUser] = useState<CRMUser | null>(null);
+  const [deactivating, setDeactivating] = useState(false);
+  const [deactivationStats, setDeactivationStats] = useState<{
+    dealsUnassigned: number;
+    leadsUnassigned: number;
+  } | null>(null);
 
   useEffect(() => {
     fetchUsers();
@@ -96,6 +110,52 @@ export function UsersTab() {
     }
   };
 
+  const handleDeactivateClick = (user: CRMUser) => {
+    setDeactivatingUser(user);
+    setDeactivationStats(null);
+  };
+
+  const handleDeactivateConfirm = async () => {
+    if (!deactivatingUser) return;
+
+    try {
+      setDeactivating(true);
+
+      const res = await fetch(`/api/crm/users/${deactivatingUser.id}/deactivate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.details || error.error || 'Failed to deactivate user');
+      }
+
+      const result = await res.json();
+
+      setDeactivationStats({
+        dealsUnassigned: result.stats.dealsUnassigned,
+        leadsUnassigned: result.stats.leadsUnassigned
+      });
+
+      toast.success(`User deactivated: ${deactivatingUser.displayName}`);
+
+      // Reload users
+      await fetchUsers();
+
+      // Close dialog after a brief delay to show stats
+      setTimeout(() => {
+        setDeactivatingUser(null);
+        setDeactivationStats(null);
+      }, 3000);
+    } catch (error: any) {
+      console.error('Failed to deactivate user:', error);
+      toast.error(error.message || 'Failed to deactivate user');
+    } finally {
+      setDeactivating(false);
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     if (status === 'ACTIVE') {
       return <Badge className="bg-green-100 text-green-800">Active</Badge>;
@@ -128,48 +188,6 @@ export function UsersTab() {
 
   return (
     <div className="space-y-6">
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Total Users</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{users.length}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Active Users</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">
-              {users.filter(u => u.status === 'ACTIVE').length}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Inactive Users</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-gray-500">
-              {users.filter(u => u.status === 'INACTIVE').length}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Unique Roles</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-600">
-              {uniqueRoles.length}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
       {/* Filters and Search */}
       <Card>
         <CardHeader>
@@ -290,11 +308,23 @@ export function UsersTab() {
                         {getStatusBadge(user.status)}
                       </TableCell>
                       <TableCell>
-                        <Link href={`/crm/users/${user.id}`}>
-                          <Button variant="outline" size="sm">
-                            View Profile
-                          </Button>
-                        </Link>
+                        <div className="flex items-center gap-2">
+                          <Link href={`/crm/users/${user.id}`}>
+                            <Button variant="outline" size="sm">
+                              View Profile
+                            </Button>
+                          </Link>
+                          {user.status === 'ACTIVE' && (
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => handleDeactivateClick(user)}
+                            >
+                              <UserX className="h-4 w-4 mr-1" />
+                              Deactivate
+                            </Button>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -304,6 +334,84 @@ export function UsersTab() {
           )}
         </CardContent>
       </Card>
+
+      {/* Deactivation Dialog */}
+      <Dialog open={!!deactivatingUser} onOpenChange={(open) => !open && setDeactivatingUser(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-orange-500" />
+              Deactivate User
+            </DialogTitle>
+            <DialogDescription className="pt-2">
+              {deactivationStats ? (
+                <div className="space-y-2">
+                  <p className="text-green-600 font-medium">
+                    User successfully deactivated!
+                  </p>
+                  <div className="bg-blue-50 border border-blue-200 rounded-md p-3 text-sm">
+                    <p className="font-medium text-blue-900">Reassignment Summary:</p>
+                    <ul className="mt-2 space-y-1 text-blue-800">
+                      <li>• {deactivationStats.dealsUnassigned} deals unassigned</li>
+                      <li>• {deactivationStats.leadsUnassigned} leads unassigned</li>
+                    </ul>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2">
+                    This dialog will close automatically...
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <p className="font-medium">
+                    Are you sure you want to deactivate {deactivatingUser?.displayName}?
+                  </p>
+                  <div className="mt-4 bg-orange-50 border border-orange-200 rounded-md p-3 text-sm">
+                    <p className="font-medium text-orange-900">This action will:</p>
+                    <ul className="mt-2 space-y-1 text-orange-800">
+                      <li>• Set the user's status to INACTIVE</li>
+                      <li>• Unassign all their deals</li>
+                      <li>• Unassign all their leads</li>
+                      <li>• Tasks will remain connected to deals</li>
+                      <li>• All actions will be logged for audit purposes</li>
+                    </ul>
+                  </div>
+                  <p className="text-sm text-gray-600 mt-4">
+                    Other users can claim the unassigned deals from the Deal Recovery page.
+                  </p>
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          {!deactivationStats && (
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setDeactivatingUser(null)}
+                disabled={deactivating}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleDeactivateConfirm}
+                disabled={deactivating}
+              >
+                {deactivating ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Deactivating...
+                  </>
+                ) : (
+                  <>
+                    <UserX className="mr-2 h-4 w-4" />
+                    Deactivate User
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

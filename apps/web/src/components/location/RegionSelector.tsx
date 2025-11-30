@@ -24,6 +24,7 @@ export interface RegionSelectorProps {
   required?: boolean;
   className?: string;
   allowCustom?: boolean; // Allow custom input for countries without predefined regions
+  showAllOption?: boolean;
 }
 
 export function RegionSelector({
@@ -34,7 +35,8 @@ export function RegionSelector({
   disabled = false,
   required = false,
   className,
-  allowCustom = true
+  allowCustom = true,
+  showAllOption = false
 }: RegionSelectorProps) {
   const hasRegions = useMemo(() => {
     if (!countryCode) return false;
@@ -48,7 +50,7 @@ export function RegionSelector({
 
   // Get display value
   const displayValue = useMemo(() => {
-    if (!value) return placeholder;
+    if (!value || value === 'all') return placeholder;
     if (!countryCode) return value;
     const regionName = LocationService.getRegionName(countryCode, value);
     return regionName || value;
@@ -105,6 +107,12 @@ export function RegionSelector({
         </SelectValue>
       </SelectTrigger>
       <SelectContent>
+        {showAllOption && (
+          <>
+            <SelectItem value="all">All Regions</SelectItem>
+            <div className="my-1 h-px bg-gray-200" />
+          </>
+        )}
         {regions.map(region => (
           <SelectItem key={region.code} value={region.code}>
             {region.name}

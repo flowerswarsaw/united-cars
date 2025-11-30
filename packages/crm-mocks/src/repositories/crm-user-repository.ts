@@ -199,8 +199,116 @@ export class CRMUserRepository extends BaseRepository<CRMUserProfile> implements
     return await this.update(userId, { status: 'ACTIVE' as any, isActive: true });
   }
 
-  async deactivate(userId: string): Promise<CRMUserProfile | undefined> {
-    return await this.update(userId, { status: 'INACTIVE' as any, isActive: false });
+  async deactivate(userId: string, deactivatedBy: string): Promise<{
+    user: CRMUserProfile;
+    dealsUnassigned: number;
+    leadsUnassigned: number;
+  }> {
+    const user = await this.get(userId);
+    if (!user) {
+      throw new Error(`User with ID ${userId} not found`);
+    }
+
+    if (!user.isActive) {
+      throw new Error(`User with ID ${userId} is already inactive`);
+    }
+
+    // Import repositories dynamically to avoid circular dependencies
+    const { dealRepository } = await import('./deal-repository');
+    const { leadRepository } = await import('./lead-repository');
+    const { activityRepository } = await import('./activity-repository');
+
+    const now = new Date();
+    const unassignReason = 'user_deactivated';
+
+    // 1. Unassign all deals
+    const userDeals = await dealRepository.list({ responsibleUserId: userId });
+    let dealsUnassigned = 0;
+
+    for (const deal of userDeals) {
+      await dealRepository.update(deal.id, {
+        responsibleUserId: undefined,
+        unassignedAt: now,
+        unassignedReason: unassignReason
+      });
+
+      // Log activity
+      await activityRepository.create({
+        entityType: 'DEAL' as any,
+        entityId: deal.id,
+        type: 'DEAL_UNASSIGNED' as any,
+        description: `Deal unassigned due to user deactivation: ${user.displayName}`,
+        userId: deactivatedBy,
+        meta: {
+          previousUserId: userId,
+          previousUserName: user.displayName,
+          reason: unassignReason
+        },
+        tenantId: deal.tenantId
+      });
+
+      dealsUnassigned++;
+    }
+
+    // 2. Unassign all leads
+    const userLeads = await leadRepository.list({ responsibleUserId: userId });
+    let leadsUnassigned = 0;
+
+    for (const lead of userLeads) {
+      await leadRepository.update(lead.id, {
+        responsibleUserId: undefined
+      });
+
+      // Log activity
+      await activityRepository.create({
+        entityType: 'LEAD' as any,
+        entityId: lead.id,
+        type: 'UPDATED' as any,
+        description: `Lead unassigned due to user deactivation: ${user.displayName}`,
+        userId: deactivatedBy,
+        meta: {
+          previousUserId: userId,
+          previousUserName: user.displayName,
+          reason: unassignReason,
+          fieldChanged: 'responsibleUserId'
+        },
+        tenantId: lead.tenantId
+      });
+
+      leadsUnassigned++;
+    }
+
+    // 3. Deactivate the user
+    const updatedUser = await this.update(userId, {
+      status: 'INACTIVE' as any,
+      isActive: false
+    });
+
+    if (!updatedUser) {
+      throw new Error(`Failed to deactivate user ${userId}`);
+    }
+
+    // 4. Log user deactivation activity
+    await activityRepository.create({
+      entityType: 'ORGANISATION' as any, // Using ORGANISATION as closest match for user entity
+      entityId: userId,
+      type: 'USER_DEACTIVATED' as any,
+      description: `User deactivated: ${user.displayName}`,
+      userId: deactivatedBy,
+      meta: {
+        deactivatedUserId: userId,
+        deactivatedUserName: user.displayName,
+        dealsUnassigned,
+        leadsUnassigned
+      },
+      tenantId: user.tenantId
+    });
+
+    return {
+      user: updatedUser,
+      dealsUnassigned,
+      leadsUnassigned
+    };
   }
 
   // Statistics (mock implementation - would calculate from actual data in production)

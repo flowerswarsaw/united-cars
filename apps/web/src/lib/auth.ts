@@ -41,14 +41,14 @@ export async function getServerSessionFromRequest(request: NextRequest): Promise
     const sessionCookie = request.cookies.get('session')
     
     if (!sessionCookie?.value) {
-      // In development mode, provide a mock admin user
+      // In development mode, provide a mock admin user (matches platform DB and CRM seeds)
       if (process.env.NODE_ENV === 'development') {
         const mockAdminUser: User = {
-          id: 'admin-dev-user',
+          id: 'admin-user-001',
           email: 'admin@unitedcars.com',
-          name: 'Development Admin',
-          orgId: 'org-admin',
-          orgName: 'United Cars Admin',
+          name: 'System Administrator',
+          orgId: 'united-cars',
+          orgName: 'United Cars',
           orgType: 'ADMIN',
           roles: ['ADMIN', 'SUPER_ADMIN', 'USER']
         }

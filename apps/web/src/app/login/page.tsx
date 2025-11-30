@@ -68,7 +68,7 @@ export default function LoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  placeholder="admin@demo.com"
+                  placeholder="admin@unitedcars.com"
                 />
               </div>
             </div>
@@ -118,7 +118,7 @@ export default function LoginPage() {
             </div>
 
             <div className="mt-4 space-y-2 text-sm text-gray-600">
-              <div>Admin: admin@demo.com / admin123</div>
+              <div>Admin: admin@unitedcars.com / admin123</div>
               <div>Dealer: dealer@demo.com / dealer123</div>
             </div>
           </div>

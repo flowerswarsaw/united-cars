@@ -16,7 +16,7 @@ import {
   TeamMemberRole
 } from '@united-cars/crm-core';
 
-const DEFAULT_TENANT = 'org-admin';
+const DEFAULT_TENANT = 'united-cars';
 
 // ============================================================================
 // SYSTEM ROLES - Migrated from hardcoded RBAC

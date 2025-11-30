@@ -30,7 +30,7 @@ export function useSession(): UseSessionReturn {
   const fetchSession = async () => {
     try {
       const response = await fetch('/api/auth/session')
-      
+
       if (!response.ok) {
         if (response.status === 401) {
           // Redirect to login if not authenticated
@@ -39,7 +39,7 @@ export function useSession(): UseSessionReturn {
         }
         throw new Error('Failed to fetch session')
       }
-      
+
       const data = await response.json()
       setUser(data.user)
     } catch (err) {

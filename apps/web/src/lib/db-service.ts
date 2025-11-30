@@ -5,10 +5,16 @@
  */
 
 import { mockDB } from '@united-cars/mock-data';
-import { prisma } from '@united-cars/db';
 
 // Toggle this to switch between mock and real database
 const USE_MOCK_DATA = process.env.USE_MOCK_DATA !== 'false';
+
+// Only import prisma if we're not using mock data
+let prisma: any;
+if (!USE_MOCK_DATA) {
+  const db = require('@united-cars/db');
+  prisma = db.prisma;
+}
 
 // Log which data source we're using
 if (typeof window === 'undefined') {

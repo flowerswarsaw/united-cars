@@ -4,10 +4,10 @@ import { nanoid } from 'nanoid';
 // Global flag to track data initialization
 let globalDataInitialized = false;
 
-export class BaseRepository<T extends { id: string; tenantId: string; createdAt: Date; updatedAt: Date; createdBy?: string; updatedBy?: string }> 
+export class BaseRepository<T extends { id: string; tenantId: string; createdAt: Date; updatedAt: Date; createdBy?: string; updatedBy?: string }>
   implements Repository<T> {
   protected items: Map<string, T> = new Map();
-  protected tenantId = 'tenant_001';
+  protected tenantId = 'united-cars';
   protected validator?: EntityValidator<T>;
   protected entityType?: EntityType;
   protected enableChangeTracking = true;

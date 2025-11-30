@@ -51,11 +51,12 @@ export default function ContactsPage() {
   const [isSearching, setIsSearching] = useState(false);
   const [filters, setFilters] = useState({
     type: '',
-    organisationId: '',
     country: '',
     state: '',
-    city: ''
+    city: '',
+    assignedTo: ''
   });
+  const [users, setUsers] = useState<Array<{ id: string; name: string }>>([]);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [formData, setFormData] = useState({
     firstName: '',
@@ -103,7 +104,28 @@ export default function ContactsPage() {
         setOrganisations([]);
       }
     };
+
+    const loadUsers = async () => {
+      try {
+        const response = await fetch('/api/crm/users');
+        const data = await response.json();
+
+        if (!response.ok || !Array.isArray(data)) {
+          console.error('Failed to load users:', data);
+          setUsers([]);
+          return;
+        }
+
+        // Map users to simple format for dropdown using platformUserId
+        setUsers(data.map((u: any) => ({ id: u.platformUserId, name: u.displayName || u.email || u.id })));
+      } catch (error) {
+        console.error('Failed to load users:', error);
+        setUsers([]);
+      }
+    };
+
     loadOrganisations();
+    loadUsers();
   }, []);
 
   useEffect(() => {
@@ -120,10 +142,6 @@ export default function ContactsPage() {
           params.append('type', filters.type);
         }
 
-        if (filters.organisationId && filters.organisationId !== 'all') {
-          params.append('organisationId', filters.organisationId);
-        }
-
         if (filters.country) {
           params.append('country', filters.country);
         }
@@ -136,12 +154,17 @@ export default function ContactsPage() {
           params.append('city', filters.city);
         }
 
+        if (filters.assignedTo) {
+          params.append('assignedTo', filters.assignedTo);
+        }
+
         const url = params.toString()
           ? `/api/crm/contacts?${params.toString()}`
           : '/api/crm/contacts';
 
         console.log('📡 Fetching contacts with URL:', url);
-        console.log('🔎 Filter values:', { country: filters.country, state: filters.state, city: filters.city, type: filters.type });
+        console.log('🔎 Filter values:', { country: filters.country, state: filters.state, city: filters.city, type: filters.type, assignedTo: filters.assignedTo });
+        console.log('👥 Available users:', users);
 
         const response = await fetch(url);
         const data = await response.json();
@@ -161,7 +184,7 @@ export default function ContactsPage() {
     }, 300);
 
     return () => clearTimeout(timeoutId);
-  }, [searchQuery, filters.type, filters.organisationId, filters.country, filters.state, filters.city]);
+  }, [searchQuery, filters.type, filters.country, filters.state, filters.city, filters.assignedTo]);
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -175,7 +198,6 @@ export default function ContactsPage() {
     const orgId = urlParams.get('orgId');
     if (orgId) {
       setFormData(prev => ({ ...prev, organisationId: orgId }));
-      setFilters(prev => ({ ...prev, organisationId: orgId }));
     }
   }, []);
 
@@ -215,20 +237,20 @@ export default function ContactsPage() {
     setSearchQuery('');
     setFilters({
       type: '',
-      organisationId: '',
       country: '',
       state: '',
-      city: ''
+      city: '',
+      assignedTo: ''
     });
   };
 
   const hasActiveFilters = Boolean(
     searchQuery ||
     (filters.type && filters.type !== 'all') ||
-    (filters.organisationId && filters.organisationId !== 'all') ||
     filters.country ||
     filters.state ||
-    filters.city
+    filters.city ||
+    filters.assignedTo
   );
 
   // Helper function to escape regex special characters
@@ -533,7 +555,7 @@ export default function ContactsPage() {
               <div className="relative flex-1 w-full lg:max-w-md">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                 <Input
-                  placeholder="Search contacts..."
+                  placeholder="Search by name, ID, organisation, email, or phone..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-10 pr-8 h-10 bg-background"
@@ -610,35 +632,17 @@ export default function ContactsPage() {
                 </Select>
               </div>
 
-              {/* Organisation Filter */}
-              <div className="min-w-[180px]">
-                <Select
-                  value={filters.organisationId || 'all'}
-                  onValueChange={(value) => setFilters({ ...filters, organisationId: value === 'all' ? '' : value })}
-                >
-                  <SelectTrigger className="h-9 text-sm">
-                    <SelectValue placeholder="All Organisations" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Organisations</SelectItem>
-                    {organisations.map(org => (
-                      <SelectItem key={org.id} value={org.id}>
-                        {org.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
               {/* Country Filter */}
               <div className="min-w-[160px]">
                 <CountrySelector
-                  value={filters.country}
+                  value={filters.country || 'all'}
                   onValueChange={(country) => {
                     console.log('🌍 Country selected:', country);
-                    setFilters({ ...filters, country, state: '', city: '' });
+                    const actualCountry = country === 'all' ? '' : country;
+                    setFilters({ ...filters, country: actualCountry, state: '', city: '' });
                   }}
-                  placeholder="Country"
+                  placeholder="All Countries"
+                  showAllOption={true}
                 />
               </div>
 
@@ -647,10 +651,14 @@ export default function ContactsPage() {
                 <div className="min-w-[160px]">
                   <RegionSelector
                     countryCode={filters.country}
-                    value={filters.state}
-                    onValueChange={(state) => setFilters({ ...filters, state, city: '' })}
-                    placeholder="State/Region"
+                    value={filters.state || 'all'}
+                    onValueChange={(state) => {
+                      const actualState = state === 'all' ? '' : state;
+                      setFilters({ ...filters, state: actualState, city: '' });
+                    }}
+                    placeholder="All Regions"
                     disabled={!filters.country}
+                    showAllOption={true}
                   />
                 </div>
               )}
@@ -661,17 +669,41 @@ export default function ContactsPage() {
                   <CitySelector
                     countryCode={filters.country}
                     regionCode={filters.state}
-                    value={filters.city}
-                    onValueChange={(city) => setFilters({ ...filters, city })}
-                    placeholder="City"
+                    value={filters.city || 'all'}
+                    onValueChange={(city) => {
+                      const actualCity = city === 'all' ? '' : city;
+                      setFilters({ ...filters, city: actualCity });
+                    }}
+                    placeholder="All Cities"
                     disabled={!filters.state}
+                    showAllOption={true}
                   />
                 </div>
               )}
+
+              {/* Assigned To Filter */}
+              <div className="min-w-[180px]">
+                <Select
+                  value={filters.assignedTo || 'all'}
+                  onValueChange={(value) => setFilters({ ...filters, assignedTo: value === 'all' ? '' : value })}
+                >
+                  <SelectTrigger className="h-9 text-sm">
+                    <SelectValue placeholder="All Agents" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Agents</SelectItem>
+                    {users.map(user => (
+                      <SelectItem key={user.id} value={user.id}>
+                        {user.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             {/* Active Filter Summary */}
-            {(searchQuery || filters.type || filters.organisationId || filters.country || filters.state || filters.city) && (
+            {(searchQuery || filters.type || filters.organisationId || filters.country || filters.state || filters.city || filters.assignedTo) && (
               <div className="flex flex-wrap items-center gap-2 mt-4 pt-4 border-t border-border">
                 <span className="text-xs font-medium text-muted-foreground">Active:</span>
 
@@ -708,6 +740,12 @@ export default function ContactsPage() {
                 {filters.city && (
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-primary/10 text-primary text-xs font-medium">
                     City: {filters.city}
+                  </span>
+                )}
+
+                {filters.assignedTo && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-primary/10 text-primary text-xs font-medium">
+                    Agent: {users.find(u => u.id === filters.assignedTo)?.name || filters.assignedTo}
                   </span>
                 )}
               </div>

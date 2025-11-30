@@ -31,13 +31,13 @@ async function main() {
     create: { key: 'DEALER' }
   })
 
-  // Create admin org
+  // Create United Cars admin org (main tenant)
   const adminOrg = await prisma.org.upsert({
-    where: { id: 'admin-org' },
+    where: { id: 'united-cars' },
     update: {},
     create: {
-      id: 'admin-org',
-      name: 'United Cars Admin',
+      id: 'united-cars',
+      name: 'United Cars',
       type: 'ADMIN'
     }
   })
@@ -53,13 +53,14 @@ async function main() {
     }
   })
 
-  // Create users
+  // Create users (admin matches CRM admin-user-001)
   const adminUser = await prisma.user.upsert({
-    where: { email: 'admin@demo.com' },
+    where: { email: 'admin@unitedcars.com' },
     update: {},
     create: {
-      email: 'admin@demo.com',
-      name: 'Admin User',
+      id: 'admin-user-001',
+      email: 'admin@unitedcars.com',
+      name: 'System Administrator',
       passwordHash: await bcrypt.hash('admin123', 10),
       orgId: adminOrg.id,
       status: 'ACTIVE'
@@ -777,7 +778,7 @@ async function main() {
 
   console.log('✅ Seed completed!')
   console.log('👤 Users created:')
-  console.log('   - admin@demo.com / admin123 (admin, accountant, ops)')
+  console.log('   - admin@unitedcars.com / admin123 (admin, accountant, ops)')
   console.log('   - dealer@demo.com / dealer123 (dealer)')
   console.log('🚗 Sample vehicles, invoices, and vehicle intakes created')
   console.log('📋 Vehicle Intakes:')

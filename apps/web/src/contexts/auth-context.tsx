@@ -40,7 +40,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     id: 'user-1',
     email: 'admin@unitedcars.com',
     name: 'System Administrator',
-    orgId: 'org-admin',
+    orgId: 'united-cars',
     orgName: 'United Cars Admin',
     orgType: 'ADMIN',
     roles: ['ADMIN', 'SUPER_ADMIN', 'USER']

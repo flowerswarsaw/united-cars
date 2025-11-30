@@ -56,6 +56,9 @@ export enum ActivityType {
   STAGE_MOVED = 'STAGE_MOVED',
   DEAL_WON = 'DEAL_WON',
   DEAL_LOST = 'DEAL_LOST',
+  DEAL_UNASSIGNED = 'DEAL_UNASSIGNED',
+  DEAL_CLAIMED = 'DEAL_CLAIMED',
+  USER_DEACTIVATED = 'USER_DEACTIVATED',
   LEAD_CONVERTED = 'LEAD_CONVERTED',
   TASK_COMPLETED = 'TASK_COMPLETED',
   NOTE_ADDED = 'NOTE_ADDED',
@@ -200,6 +203,7 @@ export interface Organisation extends BaseEntity, OrganisationCore, Organisation
 
 // Contact-specific focused interfaces
 export interface ContactCore {
+  contactId?: string; // Custom user-defined contact ID for easy reference
   firstName: string;
   lastName: string;
   type: ContactType;
@@ -311,6 +315,11 @@ export interface DealRelationships {
 export interface DealTimeline {
   closeDate?: Date;
   lossReason?: LossReason;
+  // Deal Recovery & Audit Fields
+  originalDealId?: string; // Reference to original deal if this is a claimed deal
+  supersededByDealId?: string; // Reference to new deal if this deal was claimed
+  unassignedAt?: Date; // When the deal became unassigned
+  unassignedReason?: string; // Reason for unassignment (e.g., 'user_deactivated')
 }
 
 export interface DealWorkflow {
