@@ -104,3 +104,7 @@ playwright/.cache/
 # CRM development data
 .crm-data/
 **/.crm-data/data.json
+
+# Mock data persistence
+.mock-data/
+**/.mock-data/data.json

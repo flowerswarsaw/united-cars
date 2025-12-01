@@ -287,3 +287,71 @@ export interface UserSettings {
   createdAt: Date;
   updatedAt: Date;
 }
+
+// General Settings Types
+export interface UserProfile {
+  id: string;
+  userId: string;
+  displayName: string;
+  email: string; // Synced from User.email
+  phone: string | null;
+  title: string | null; // Job title (e.g., "Sales Manager")
+  department: string | null; // Department (e.g., "Sales", "Operations")
+  avatar: string | null; // Avatar URL or data URI
+  timezone: string; // e.g., "America/New_York"
+  language: string; // e.g., "en", "es"
+  lastLoginAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface CompanySettings {
+  id: string;
+  orgId: string;
+  companyName: string; // Display name
+  legalName: string | null; // Legal business name
+  dba: string | null; // Doing Business As
+  logo: string | null; // Logo URL or data URI
+  website: string | null;
+  industry: string | null; // e.g., "Automotive", "Logistics"
+  companySize: string | null; // e.g., "1-10", "11-50", "51-200"
+  taxId: string | null; // Tax ID / EIN
+  businessType: string | null; // e.g., "LLC", "Corporation"
+  // Address fields
+  address: string | null; // Street address
+  city: string | null;
+  state: string | null;
+  postalCode: string | null;
+  country: string; // Default "US"
+  // Contact information
+  contactEmail: string | null;
+  contactPhone: string | null;
+  supportEmail: string | null;
+  supportPhone: string | null;
+  // Business settings
+  timezone: string; // Default "America/New_York"
+  currency: string; // Default "USD"
+  dateFormat: string; // e.g., "MM/DD/YYYY"
+  timeFormat: string; // "12h" or "24h"
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface UserPreferences {
+  id: string;
+  userId: string;
+  // Display preferences
+  dateFormat: string; // "MM/DD/YYYY", "DD/MM/YYYY", "YYYY-MM-DD"
+  timeFormat: string; // "12h" or "24h"
+  numberFormat: string; // "1,234.56" or "1.234,56"
+  currency: string; // "USD", "EUR", "GBP"
+  // Notification preferences
+  emailNotifications: boolean;
+  smsNotifications: boolean;
+  desktopNotifications: boolean;
+  notifyOnDealUpdate: boolean;
+  notifyOnPayment: boolean;
+  notifyOnInvoice: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}

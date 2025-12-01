@@ -9,6 +9,8 @@ export { serviceRequests, insuranceClaims, vehicleIntakes } from './data/service
 export { titles } from './data/titles';
 export { packages, packageStatusToTitleStatus } from './data/packages';
 export { invoices, paymentIntents } from './data/financial';
+export { userProfiles, userPreferences } from './data/user-profiles';
+export { companySettings } from './data/company-settings';
 
 // Export pricing matrices data
 export {
@@ -36,3 +38,4 @@ export {
 // Enhanced persistence system
 export * from './persistence/enhanced-persistence';
 export * from './persistence/persistence-service-factory';
+export * from './persistence/json-persistence';

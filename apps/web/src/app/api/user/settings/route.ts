@@ -1,15 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db-service'
-import { 
-  getSession, 
+import {
+  getSession,
   createApiResponse
 } from '@/lib/auth-utils'
-import { 
+import {
   withErrorHandler,
   createErrorResponse,
   ErrorCode
 } from '@/lib/error-handler'
 import { z } from 'zod'
+import {
+  userProfiles,
+  userPreferences,
+  companySettings,
+  mockDataPersistence
+} from '@united-cars/mock-data'
 
 const userSettingsSchema = z.object({
   defaultInsurance: z.string().optional(),
@@ -50,6 +56,14 @@ export const PUT = withErrorHandler(
     const validatedData = userSettingsSchema.parse(body)
 
     const settings = await db.userSettings.upsert(session.user.id, validatedData)
+
+    // Persist changes to disk
+    await mockDataPersistence.save({
+      userProfiles,
+      userPreferences,
+      companySettings,
+      userSettings: db.userSettings.getAll()
+    });
 
     return createApiResponse({ settings })
   },

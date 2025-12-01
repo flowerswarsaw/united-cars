@@ -13,7 +13,10 @@ import {
   SocialPlatform,
   OrganisationRelationType,
   CRMUserStatus,
-  TeamMemberRole
+  TeamMemberRole,
+  RuleTrigger,
+  RuleActionType,
+  RuleConditionOperator
 } from './types';
 import {
   validatePostalCode,
@@ -915,6 +918,311 @@ export const crmUserStatsSchema = z.object({
   periodEnd: z.coerce.date().optional()
 });
 
+// ============================================================================
+// PIPELINE RULES ENGINE SCHEMAS
+// ============================================================================
+
+// Rule condition operator schema
+export const ruleConditionOperatorSchema = z.enum([
+  'equals',
+  'not_equals',
+  'greater_than',
+  'less_than',
+  'greater_or_equal',
+  'less_or_equal',
+  'in',
+  'not_in',
+  'contains',
+  'not_contains',
+  'is_empty',
+  'is_not_empty',
+  'days_ago_greater_than',
+  'days_ago_less_than'
+]);
+
+// Pipeline rule condition schema
+export const pipelineRuleConditionSchema = z.object({
+  id: z.string(),
+  field: z.string().min(1, 'Field is required'),
+  operator: ruleConditionOperatorSchema,
+  value: z.any(),
+  logicalOperator: z.enum(['AND', 'OR']).optional()
+});
+
+// Pipeline rule action schema
+export const pipelineRuleActionSchema = z.object({
+  id: z.string(),
+  type: z.nativeEnum(RuleActionType),
+  parameters: z.object({
+    // Stage/Pipeline parameters
+    stageId: z.string().optional(),
+    pipelineId: z.string().optional(),
+    targetStageId: z.string().optional(),
+
+    // Field operations
+    fieldName: z.string().optional(),
+    fieldValue: z.any().optional(),
+
+    // Notifications & tasks
+    recipientUserId: z.string().optional(),
+    recipientTeamId: z.string().optional(),
+    message: z.string().optional(),
+    taskTitle: z.string().optional(),
+    taskPriority: z.nativeEnum(TaskPriority).optional(),
+    taskDueInDays: z.number().int().nonnegative().optional(),
+
+    // Time-based parameters
+    delayMinutes: z.number().int().nonnegative().optional()
+  }).catchall(z.any()), // Allow extension
+  order: z.number().int().nonnegative()
+});
+
+// Rule trigger config schema
+export const ruleTriggerConfigSchema = z.object({
+  stageId: z.string().optional(),
+  daysInactive: z.number().int().positive().optional(),
+  daysBeforeClose: z.number().int().positive().optional(),
+  slaThresholdPercent: z.number().int().min(1).max(100).optional()
+}).catchall(z.any()); // Allow extension
+
+// Pipeline rule base schema
+const pipelineRuleBaseSchema = z.object({
+  id: z.string(),
+  tenantId: z.string(),
+  name: z.string().min(1, 'Rule name is required'),
+  description: z.string().optional(),
+  pipelineId: z.string(),
+  isGlobal: z.boolean().optional(),
+  trigger: z.nativeEnum(RuleTrigger),
+  triggerConfig: ruleTriggerConfigSchema.optional(),
+  conditions: z.array(pipelineRuleConditionSchema),
+  actions: z.array(pipelineRuleActionSchema).min(1, 'At least one action is required'),
+  isActive: z.boolean().default(true),
+  priority: z.number().int().positive(),
+  executeOnce: z.boolean().optional(),
+  cooldownMinutes: z.number().int().nonnegative().optional(),
+  isSystem: z.boolean().default(false),
+  isMigrated: z.boolean().default(false),
+  lastTriggeredAt: z.coerce.date().optional(),
+  executionCount: z.number().int().nonnegative().optional(),
+  createdAt: z.coerce.date(),
+  updatedAt: z.coerce.date(),
+  createdBy: z.string().optional(),
+  updatedBy: z.string().optional()
+});
+
+// Full pipeline rule schema with validation
+export const pipelineRuleSchema = pipelineRuleBaseSchema.refine(
+  (data) => {
+    // If trigger is stage-based, triggerConfig.stageId must be provided
+    if (
+      (data.trigger === RuleTrigger.DEAL_ENTERS_STAGE ||
+       data.trigger === RuleTrigger.DEAL_EXITS_STAGE) &&
+      !data.triggerConfig?.stageId
+    ) {
+      return false;
+    }
+    return true;
+  },
+  {
+    message: 'Stage-based triggers require triggerConfig.stageId',
+    path: ['triggerConfig', 'stageId']
+  }
+).refine(
+  (data) => {
+    // If trigger is DEAL_INACTIVE, daysInactive must be provided
+    if (data.trigger === RuleTrigger.DEAL_INACTIVE && !data.triggerConfig?.daysInactive) {
+      return false;
+    }
+    return true;
+  },
+  {
+    message: 'DEAL_INACTIVE trigger requires triggerConfig.daysInactive',
+    path: ['triggerConfig', 'daysInactive']
+  }
+).refine(
+  (data) => {
+    // If trigger is DEAL_APPROACHING_CLOSE, daysBeforeClose must be provided
+    if (data.trigger === RuleTrigger.DEAL_APPROACHING_CLOSE && !data.triggerConfig?.daysBeforeClose) {
+      return false;
+    }
+    return true;
+  },
+  {
+    message: 'DEAL_APPROACHING_CLOSE trigger requires triggerConfig.daysBeforeClose',
+    path: ['triggerConfig', 'daysBeforeClose']
+  }
+).refine(
+  (data) => {
+    // If trigger is STAGE_SLA_BREACH, slaThresholdPercent must be provided
+    if (data.trigger === RuleTrigger.STAGE_SLA_BREACH && !data.triggerConfig?.slaThresholdPercent) {
+      return false;
+    }
+    return true;
+  },
+  {
+    message: 'STAGE_SLA_BREACH trigger requires triggerConfig.slaThresholdPercent',
+    path: ['triggerConfig', 'slaThresholdPercent']
+  }
+).refine(
+  (data) => {
+    // Validate action parameters based on action type
+    for (const action of data.actions) {
+      switch (action.type) {
+        case RuleActionType.MOVE_TO_STAGE:
+          if (!action.parameters.stageId) {
+            return false;
+          }
+          break;
+        case RuleActionType.SPAWN_IN_PIPELINE:
+          if (!action.parameters.pipelineId) {
+            return false;
+          }
+          break;
+        case RuleActionType.REQUIRE_FIELD:
+        case RuleActionType.SET_FIELD_VALUE:
+          if (!action.parameters.fieldName) {
+            return false;
+          }
+          break;
+        case RuleActionType.CREATE_TASK:
+          if (!action.parameters.taskTitle) {
+            return false;
+          }
+          break;
+      }
+    }
+    return true;
+  },
+  {
+    message: 'Action parameters missing required fields',
+    path: ['actions']
+  }
+);
+
+// Create pipeline rule input
+export const createPipelineRuleSchema = pipelineRuleBaseSchema.omit({
+  id: true,
+  tenantId: true,
+  createdAt: true,
+  updatedAt: true,
+  createdBy: true,
+  updatedBy: true,
+  lastTriggeredAt: true,
+  executionCount: true
+}).refine(
+  (data) => {
+    // Same validation as full schema
+    if (
+      (data.trigger === RuleTrigger.DEAL_ENTERS_STAGE ||
+       data.trigger === RuleTrigger.DEAL_EXITS_STAGE) &&
+      !data.triggerConfig?.stageId
+    ) {
+      return false;
+    }
+    return true;
+  },
+  {
+    message: 'Stage-based triggers require triggerConfig.stageId',
+    path: ['triggerConfig', 'stageId']
+  }
+).refine(
+  (data) => {
+    // Validate action parameters
+    for (const action of data.actions) {
+      switch (action.type) {
+        case RuleActionType.MOVE_TO_STAGE:
+          if (!action.parameters.stageId) {
+            return false;
+          }
+          break;
+        case RuleActionType.SPAWN_IN_PIPELINE:
+          if (!action.parameters.pipelineId) {
+            return false;
+          }
+          break;
+      }
+    }
+    return true;
+  },
+  {
+    message: 'Action parameters missing required fields',
+    path: ['actions']
+  }
+);
+
+// Update pipeline rule input
+export const updatePipelineRuleSchema = pipelineRuleBaseSchema.omit({
+  id: true,
+  tenantId: true,
+  createdAt: true,
+  updatedAt: true,
+  createdBy: true,
+  updatedBy: true,
+  lastTriggeredAt: true,
+  executionCount: true
+}).partial();
+
+// Rule execution schema
+export const ruleExecutionSchema = z.object({
+  id: z.string(),
+  tenantId: z.string(),
+  ruleId: z.string(),
+  ruleName: z.string(),
+  dealId: z.string(),
+  dealTitle: z.string(),
+  pipelineId: z.string(),
+  stageId: z.string().optional(),
+  trigger: z.nativeEnum(RuleTrigger),
+  triggerData: z.record(z.any()).optional(),
+  conditionsMatched: z.boolean(),
+  evaluationResult: z.object({
+    conditions: z.array(z.object({
+      conditionId: z.string(),
+      field: z.string(),
+      operator: ruleConditionOperatorSchema,
+      expectedValue: z.any(),
+      actualValue: z.any(),
+      matched: z.boolean()
+    }))
+  }).optional(),
+  executed: z.boolean(),
+  executedAt: z.coerce.date().optional(),
+  executedBy: z.string().optional(),
+  actionsPerformed: z.array(z.object({
+    actionId: z.string(),
+    type: z.nativeEnum(RuleActionType),
+    parameters: z.record(z.any()),
+    success: z.boolean(),
+    error: z.string().optional(),
+    result: z.any().optional()
+  })),
+  success: z.boolean(),
+  error: z.string().optional(),
+  executionTimeMs: z.number().int().nonnegative().optional(),
+  createdAt: z.coerce.date(),
+  updatedAt: z.coerce.date()
+});
+
+// Rule execution summary schema
+export const ruleExecutionSummarySchema = z.object({
+  ruleId: z.string(),
+  ruleName: z.string(),
+  totalExecutions: z.number().int().nonnegative(),
+  successfulExecutions: z.number().int().nonnegative(),
+  failedExecutions: z.number().int().nonnegative(),
+  averageExecutionTimeMs: z.number().nonnegative(),
+  lastExecutedAt: z.coerce.date().optional(),
+  dealsAffected: z.number().int().nonnegative(),
+  periodStart: z.coerce.date(),
+  periodEnd: z.coerce.date()
+});
+
+// Reorder rules input
+export const reorderRulesSchema = z.object({
+  ruleIds: z.array(z.string()).min(1)
+});
+
 // Type inference exports
 export type ConvertLeadInput = z.infer<typeof convertLeadInputSchema>;
 export type MoveDealInput = z.infer<typeof moveDealInputSchema>;
@@ -929,3 +1237,5 @@ export type CreateTeamInput = z.infer<typeof createTeamSchema>;
 export type UpdateTeamInput = z.infer<typeof updateTeamSchema>;
 export type AddTeamMemberInput = z.infer<typeof addTeamMemberSchema>;
 export type UpdateTeamMemberInput = z.infer<typeof updateTeamMemberSchema>;
+export type CreatePipelineRuleInput = z.infer<typeof createPipelineRuleSchema>;
+export type UpdatePipelineRuleInput = z.infer<typeof updatePipelineRuleSchema>;

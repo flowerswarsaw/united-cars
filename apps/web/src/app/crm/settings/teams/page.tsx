@@ -1,28 +1,15 @@
 'use client';
 
-import { AppLayout } from '@/components/layout/app-layout';
-import { PageHeader } from '@/components/layout/page-header';
-import { useSession } from '@/hooks/useSession';
-import { TeamsTab } from '@/components/crm/admin/teams-tab';
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
 export default function CRMTeamsPage() {
-  const { user } = useSession();
+  const router = useRouter();
 
-  return (
-    <AppLayout user={user}>
-      <PageHeader
-        title="Team Management"
-        description="Manage CRM teams and team memberships"
-        breadcrumbs={[
-          { label: 'CRM', href: '/crm' },
-          { label: 'Settings', href: '/crm/settings/users' },
-          { label: 'Teams' }
-        ]}
-      />
+  useEffect(() => {
+    // Redirect to users page - teams are now a tab there
+    router.replace('/crm/settings/users');
+  }, [router]);
 
-      <div className="container mx-auto py-6">
-        <TeamsTab />
-      </div>
-    </AppLayout>
-  );
+  return null;
 }

@@ -13,21 +13,34 @@ export interface User {
 
 export async function getServerSession(): Promise<{ user: User } | null> {
   try {
-    const cookieStore = cookies()
+    const cookieStore = await cookies()
     const sessionCookie = cookieStore.get('session')
-    
+
     if (!sessionCookie?.value) {
+      // In development mode, provide a mock admin user (matches platform DB and CRM seeds)
+      if (process.env.NODE_ENV === 'development') {
+        const mockAdminUser: User = {
+          id: 'admin-user-001',
+          email: 'admin@unitedcars.com',
+          name: 'System Administrator',
+          orgId: 'united-cars',
+          orgName: 'United Cars',
+          orgType: 'ADMIN',
+          roles: ['ADMIN', 'SUPER_ADMIN', 'USER']
+        }
+        return { user: mockAdminUser }
+      }
       return null
     }
 
     // Decode the session cookie (URL decode)
     const decodedSession = decodeURIComponent(sessionCookie.value)
     const sessionData = JSON.parse(decodedSession)
-    
+
     if (sessionData.user) {
       return { user: sessionData.user }
     }
-    
+
     return null
   } catch (error) {
     console.error('Session parsing error:', error)

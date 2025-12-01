@@ -596,6 +596,257 @@ export interface RuleEvaluationResult {
 }
 
 // ============================================================================
+// PIPELINE RULES ENGINE - Workflow Automation & Deal Routing
+// ============================================================================
+
+/**
+ * Pipeline Rule Triggers
+ * Events that can trigger a pipeline rule to evaluate and execute
+ */
+export enum RuleTrigger {
+  // Stage-based triggers
+  DEAL_ENTERS_STAGE = 'DEAL_ENTERS_STAGE', // When deal moves to specific stage
+  DEAL_EXITS_STAGE = 'DEAL_EXITS_STAGE', // When deal leaves specific stage
+
+  // Status-based triggers
+  DEAL_MARKED_WON = 'DEAL_MARKED_WON', // When deal is marked as won
+  DEAL_MARKED_LOST = 'DEAL_MARKED_LOST', // When deal is marked as lost
+
+  // Time-based triggers
+  DEAL_INACTIVE = 'DEAL_INACTIVE', // Deal hasn't been updated in X days
+  STAGE_SLA_BREACH = 'STAGE_SLA_BREACH', // Deal exceeds stage SLA target
+  DEAL_APPROACHING_CLOSE = 'DEAL_APPROACHING_CLOSE', // Close date within X days
+
+  // Manual trigger
+  MANUAL = 'MANUAL' // Triggered manually by user or API
+}
+
+/**
+ * Pipeline Rule Actions
+ * Operations that can be performed when rule conditions are met
+ */
+export enum RuleActionType {
+  // Deal status changes
+  MARK_WON = 'MARK_WON', // Mark deal as won
+  MARK_LOST = 'MARK_LOST', // Mark deal as lost
+
+  // Deal movement
+  MOVE_TO_STAGE = 'MOVE_TO_STAGE', // Move to specific stage in current pipeline
+  SPAWN_IN_PIPELINE = 'SPAWN_IN_PIPELINE', // Create new deal in different pipeline
+
+  // Validation & data collection
+  REQUIRE_LOST_REASON = 'REQUIRE_LOST_REASON', // Require lost reason to be set
+  REQUIRE_FIELD = 'REQUIRE_FIELD', // Require specific field to be filled
+  SET_FIELD_VALUE = 'SET_FIELD_VALUE', // Set a field to specific value
+
+  // Notifications & tasks
+  SEND_NOTIFICATION = 'SEND_NOTIFICATION', // Send notification to user/team
+  CREATE_TASK = 'CREATE_TASK', // Create task for assignee
+
+  // Assignment
+  ASSIGN_TO_USER = 'ASSIGN_TO_USER', // Assign deal to specific user
+  ASSIGN_TO_TEAM = 'ASSIGN_TO_TEAM', // Assign to team for claiming
+  UNASSIGN_DEAL = 'UNASSIGN_DEAL' // Remove assignee (recovery flow)
+}
+
+/**
+ * Rule condition operators for evaluating deal data
+ */
+export type RuleConditionOperator =
+  | 'equals'
+  | 'not_equals'
+  | 'greater_than'
+  | 'less_than'
+  | 'greater_or_equal'
+  | 'less_or_equal'
+  | 'in'
+  | 'not_in'
+  | 'contains'
+  | 'not_contains'
+  | 'is_empty'
+  | 'is_not_empty'
+  | 'days_ago_greater_than'
+  | 'days_ago_less_than';
+
+/**
+ * Pipeline Rule Condition
+ * Defines a condition that must be met for rule to execute
+ */
+export interface PipelineRuleCondition {
+  id: string;
+  field: string; // Deal field to check (e.g., 'amount', 'lossReason', 'organisationType')
+  operator: RuleConditionOperator;
+  value: any; // Value to compare against
+  logicalOperator?: 'AND' | 'OR'; // How to combine with next condition
+}
+
+/**
+ * Pipeline Rule Action
+ * Defines an action to execute when rule conditions are met
+ */
+export interface PipelineRuleAction {
+  id: string;
+  type: RuleActionType;
+  parameters: {
+    // Common parameters
+    stageId?: string; // For MOVE_TO_STAGE
+    pipelineId?: string; // For SPAWN_IN_PIPELINE
+    targetStageId?: string; // For SPAWN_IN_PIPELINE - which stage in target pipeline
+
+    // Field operations
+    fieldName?: string; // For REQUIRE_FIELD, SET_FIELD_VALUE
+    fieldValue?: any; // For SET_FIELD_VALUE
+
+    // Notifications & tasks
+    recipientUserId?: string; // For SEND_NOTIFICATION, CREATE_TASK, ASSIGN_TO_USER
+    recipientTeamId?: string; // For SEND_NOTIFICATION, ASSIGN_TO_TEAM
+    message?: string; // For SEND_NOTIFICATION, CREATE_TASK
+    taskTitle?: string; // For CREATE_TASK
+    taskPriority?: TaskPriority; // For CREATE_TASK
+    taskDueInDays?: number; // For CREATE_TASK
+
+    // Time-based parameters
+    delayMinutes?: number; // Delay before executing action
+
+    // Metadata
+    [key: string]: any; // Allow extension
+  };
+  order: number; // Execution order within rule
+}
+
+/**
+ * Pipeline Rule
+ * Complete rule definition with trigger, conditions, and actions
+ */
+export interface PipelineRule extends BaseEntity {
+  // Rule Identity
+  name: string; // "Auto-convert won Dealer deals to Integration"
+  description?: string; // Detailed explanation of what the rule does
+
+  // Scope
+  pipelineId: string; // Which pipeline this rule applies to
+  isGlobal?: boolean; // If true, applies to all pipelines (overrides pipelineId)
+
+  // Trigger Configuration
+  trigger: RuleTrigger;
+  triggerConfig?: {
+    // For DEAL_ENTERS_STAGE / DEAL_EXITS_STAGE
+    stageId?: string;
+
+    // For time-based triggers
+    daysInactive?: number; // For DEAL_INACTIVE
+    daysBeforeClose?: number; // For DEAL_APPROACHING_CLOSE
+
+    // For STAGE_SLA_BREACH
+    slaThresholdPercent?: number; // Trigger at X% of SLA (e.g., 80% = warning, 100% = breach)
+
+    // Metadata
+    [key: string]: any;
+  };
+
+  // Conditions (all must be met, respecting logical operators)
+  conditions: PipelineRuleCondition[];
+
+  // Actions (executed in order)
+  actions: PipelineRuleAction[];
+
+  // Rule Control
+  isActive: boolean;
+  priority: number; // Higher priority rules execute first (1 = highest)
+
+  // Execution Control
+  executeOnce?: boolean; // Only execute once per deal (prevents loops)
+  cooldownMinutes?: number; // Minimum time between executions for same deal
+
+  // System flags
+  isSystem?: boolean; // System rules (migrated from hardcoded logic) - cannot be deleted
+  isMigrated?: boolean; // Flag to indicate rule was auto-created from hardcoded logic
+
+  // Metadata
+  lastTriggeredAt?: Date;
+  executionCount?: number;
+}
+
+/**
+ * Rule Execution Log
+ * Audit trail of rule executions for debugging and reporting
+ */
+export interface RuleExecution extends BaseEntity {
+  ruleId: string;
+  ruleName: string; // Denormalized for easier querying
+
+  // Context
+  dealId: string;
+  dealTitle: string; // Denormalized
+  pipelineId: string;
+  stageId?: string;
+
+  // Trigger details
+  trigger: RuleTrigger;
+  triggerData?: Record<string, any>; // Context data that triggered the rule
+
+  // Evaluation
+  conditionsMatched: boolean;
+  evaluationResult?: {
+    conditions: Array<{
+      conditionId: string;
+      field: string;
+      operator: RuleConditionOperator;
+      expectedValue: any;
+      actualValue: any;
+      matched: boolean;
+    }>;
+  };
+
+  // Execution
+  executed: boolean;
+  executedAt?: Date;
+  executedBy?: string; // User ID if manually triggered
+
+  // Actions performed
+  actionsPerformed: Array<{
+    actionId: string;
+    type: RuleActionType;
+    parameters: Record<string, any>;
+    success: boolean;
+    error?: string;
+    result?: any;
+  }>;
+
+  // Status
+  success: boolean;
+  error?: string;
+
+  // Performance
+  executionTimeMs?: number;
+}
+
+/**
+ * Rule Execution Summary
+ * Aggregated statistics for rule performance monitoring
+ */
+export interface RuleExecutionSummary {
+  ruleId: string;
+  ruleName: string;
+
+  // Counts
+  totalExecutions: number;
+  successfulExecutions: number;
+  failedExecutions: number;
+
+  // Performance
+  averageExecutionTimeMs: number;
+  lastExecutedAt?: Date;
+
+  // Impact
+  dealsAffected: number;
+
+  // Period
+  periodStart: Date;
+  periodEnd: Date;
+}
+
+// ============================================================================
 // CRM USER MANAGEMENT SYSTEM - Custom Roles, Teams, User Profiles
 // ============================================================================
 

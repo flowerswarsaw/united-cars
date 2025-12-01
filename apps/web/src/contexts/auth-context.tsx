@@ -9,6 +9,7 @@ interface AuthContextType {
   isAuthenticated: boolean
   signIn: (user: User) => void
   signOut: () => void
+  updateUser: (updates: Partial<User>) => void
   hasRole: (role: string) => boolean
   hasAnyRole: (roles: string[]) => boolean
   isOrganizationMember: (orgId: string) => boolean
@@ -21,6 +22,7 @@ const AuthContext = createContext<AuthContextType>({
   isAuthenticated: false,
   signIn: () => {},
   signOut: () => {},
+  updateUser: () => {},
   hasRole: () => false,
   hasAnyRole: () => false,
   isOrganizationMember: () => false,
@@ -90,6 +92,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }
 
+  const updateUser = (updates: Partial<User>) => {
+    setUser(prev => prev ? { ...prev, ...updates } : null)
+  }
+
   const hasRole = (role: string): boolean => {
     return user?.roles.includes(role) ?? false
   }
@@ -110,6 +116,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     isAuthenticated: !!user,
     signIn,
     signOut,
+    updateUser,
     hasRole,
     hasAnyRole,
     isOrganizationMember,

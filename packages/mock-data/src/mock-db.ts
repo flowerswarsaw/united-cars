@@ -1082,7 +1082,7 @@ class MockDatabase {
 
     upsert: (userId: string, data: Partial<Omit<UserSettings, 'id' | 'userId' | 'createdAt' | 'updatedAt'>>) => {
       const existingIndex = this.data.userSettings.findIndex(s => s.userId === userId);
-      
+
       if (existingIndex >= 0) {
         // Update existing
         this.data.userSettings[existingIndex] = {
@@ -1106,6 +1106,10 @@ class MockDatabase {
         this.data.userSettings.push(newSettings);
         return Promise.resolve(newSettings);
       }
+    },
+
+    getAll: () => {
+      return this.data.userSettings;
     }
   };
 

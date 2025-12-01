@@ -3,7 +3,8 @@ import {
   EntityType, DealStatus, LossReason, TaskStatus, TaskPriority, CustomFieldType,
   PaginatedResult, ListQuery,
   CRMUserProfile, CustomRole, Team, TeamMembership, UserActivity, CRMUserStats,
-  UserHierarchyNode, CRMUserWithRole, CRMUserSummary, TeamWithMembers, CustomRoleWithStats
+  UserHierarchyNode, CRMUserWithRole, CRMUserSummary, TeamWithMembers, CustomRoleWithStats,
+  PipelineRule, RuleExecution, RuleExecutionSummary, RuleTrigger
 } from './types';
 import { ConvertLeadInput, MoveDealInput } from './schemas';
 
@@ -190,4 +191,39 @@ export interface UserActivityRepository {
   // Statistics
   getActivityCount(userId: string, startDate?: Date, endDate?: Date): Promise<number>;
   getActivityBreakdown(userId: string, startDate?: Date, endDate?: Date): Promise<Record<string, number>>;
+}
+
+// ============================================================================
+// PIPELINE RULES ENGINE REPOSITORIES
+// ============================================================================
+
+/**
+ * Pipeline Rule Repository - Manages pipeline automation rules
+ */
+export interface PipelineRuleRepository extends Repository<PipelineRule> {
+  // Rule queries
+  getByPipeline(pipelineId: string): Promise<PipelineRule[]>;
+  getGlobalRules(): Promise<PipelineRule[]>;
+  getActiveRules(pipelineId?: string): Promise<PipelineRule[]>;
+  getSystemRules(): Promise<PipelineRule[]>;
+  getMigratedRules(): Promise<PipelineRule[]>;
+  getByTrigger(trigger: RuleTrigger, pipelineId?: string): Promise<PipelineRule[]>;
+
+  // Rule management
+  activate(ruleId: string): Promise<PipelineRule | undefined>;
+  deactivate(ruleId: string): Promise<PipelineRule | undefined>;
+  reorderRules(ruleIds: string[]): Promise<boolean>;
+
+  // System rule protection
+  canDelete(ruleId: string): Promise<boolean>;
+
+  // Rule execution tracking
+  recordExecution(execution: Omit<RuleExecution, 'id' | 'tenantId' | 'createdAt' | 'updatedAt'>): Promise<RuleExecution>;
+  getExecutions(ruleId: string, limit?: number): Promise<RuleExecution[]>;
+  getExecutionsByDeal(dealId: string, limit?: number): Promise<RuleExecution[]>;
+  getExecutionSummary(ruleId: string, periodStart: Date, periodEnd: Date): Promise<RuleExecutionSummary>;
+
+  // Cooldown management
+  canExecute(ruleId: string, dealId: string): Promise<boolean>;
+  markExecuted(ruleId: string, dealId: string): Promise<void>;
 }

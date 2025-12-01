@@ -32,7 +32,8 @@ import {
   AlertTriangle,
   Activity,
   LifeBuoy,
-  UsersRound
+  UsersRound,
+  User
 } from 'lucide-react'
 import { ThemeToggleCompact } from '@/components/ui/theme-toggle'
 import { RealTimeStatus } from '@/components/ui/real-time-notifications'
@@ -114,15 +115,14 @@ const getNavigation = (userRoles: string[] = []): NavSection[] => {
         },
         { label: 'Leads', href: '/crm/leads', icon: Users },
         { label: 'Tasks', href: '/crm/tasks', icon: CheckSquare },
-        { label: 'Pipelines', href: '/crm/pipelines', icon: GitBranch },
         {
           label: 'Settings',
-          href: '/crm/settings/users',
+          href: '/crm/settings/general',
           icon: Settings,
           children: [
+            { label: 'General', href: '/crm/settings/general', icon: User },
             { label: 'Users', href: '/crm/settings/users', icon: UsersRound },
-            { label: 'Roles', href: '/crm/settings/roles', icon: Shield },
-            { label: 'Teams', href: '/crm/settings/teams', icon: Users }
+            { label: 'Pipelines', href: '/crm/settings/pipelines', icon: GitBranch }
           ]
         },
       ]
