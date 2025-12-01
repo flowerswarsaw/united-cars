@@ -25,3 +25,23 @@ export type {
   ListOptions,
   ValidationResult
 } from '../enhanced-base-repository';
+
+// Export automation repositories
+export {
+  AutomationWorkflowRepositoryImpl,
+  automationWorkflowRepository,
+  type AutomationWorkflowRepository
+} from './automation-workflow-repository';
+
+export {
+  AutomationRunRepositoryImpl,
+  automationRunRepository,
+  type AutomationRunRepository
+} from './automation-run-repository';
+
+// Export ticket repository
+export {
+  TicketRepositoryImpl,
+  ticketRepository,
+  type TicketRepository
+} from './ticket-repository';

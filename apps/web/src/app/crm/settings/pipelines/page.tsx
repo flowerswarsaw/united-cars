@@ -22,12 +22,11 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, GitBranch, Settings, Eye, Edit2, Trash2, Move, Save, GripVertical, Copy, Layers, Zap } from 'lucide-react';
-import { Pipeline, Stage, createStageSchema, PipelineRule, RuleTrigger } from '@united-cars/crm-core';
+import { Plus, GitBranch, Settings, Edit2, Trash2, Save, GripVertical, Copy, Layers } from 'lucide-react';
+import { Pipeline, Stage } from '@united-cars/crm-core';
 import toast from 'react-hot-toast';
 import {
   DndContext,
@@ -50,14 +49,11 @@ export default function PipelinesPage() {
   const { user, loading: sessionLoading } = useSession();
   const [pipelines, setPipelines] = useState<Pipeline[]>([]);
   const [templates, setTemplates] = useState<Pipeline[]>([]);
-  const [rules, setRules] = useState<PipelineRule[]>([]);
-  const [localRules, setLocalRules] = useState<PipelineRule[]>([]);
-  const [selectedPipelineForRules, setSelectedPipelineForRules] = useState<string | null>(null);
   const [selectedPipeline, setSelectedPipeline] = useState<Pipeline | null>(null);
   const [isManagingTemplate, setIsManagingTemplate] = useState(false);
   const [isManageOpen, setIsManageOpen] = useState(false);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<'pipelines' | 'templates' | 'rules'>('pipelines');
+  const [activeTab, setActiveTab] = useState<'pipelines' | 'templates'>('pipelines');
   const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState({
     name: '',
@@ -161,28 +157,6 @@ export default function PipelinesPage() {
     }
   };
 
-  const loadRules = async (pipelineId: string) => {
-    try {
-      const response = await fetch(`/api/crm/pipelines/${pipelineId}/rules`);
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-      const data = await response.json();
-      if (Array.isArray(data)) {
-        setRules(data);
-        setLocalRules(data);
-      } else {
-        setRules([]);
-        setLocalRules([]);
-      }
-    } catch (error) {
-      console.error('Failed to load rules:', error);
-      toast.error('Failed to load pipeline rules');
-      setRules([]);
-      setLocalRules([]);
-    }
-  };
-
   const openPipelineManagement = (pipeline: Pipeline) => {
     setSelectedPipeline(pipeline);
     setIsManagingTemplate(false);
@@ -217,18 +191,6 @@ export default function PipelinesPage() {
 
     const reorderedStages = arrayMove(localStages, oldIndex, newIndex);
     setLocalStages(reorderedStages);
-  };
-
-  const handleRuleReorder = (event: DragEndEvent) => {
-    const { active, over } = event;
-
-    if (!over || active.id === over.id) return;
-
-    const oldIndex = localRules.findIndex(rule => rule.id === active.id);
-    const newIndex = localRules.findIndex(rule => rule.id === over.id);
-
-    const reorderedRules = arrayMove(localRules, oldIndex, newIndex);
-    setLocalRules(reorderedRules);
   };
 
   const saveStageOrder = async () => {
@@ -273,33 +235,6 @@ export default function PipelinesPage() {
       console.error('Failed to reorder stages:', error);
       toast.error(`Failed to reorder ${isManagingTemplate ? 'template' : 'pipeline'} stages`);
       setLocalStages([...(selectedPipeline.stages || [])]);
-    }
-  };
-
-  const saveRuleOrder = async () => {
-    if (!selectedPipelineForRules) return;
-
-    try {
-      const ruleIds = localRules.map(rule => rule.id);
-      const response = await fetch(`/api/crm/pipelines/${selectedPipelineForRules}/rules/reorder`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ruleIds })
-      });
-
-      if (response.ok) {
-        setRules([...localRules]);
-        toast.success('Rule order updated successfully');
-      } else {
-        const error = await response.json();
-        toast.error(error.error || 'Failed to reorder rules');
-        // Reset local rules on error
-        setLocalRules([...rules]);
-      }
-    } catch (error) {
-      console.error('Failed to reorder rules:', error);
-      toast.error('Failed to reorder rules');
-      setLocalRules([...rules]);
     }
   };
 
@@ -859,112 +794,6 @@ export default function PipelinesPage() {
     );
   }
 
-  function SortableRule({ rule, onToggle, onEdit, onDelete }: {
-    rule: PipelineRule;
-    onToggle: (rule: PipelineRule, checked: boolean) => void;
-    onEdit: (rule: PipelineRule) => void;
-    onDelete: (rule: PipelineRule) => void;
-  }) {
-    const {
-      attributes,
-      listeners,
-      setNodeRef,
-      transform,
-      transition,
-      isDragging,
-    } = useSortable({ id: rule.id });
-
-    const style = {
-      transform: CSS.Transform.toString(transform),
-      transition,
-      opacity: isDragging ? 0.7 : 1,
-    };
-
-    return (
-      <div
-        ref={setNodeRef}
-        style={style}
-        className={`bg-card rounded-lg shadow-sm border border-border p-4 hover:shadow-md transition-shadow ${
-          isDragging ? 'shadow-lg z-10' : ''
-        }`}
-      >
-        <div className="flex items-start justify-between">
-          <div className="flex items-start flex-1 gap-3">
-            <div
-              {...attributes}
-              {...listeners}
-              className="cursor-grab active:cursor-grabbing p-1 text-gray-400 hover:text-gray-600 mt-1"
-            >
-              <GripVertical className="h-4 w-4" />
-            </div>
-            <div className="flex-1">
-              <div className="flex items-center gap-3 mb-2">
-                <h4 className="text-base font-semibold text-foreground">
-                  {rule.name}
-                </h4>
-                {rule.isSystem && (
-                  <Badge variant="outline" className="text-xs">
-                    System
-                  </Badge>
-                )}
-                {rule.isMigrated && (
-                  <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700">
-                    Migrated
-                  </Badge>
-                )}
-                {rule.isGlobal && (
-                  <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700">
-                    Global
-                  </Badge>
-                )}
-              </div>
-              {rule.description && (
-                <p className="text-sm text-text-secondary mb-3">
-                  {rule.description}
-                </p>
-              )}
-              <div className="flex flex-wrap gap-2 text-xs text-text-tertiary">
-                <span className="flex items-center gap-1">
-                  <Zap className="h-3 w-3" />
-                  Trigger: {rule.trigger.replace(/_/g, ' ')}
-                </span>
-                <span>•</span>
-                <span>{rule.conditions.length} condition(s)</span>
-                <span>•</span>
-                <span>{rule.actions.length} action(s)</span>
-                <span>•</span>
-                <span>Priority: {rule.priority}</span>
-              </div>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 ml-4">
-            <Switch
-              checked={rule.isActive}
-              onCheckedChange={(checked) => onToggle(rule, checked)}
-            />
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onEdit(rule)}
-            >
-              <Edit2 className="h-4 w-4" />
-            </Button>
-            {!rule.isSystem && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-destructive hover:text-destructive/90 hover:bg-destructive/5"
-                onClick={() => onDelete(rule)}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   if (sessionLoading || !user || loading) {
     return (
       <AppLayout user={user}>
@@ -1025,16 +854,6 @@ export default function PipelinesPage() {
                 }`}
               >
                 Templates ({templates.length})
-              </button>
-              <button
-                onClick={() => setActiveTab('rules')}
-                className={`whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'rules'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                Pipeline Rules
               </button>
             </nav>
             <div className="pb-2">
@@ -1239,150 +1058,6 @@ export default function PipelinesPage() {
           </div>
         )}
 
-        {/* Rules Tab */}
-        {activeTab === 'rules' && (
-          <div className="space-y-6">
-            {/* Pipeline Selector */}
-            <div className="bg-card rounded-lg shadow-sm border border-border p-4">
-              <Label htmlFor="pipeline-selector" className="text-sm font-medium mb-2 block">
-                Select Pipeline
-              </Label>
-              <select
-                id="pipeline-selector"
-                value={selectedPipelineForRules || ''}
-                onChange={(e) => {
-                  const pipelineId = e.target.value;
-                  setSelectedPipelineForRules(pipelineId);
-                  if (pipelineId) {
-                    loadRules(pipelineId);
-                  } else {
-                    setRules([]);
-                  }
-                }}
-                className="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">Choose a pipeline...</option>
-                {pipelines.map((pipeline) => (
-                  <option key={pipeline.id} value={pipeline.id}>
-                    {pipeline.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Rules List */}
-            {selectedPipelineForRules && (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold text-foreground">
-                    Pipeline Rules ({rules.length})
-                  </h3>
-                  <Button
-                    variant="default"
-                    size="sm"
-                    onClick={() => toast('Rule builder coming soon', { icon: 'ℹ️' })}
-                    className="bg-blue-600 hover:bg-blue-700"
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Create Rule
-                  </Button>
-                </div>
-
-                {rules.length === 0 ? (
-                  <div className="bg-card rounded-lg shadow-sm border border-border text-center py-12">
-                    <Zap className="h-12 w-12 text-text-tertiary mx-auto mb-4" />
-                    <div className="text-text-secondary mb-4">No rules configured</div>
-                    <p className="text-sm text-gray-500 mb-4">
-                      Create automation rules to streamline your pipeline workflow.
-                    </p>
-                    <Button variant="outline" onClick={() => toast('Rule builder coming soon', { icon: 'ℹ️' })}>
-                      Create Your First Rule
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <DndContext
-                      sensors={sensors}
-                      collisionDetection={closestCenter}
-                      onDragEnd={handleRuleReorder}
-                    >
-                      <SortableContext
-                        items={localRules.map(r => r.id)}
-                        strategy={verticalListSortingStrategy}
-                      >
-                        <div className="grid gap-4">
-                          {localRules.map((rule) => (
-                            <SortableRule
-                              key={rule.id}
-                              rule={rule}
-                              onToggle={async (rule, checked) => {
-                                try {
-                                  const endpoint = checked ? 'activate' : 'deactivate';
-                                  const response = await fetch(
-                                    `/api/crm/pipelines/${selectedPipelineForRules}/rules/${rule.id}/${endpoint}`,
-                                    { method: 'POST' }
-                                  );
-                                  if (!response.ok) throw new Error('Failed to update rule');
-                                  toast.success(`Rule ${checked ? 'activated' : 'deactivated'}`);
-                                  loadRules(selectedPipelineForRules);
-                                } catch (error) {
-                                  console.error('Failed to toggle rule:', error);
-                                  toast.error('Failed to update rule status');
-                                }
-                              }}
-                              onEdit={() => toast('Rule editing coming soon', { icon: 'ℹ️' })}
-                              onDelete={async (rule) => {
-                                if (!confirm(`Are you sure you want to delete the rule "${rule.name}"?`)) {
-                                  return;
-                                }
-                                try {
-                                  const response = await fetch(
-                                    `/api/crm/pipelines/${selectedPipelineForRules}/rules/${rule.id}`,
-                                    { method: 'DELETE' }
-                                  );
-                                  if (!response.ok) throw new Error('Failed to delete rule');
-                                  toast.success('Rule deleted');
-                                  loadRules(selectedPipelineForRules);
-                                } catch (error) {
-                                  console.error('Failed to delete rule:', error);
-                                  toast.error('Failed to delete rule');
-                                }
-                              }}
-                            />
-                          ))}
-                        </div>
-                      </SortableContext>
-                    </DndContext>
-
-                    {/* Save Order Button */}
-                    {localRules.length > 0 && JSON.stringify(localRules.map(r => r.id)) !== JSON.stringify(rules.map(r => r.id)) && (
-                      <div className="flex justify-end pt-2">
-                        <Button
-                          onClick={saveRuleOrder}
-                          variant="default"
-                          className="bg-blue-600 hover:bg-blue-700"
-                        >
-                          <Save className="h-4 w-4 mr-2" />
-                          Save Rule Order
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {!selectedPipelineForRules && (
-              <div className="bg-card rounded-lg shadow-sm border border-border text-center py-12">
-                <Zap className="h-12 w-12 text-text-tertiary mx-auto mb-4" />
-                <div className="text-text-secondary mb-2">Select a pipeline to view its rules</div>
-                <p className="text-sm text-gray-500">
-                  Pipeline rules automate actions based on deal movement and conditions.
-                </p>
-              </div>
-            )}
-          </div>
-        )}
       </div>
 
       <Dialog open={isManageOpen} onOpenChange={setIsManageOpen}>

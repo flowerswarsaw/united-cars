@@ -7,13 +7,11 @@ import {
   makeDealStageHistory,
   makeActivity,
   ActivityType,
-  EntityType,
-  RuleTrigger
+  EntityType
 } from '@united-cars/crm-core';
 import { BaseRepository } from '../base-repository';
 import { activityRepository } from './activity-repository';
 import { pipelineRepository } from './pipeline-repository';
-import { ruleEngine } from '../services/rule-engine';
 // import { dealValidator } from '../validators';
 
 class DealRepositoryImpl extends BaseRepository<Deal> implements IDealRepository {
@@ -234,61 +232,6 @@ class DealRepositoryImpl extends BaseRepository<Deal> implements IDealRepository
     // Handle reordering within the target stage if targetIndex is specified
     if (updated && input.targetIndex !== undefined) {
       await this.reorderDealsInStage(input.pipelineId, input.toStageId, dealId, input.targetIndex);
-    }
-
-    // Evaluate pipeline rules when deal status changes
-    if (updated) {
-      try {
-        // Check if deal was marked won
-        if (newStatus === DealStatus.WON && deal.status !== DealStatus.WON) {
-          console.log('[Rule Engine] Deal marked won, evaluating DEAL_MARKED_WON rules...');
-          const wonResults = await ruleEngine.evaluateRules(RuleTrigger.DEAL_MARKED_WON, {
-            deal: updated,
-            pipeline,
-            stage: toStage,
-            fromStage: fromStageId ? pipeline.stages?.find(s => s.id === fromStageId) : undefined,
-            metadata: {
-              movedBy: input.movedBy,
-              note: input.note
-            }
-          });
-          console.log(`[Rule Engine] Evaluated ${wonResults.length} DEAL_MARKED_WON rules`);
-        }
-
-        // Check if deal was marked lost
-        if (newStatus === DealStatus.LOST && deal.status !== DealStatus.LOST) {
-          console.log('[Rule Engine] Deal marked lost, evaluating DEAL_MARKED_LOST rules...');
-          const lostResults = await ruleEngine.evaluateRules(RuleTrigger.DEAL_MARKED_LOST, {
-            deal: updated,
-            pipeline,
-            stage: toStage,
-            fromStage: fromStageId ? pipeline.stages?.find(s => s.id === fromStageId) : undefined,
-            metadata: {
-              movedBy: input.movedBy,
-              note: input.note,
-              lossReason: input.lossReason
-            }
-          });
-          console.log(`[Rule Engine] Evaluated ${lostResults.length} DEAL_MARKED_LOST rules`);
-        }
-
-        // Evaluate DEAL_ENTERS_STAGE rules for any stage transition
-        console.log('[Rule Engine] Evaluating DEAL_ENTERS_STAGE rules...');
-        const enterStageResults = await ruleEngine.evaluateRules(RuleTrigger.DEAL_ENTERS_STAGE, {
-          deal: updated,
-          pipeline,
-          stage: toStage,
-          fromStage: fromStageId ? pipeline.stages?.find(s => s.id === fromStageId) : undefined,
-          metadata: {
-            movedBy: input.movedBy,
-            note: input.note
-          }
-        });
-        console.log(`[Rule Engine] Evaluated ${enterStageResults.length} DEAL_ENTERS_STAGE rules`);
-      } catch (error) {
-        console.error('[Rule Engine] Error evaluating rules:', error);
-        // Don't fail the entire operation if rule evaluation fails
-      }
     }
 
     // Log activity

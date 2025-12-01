@@ -14,9 +14,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Edit2, Save, X, Building2, DollarSign, Calendar, User, History, CheckSquare, Plus, Trophy, AlertCircle, Clock, Circle, ChevronRight, Star, Target, TrendingUp, Users, FileText, Activity, Trash2 } from 'lucide-react';
+import { Edit2, Save, X, Building2, DollarSign, Calendar, User, History, CheckSquare, Plus, Trophy, AlertCircle, Clock, Circle, ChevronRight, Star, Target, TrendingUp, Users, FileText, Activity, Trash2, Zap } from 'lucide-react';
 import { Deal, Organisation, Contact, Task, Pipeline, Stage, DealStatus, TaskStatus, TaskPriority, EntityType, LossReason } from '@united-cars/crm-core';
 import { ActivityLog } from '@/components/crm/activity-log';
+import { AutomationsPanel } from '@/components/crm/automations-panel';
 import toast from 'react-hot-toast';
 import { getUserName, getUserInitials, CRM_USERS } from '@/lib/crm-users';
 import {
@@ -534,6 +535,10 @@ export default function DealDetailPage() {
               <TabsTrigger value="activity" className="flex items-center gap-2">
                 <History className="h-4 w-4" />
                 Activity Log
+              </TabsTrigger>
+              <TabsTrigger value="automations" className="flex items-center gap-2">
+                <Zap className="h-4 w-4" />
+                Automations
               </TabsTrigger>
             </TabsList>
             <Button
@@ -1103,6 +1108,10 @@ export default function DealDetailPage() {
               showFilters={true}
               showPagination={true}
             />
+          </TabsContent>
+
+          <TabsContent value="automations" className="space-y-4">
+            <AutomationsPanel entityType="DEAL" entityId={deal.id} />
           </TabsContent>
         </Tabs>
       </div>

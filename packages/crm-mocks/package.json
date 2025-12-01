@@ -8,6 +8,7 @@
     "test": "vitest"
   },
   "dependencies": {
+    "@united-cars/crm-automation": "workspace:*",
     "@united-cars/crm-core": "workspace:*",
     "nanoid": "^5.0.4"
   },

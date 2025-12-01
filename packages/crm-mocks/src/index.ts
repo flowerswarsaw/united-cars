@@ -1,9 +1,6 @@
 // Initialize user management seed data immediately
 import './init-user-management';
 
-// Initialize pipeline rules
-import './init-rules';
-
 export * from './base-repository';
 export * from './change-tracker';
 export * from './organization-scoped-repositories';
@@ -27,9 +24,6 @@ export { CustomRoleRepository } from './repositories/custom-role-repository';
 export { TeamRepository } from './repositories/team-repository';
 export { UserActivityRepository } from './repositories/user-activity-repository';
 
-// Export pipeline rules repository class
-export { PipelineRuleRepositoryImpl as PipelineRuleRepository } from './repositories/rule-repository';
-
 // Export specific seeded repository instances and functions from seeds
 export {
   organisationRepository,
@@ -51,11 +45,18 @@ export { customRoleRepository } from './repositories/custom-role-repository';
 export { teamRepository } from './repositories/team-repository';
 export { userActivityRepository } from './repositories/user-activity-repository';
 
-// Export pipeline rules repository instance
-export { ruleRepository } from './repositories/rule-repository';
+// Export automation repositories
+export {
+  automationWorkflowRepository,
+  automationRunRepository,
+  ticketRepository
+} from './repositories';
 
-// Export rules seed function
-export { seedDefaultRules, defaultRules } from './rules-seed';
+// Export automation services
+export * from './services';
+
+// Export automation seed function
+export { seedAutomationWorkflows, clearAutomationWorkflows, SEED_WORKFLOWS } from './automation-seeds';
 
 // Export user management seed data
 export * from './user-management-seeds';

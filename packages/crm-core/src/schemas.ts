@@ -16,7 +16,10 @@ import {
   TeamMemberRole,
   RuleTrigger,
   RuleActionType,
-  RuleConditionOperator
+  RuleConditionOperator,
+  TicketType,
+  TicketStatus,
+  TicketPriority
 } from './types';
 import {
   validatePostalCode,
@@ -334,6 +337,43 @@ export const taskSchema = z.object({
   createdAt: z.date(),
   updatedAt: z.date()
 });
+
+// ============================================================================
+// TICKET SCHEMAS
+// ============================================================================
+
+export const ticketSchema = z.object({
+  id: z.string(),
+  tenantId: z.string(),
+  title: z.string().min(1),
+  description: z.string().optional(),
+  type: z.nativeEnum(TicketType),
+  status: z.nativeEnum(TicketStatus),
+  priority: z.nativeEnum(TicketPriority),
+  source: z.string().optional(),
+  organisationId: z.string().optional(),
+  contactId: z.string().optional(),
+  dealId: z.string().optional(),
+  assigneeId: z.string().optional(),
+  dueDate: z.date().optional(),
+  resolvedAt: z.date().optional(),
+  closedAt: z.date().optional(),
+  notes: z.string().optional(),
+  tags: z.array(z.string()).optional(),
+  createdAt: z.date(),
+  updatedAt: z.date()
+});
+
+export const createTicketSchema = ticketSchema.omit({
+  id: true,
+  tenantId: true,
+  createdAt: true,
+  updatedAt: true,
+  resolvedAt: true,
+  closedAt: true
+});
+
+export const updateTicketSchema = createTicketSchema.partial();
 
 export const customFieldDefSchema = z.object({
   id: z.string(),

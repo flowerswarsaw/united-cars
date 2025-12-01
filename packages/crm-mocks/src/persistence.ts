@@ -12,6 +12,7 @@ import {
   activityRepository
 } from './seeds';
 import { changeLogRepository } from './repositories/change-log-repository';
+import { automationWorkflowRepository, automationRunRepository, ticketRepository } from './repositories';
 
 const DATA_DIR = path.join(process.cwd(), '.crm-data');
 const DATA_FILE = path.join(DATA_DIR, 'data.json');
@@ -25,12 +26,19 @@ interface CRMData {
   pipelines: any[];
   stages: any[];
   tasks: any[];
+  tickets: any[];
   customFields: {
     fieldDefs: any[];
     fieldValues: any[];
   };
   activities: any[];
   changeLogs: any[];
+  // Automation data
+  automationWorkflows: any[];
+  automationRuns: {
+    runs: any[];
+    steps: any[];
+  };
 }
 
 export class JSONPersistenceAdapter {
@@ -51,9 +59,12 @@ export class JSONPersistenceAdapter {
         pipelines: pipelineRepository.toJSON(),
         stages: pipelineRepository.stagesToJSON(),
         tasks: taskRepository.toJSON(),
+        tickets: ticketRepository.toJSON(),
         customFields: customFieldRepository.toJSON(),
         activities: activityRepository.toJSON(),
-        changeLogs: changeLogRepository.toJSON()
+        changeLogs: changeLogRepository.toJSON(),
+        automationWorkflows: automationWorkflowRepository.toJSON(),
+        automationRuns: automationRunRepository.toJSON()
       };
 
       await fs.writeFile(DATA_FILE, JSON.stringify(data, null, 2));
@@ -77,9 +88,18 @@ export class JSONPersistenceAdapter {
       pipelineRepository.fromJSON(data.pipelines);
       pipelineRepository.stagesFromJSON(data.stages);
       taskRepository.fromJSON(data.tasks);
+      ticketRepository.fromJSON(data.tickets || []);
       customFieldRepository.fromJSON(data.customFields);
       activityRepository.fromJSON(data.activities);
       changeLogRepository.fromJSON(data.changeLogs || []);
+
+      // Load automation data
+      if (data.automationWorkflows) {
+        automationWorkflowRepository.fromJSON(data.automationWorkflows);
+      }
+      if (data.automationRuns) {
+        automationRunRepository.fromJSON(data.automationRuns);
+      }
 
       return true;
     } catch (error) {

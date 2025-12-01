@@ -6,7 +6,8 @@ export enum EntityType {
   TASK = 'TASK',
   PIPELINE = 'PIPELINE',
   STAGE = 'STAGE',
-  ACTIVITY = 'ACTIVITY'
+  ACTIVITY = 'ACTIVITY',
+  TICKET = 'TICKET'
 }
 
 export enum DealStatus {
@@ -104,6 +105,32 @@ export enum OrganisationRelationType {
   SHIPPER_DEALER = 'SHIPPER_DEALER',
   AUCTION_DEALER = 'AUCTION_DEALER',
   OTHER = 'OTHER'
+}
+
+// ============================================================================
+// TICKET SYSTEM - Support & Claims Management
+// ============================================================================
+
+export enum TicketType {
+  CLAIM = 'CLAIM',
+  SUPPORT = 'SUPPORT',
+  SERVICE = 'SERVICE',
+  COMPLAINT = 'COMPLAINT'
+}
+
+export enum TicketStatus {
+  OPEN = 'OPEN',
+  IN_PROGRESS = 'IN_PROGRESS',
+  WAITING = 'WAITING',
+  RESOLVED = 'RESOLVED',
+  CLOSED = 'CLOSED'
+}
+
+export enum TicketPriority {
+  LOW = 'LOW',
+  MEDIUM = 'MEDIUM',
+  HIGH = 'HIGH',
+  URGENT = 'URGENT'
 }
 
 export enum ContactType {
@@ -370,6 +397,36 @@ export interface TaskTarget {
 export interface Task extends BaseEntity, TaskCore, TaskSchedule, TaskTarget {
   tags?: string[]; // Keep tags here since it doesn't fit EntityMetadata pattern (no notes)
 }
+
+// ============================================================================
+// TICKET - Support & Claims Management
+// ============================================================================
+
+// Ticket-specific focused interfaces
+export interface TicketCore {
+  title: string;
+  description?: string;
+  type: TicketType;
+  status: TicketStatus;
+  priority: TicketPriority;
+  source?: string; // e.g., 'email', 'phone', 'portal', 'internal'
+}
+
+export interface TicketRelationships {
+  organisationId?: string;
+  contactId?: string;
+  dealId?: string;
+  assigneeId?: string;
+}
+
+export interface TicketTimeline {
+  dueDate?: Date;
+  resolvedAt?: Date;
+  closedAt?: Date;
+}
+
+// Main Ticket interface composed of focused components
+export interface Ticket extends BaseEntity, TicketCore, TicketRelationships, TicketTimeline, EntityMetadata {}
 
 export interface CustomFieldDef extends BaseEntity {
   entityType: EntityType;
