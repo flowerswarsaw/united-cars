@@ -39,8 +39,8 @@ export class OrganisationConnectionRepository extends BaseRepository<Organisatio
   }
 
   async createConnection(
-    fromOrgId: string, 
-    toOrgId: string, 
+    fromOrgId: string,
+    toOrgId: string,
     type: OrganisationRelationType,
     options: {
       description?: string;
@@ -49,6 +49,20 @@ export class OrganisationConnectionRepository extends BaseRepository<Organisatio
       metadata?: Record<string, any>;
     } = {}
   ): Promise<OrganisationConnection> {
+    // B6 Fix: Check for existing connections in both directions before creating
+    const existingConnection = await this.findConnection(fromOrgId, toOrgId, type);
+    if (existingConnection) {
+      throw new Error(
+        `Connection already exists between organisations (${existingConnection.fromOrganisationId} → ${existingConnection.toOrganisationId}). ` +
+        `Use the existing connection ID: ${existingConnection.id}`
+      );
+    }
+
+    // B6 Fix: Also prevent self-connections
+    if (fromOrgId === toOrgId) {
+      throw new Error('Cannot create a connection from an organisation to itself');
+    }
+
     const connection = {
       fromOrganisationId: fromOrgId,
       toOrganisationId: toOrgId,

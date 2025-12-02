@@ -1361,27 +1361,30 @@ const pipelines = [
   auctionIntegrationPipeline
 ];
 
-// Repository instances for compatibility
-import { OrganisationRepository } from './repositories/organisation-repository';
-import { OrganisationConnectionRepository } from './repositories/organisation-connection-repository';
-import { ContactRepository } from './repositories/contact-repository';
-import { LeadRepository } from './repositories/lead-repository';
-import { DealRepository } from './repositories/deal-repository';
-import { PipelineRepository } from './repositories/pipeline-repository';
-import { TaskRepository } from './repositories/task-repository';
-import { CustomFieldRepository } from './repositories/custom-field-repository';
-import { ActivityRepository } from './repositories/activity-repository';
+// Import singleton repository instances from their files
+// Note: Each repository file exports its own singleton instance
+import { OrganisationRepository, organisationRepository } from './repositories/organisation-repository';
+import { OrganisationConnectionRepository, organisationConnectionRepository } from './repositories/organisation-connection-repository';
+import { ContactRepository, contactRepository } from './repositories/contact-repository';
+import { LeadRepository, leadRepository } from './repositories/lead-repository';
+import { DealRepository, dealRepository } from './repositories/deal-repository';
+import { PipelineRepository, pipelineRepository } from './repositories/pipeline-repository';
+import { TaskRepository, taskRepository } from './repositories/task-repository';
+import { CustomFieldRepository, customFieldRepository } from './repositories/custom-field-repository';
+import { ActivityRepository, activityRepository } from './repositories/activity-repository';
 
-// Create repository instances
-export const organisationRepository = new OrganisationRepository();
-export const organisationConnectionRepository = new OrganisationConnectionRepository();
-export const contactRepository = new ContactRepository();
-export const leadRepository = new LeadRepository();
-export const dealRepository = new DealRepository();
-export const pipelineRepository = new PipelineRepository();
-export const taskRepository = new TaskRepository();
-export const customFieldRepository = new CustomFieldRepository();
-export const activityRepository = new ActivityRepository();
+// Re-export repository instances (they are the same singleton instances)
+export {
+  organisationRepository,
+  organisationConnectionRepository,
+  contactRepository,
+  leadRepository,
+  dealRepository,
+  pipelineRepository,
+  taskRepository,
+  customFieldRepository,
+  activityRepository
+};
 
 // Export seed data arrays
 export {

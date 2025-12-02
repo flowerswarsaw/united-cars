@@ -65,6 +65,9 @@ export { seedAutomationWorkflows, clearAutomationWorkflows, SEED_WORKFLOWS } fro
 // Export contract seed function
 export { seedContracts, clearContracts } from './contracts-seeds';
 
+// Export ticket seed function
+export { seedTickets, tickets as ticketSeeds } from './ticket-seeds';
+
 // Export user management seed data
 export * from './user-management-seeds';
 

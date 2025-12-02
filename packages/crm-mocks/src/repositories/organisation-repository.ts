@@ -1,10 +1,14 @@
 import { Organisation, getOrganizationTypeConfig, getApplicablePipelines, EntityType } from '@united-cars/crm-core';
 import { BaseRepository } from '../base-repository';
+import { organisationValidator, setOrganisationRepository } from '../validators';
 
 export class OrganisationRepository extends BaseRepository<Organisation> {
   constructor() {
     super();
     this.setEntityType(EntityType.ORGANISATION);
+    this.setValidator(organisationValidator);
+    // Set self-reference for unique companyId validation
+    setOrganisationRepository(this);
   }
   async getWithContacts(id: string): Promise<Organisation & { contacts?: any[] }> {
     const org = await this.get(id);

@@ -14,3 +14,6 @@ export * from './conflict-resolution';
 
 // User Management & RBAC
 export * from './user-sync';
+
+// Platform Integration (for module extraction)
+export * from './platform-integration';

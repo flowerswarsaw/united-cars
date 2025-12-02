@@ -13,6 +13,7 @@ export enum EntityType {
 
 export enum DealStatus {
   OPEN = 'OPEN',
+  QUALIFIED = 'QUALIFIED', // B2 Fix: Added missing QUALIFIED status
   WON = 'WON',
   LOST = 'LOST',
   INTEGRATION = 'INTEGRATION',
@@ -89,7 +90,8 @@ export enum CustomFieldType {
 
 export enum ContactMethodType {
   EMAIL = 'EMAIL',
-  PHONE = 'PHONE'
+  PHONE = 'PHONE',
+  MOBILE = 'MOBILE'
 }
 
 export enum SocialPlatform {
@@ -163,9 +165,11 @@ export enum ContactType {
   LOGISTICS = 'LOGISTICS',
   MARKETING = 'MARKETING',
   OPERATIONS = 'OPERATIONS',
+  PRIMARY = 'PRIMARY',
   PURCHASING = 'PURCHASING',
   RETAIL_BUYER = 'RETAIL_BUYER',
   SALES = 'SALES',
+  SECONDARY = 'SECONDARY',
   VP = 'VP'
 }
 
@@ -260,6 +264,10 @@ export interface ContactCore {
 
 export interface ContactInfo {
   contactMethods: ContactMethod[];
+  // Convenience fields - shortcuts to primary email/phone from contactMethods
+  email?: string;
+  phone?: string;
+  title?: string; // Job title
 }
 
 export interface ContactRelationships {

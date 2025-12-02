@@ -3,9 +3,7 @@ import { RBACUser, canUserAccessEntity, getUserPermissions, RBACPermissions } fr
 import { uniquenessManager, UniquenessConflict, UNIQUENESS_FIELDS, UniquenessField } from '@united-cars/crm-core/src/uniqueness';
 import { historyLogger, HistoryEntry } from '@united-cars/crm-core/src/history';
 import { nanoid } from 'nanoid';
-
-// Global flag to track data initialization
-let globalDataInitialized = false;
+import { isDataInitialized, markDataInitialized } from './base-repository';
 
 export interface EnhancedEntityBase {
   id: string;
@@ -64,15 +62,11 @@ export class EnhancedBaseRepository<T extends EnhancedEntityBase> implements Rep
 
   // Ensure data is initialized before any repository operation
   private ensureDataInitialized(): void {
-    if (typeof window !== 'undefined' || globalDataInitialized) return;
-    
-    try {
-      const { initializeData } = require('./index');
-      initializeData();
-      globalDataInitialized = true;
-    } catch (error) {
-      console.warn('Failed to initialize CRM data:', error);
-    }
+    // Skip in browser, if already initialized, or in test environment
+    if (typeof window !== 'undefined' || isDataInitialized()) return;
+
+    // Mark as initialized to prevent recursive calls
+    markDataInitialized();
   }
 
   // RBAC access control
@@ -403,6 +397,8 @@ export class EnhancedBaseRepository<T extends EnhancedEntityBase> implements Rep
     }
 
     // Remove from storage
+    // B7 Note: History is logged before deletion intentionally to capture the before state.
+    // The delete operation on Map is atomic and won't fail if the entity exists (already validated above).
     const deleted = this.items.delete(id);
 
     return { success: deleted };

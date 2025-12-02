@@ -2,7 +2,10 @@ import { Contract, ContractStatus, ContractType, EntityType } from '@united-cars
 import { EnhancedBaseRepository, EnhancedEntityBase, CreateOptions, UpdateOptions } from '../enhanced-base-repository';
 import { RBACUser } from '@united-cars/crm-core/src/rbac';
 
-export interface EnhancedContract extends Contract, EnhancedEntityBase {}
+export interface EnhancedContract extends Contract, EnhancedEntityBase {
+  // B5 Fix: Track reactivation count to prevent infinite reactivation abuse
+  reactivationCount?: number;
+}
 
 export class EnhancedContractRepository extends EnhancedBaseRepository<EnhancedContract> {
   constructor() {
@@ -73,6 +76,9 @@ export class EnhancedContractRepository extends EnhancedBaseRepository<EnhancedC
     return all.filter(contract => contract.type === type);
   }
 
+  // Maximum number of times a contract can be reactivated
+  private static readonly MAX_REACTIVATION_COUNT = 3;
+
   // Update status with validation
   async updateStatus(
     contractId: string,
@@ -82,6 +88,17 @@ export class EnhancedContractRepository extends EnhancedBaseRepository<EnhancedC
     const contract = await this.get(contractId, options.user);
     if (!contract) {
       return { success: false, errors: ['Contract not found or access denied'] };
+    }
+
+    // B5 Fix: Check reactivation limit when transitioning from EXPIRED to ACTIVE
+    if (contract.status === ContractStatus.EXPIRED && newStatus === ContractStatus.ACTIVE) {
+      const reactivationCount = contract.reactivationCount || 0;
+      if (reactivationCount >= EnhancedContractRepository.MAX_REACTIVATION_COUNT) {
+        return {
+          success: false,
+          errors: [`Contract has reached maximum reactivation limit (${EnhancedContractRepository.MAX_REACTIVATION_COUNT}). Please create a new contract.`]
+        };
+      }
     }
 
     // Validate status transition
@@ -103,9 +120,14 @@ export class EnhancedContractRepository extends EnhancedBaseRepository<EnhancedC
       updateData.signedDate = new Date();
     }
 
+    // B5 Fix: Increment reactivation count when reactivating expired contract
+    if (contract.status === ContractStatus.EXPIRED && newStatus === ContractStatus.ACTIVE) {
+      updateData.reactivationCount = (contract.reactivationCount || 0) + 1;
+    }
+
     return await this.update(contractId, updateData, {
       ...options,
-      reason: `Status changed to ${newStatus}`
+      reason: `Status changed to ${newStatus}${updateData.reactivationCount ? ` (reactivation #${updateData.reactivationCount})` : ''}`
     });
   }
 

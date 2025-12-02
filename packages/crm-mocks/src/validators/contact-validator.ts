@@ -1,10 +1,17 @@
-import { 
-  Contact, 
-  BusinessRule, 
+import {
+  Contact,
+  BusinessRule,
   BusinessRuleValidationResult,
   ContactMethodType
 } from '@united-cars/crm-core';
 import { BaseValidator } from './base-validator';
+
+// Store reference to the repository for validation rules that need it
+let contactRepository: { list: (filter?: Partial<Contact>) => Promise<Contact[]> } | null = null;
+
+export function setContactRepository(repo: typeof contactRepository): void {
+  contactRepository = repo;
+}
 
 export class ContactValidator extends BaseValidator<Contact> {
   protected initializeRules(): void {
@@ -12,6 +19,7 @@ export class ContactValidator extends BaseValidator<Contact> {
     this.addRule(new RequiredLastNameRule());
     this.addRule(new RequiredContactMethodRule());
     this.addRule(new UniqueEmailPerContactRule());
+    this.addRule(new UniqueEmailPerOrganisationRule());
     this.addRule(new ValidEmailFormatRule());
     this.addRule(new ValidPhoneFormatRule());
   }
@@ -57,7 +65,7 @@ export class ContactValidator extends BaseValidator<Contact> {
 // Specific business rules for contacts
 class RequiredFirstNameRule implements BusinessRule<Contact> {
   name = 'RequiredFirstName';
-  
+
   validate(entity: Contact): BusinessRuleValidationResult {
     if (!entity.firstName || entity.firstName.trim().length === 0) {
       return {
@@ -69,25 +77,14 @@ class RequiredFirstNameRule implements BusinessRule<Contact> {
         }]
       };
     }
-    
-    if (entity.firstName.trim().length < 2) {
-      return {
-        valid: false,
-        errors: [{
-          field: 'firstName',
-          code: 'FIRST_NAME_TOO_SHORT',
-          message: 'First name must be at least 2 characters'
-        }]
-      };
-    }
-    
+
     return { valid: true, errors: [] };
   }
 }
 
 class RequiredLastNameRule implements BusinessRule<Contact> {
   name = 'RequiredLastName';
-  
+
   validate(entity: Contact): BusinessRuleValidationResult {
     if (!entity.lastName || entity.lastName.trim().length === 0) {
       return {
@@ -99,18 +96,7 @@ class RequiredLastNameRule implements BusinessRule<Contact> {
         }]
       };
     }
-    
-    if (entity.lastName.trim().length < 2) {
-      return {
-        valid: false,
-        errors: [{
-          field: 'lastName',
-          code: 'LAST_NAME_TOO_SHORT',
-          message: 'Last name must be at least 2 characters'
-        }]
-      };
-    }
-    
+
     return { valid: true, errors: [] };
   }
 }
@@ -142,15 +128,15 @@ class RequiredContactMethodRule implements BusinessRule<Contact> {
 
 class UniqueEmailPerContactRule implements BusinessRule<Contact> {
   name = 'UniqueEmailPerContact';
-  
+
   validate(entity: Contact): BusinessRuleValidationResult {
-    const emailMethods = entity.contactMethods?.filter(cm => 
-      cm.type.includes('EMAIL')
+    const emailMethods = entity.contactMethods?.filter(cm =>
+      cm.type === ContactMethodType.EMAIL
     ) || [];
-    
+
     const emailValues = emailMethods.map(em => em.value.toLowerCase());
     const uniqueEmails = new Set(emailValues);
-    
+
     if (emailValues.length !== uniqueEmails.size) {
       return {
         valid: false,
@@ -161,17 +147,17 @@ class UniqueEmailPerContactRule implements BusinessRule<Contact> {
         }]
       };
     }
-    
+
     return { valid: true, errors: [] };
   }
 }
 
 class ValidEmailFormatRule implements BusinessRule<Contact> {
   name = 'ValidEmailFormat';
-  
+
   validate(entity: Contact): BusinessRuleValidationResult {
-    const emailMethods = entity.contactMethods?.filter(cm => 
-      cm.type.includes('EMAIL')
+    const emailMethods = entity.contactMethods?.filter(cm =>
+      cm.type === ContactMethodType.EMAIL
     ) || [];
     
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -200,7 +186,7 @@ class ValidPhoneFormatRule implements BusinessRule<Contact> {
 
   validate(entity: Contact): BusinessRuleValidationResult {
     const phoneMethods = entity.contactMethods?.filter(cm =>
-      cm.type.includes('PHONE')
+      cm.type === ContactMethodType.PHONE || cm.type === ContactMethodType.MOBILE
     ) || [];
 
     const errors = [];
@@ -223,5 +209,58 @@ class ValidPhoneFormatRule implements BusinessRule<Contact> {
       valid: errors.length === 0,
       errors
     };
+  }
+}
+
+class UniqueEmailPerOrganisationRule implements BusinessRule<Contact> {
+  name = 'UniqueEmailPerOrganisation';
+
+  async validate(entity: Contact, context?: any): Promise<BusinessRuleValidationResult> {
+    // Skip if no organisation
+    if (!entity.organisationId) {
+      return { valid: true, errors: [] };
+    }
+
+    // Skip if no email
+    if (!entity.email) {
+      return { valid: true, errors: [] };
+    }
+
+    // Skip if repository not available
+    if (!contactRepository) {
+      return { valid: true, errors: [] };
+    }
+
+    try {
+      // Find contacts in the same organisation
+      const existingContacts = await contactRepository.list({ organisationId: entity.organisationId });
+
+      // Check if any existing contact has this email (excluding current entity on update)
+      const isDuplicate = existingContacts.some(contact => {
+        // Skip self
+        if (entity.id === 'temp-id') {
+          // For creates, check all existing
+          return contact.email?.toLowerCase() === entity.email?.toLowerCase();
+        }
+        // For updates, exclude self
+        return contact.id !== entity.id && contact.email?.toLowerCase() === entity.email?.toLowerCase();
+      });
+
+      if (isDuplicate) {
+        return {
+          valid: false,
+          errors: [{
+            field: 'email',
+            code: 'EMAIL_NOT_UNIQUE_IN_ORG',
+            message: 'Email address already exists for another contact in this organisation'
+          }]
+        };
+      }
+    } catch (error) {
+      // If repository check fails, allow the operation
+      console.warn('UniqueEmailPerOrganisationRule: Could not check uniqueness', error);
+    }
+
+    return { valid: true, errors: [] };
   }
 }

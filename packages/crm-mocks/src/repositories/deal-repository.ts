@@ -180,9 +180,7 @@ class DealRepositoryImpl extends BaseRepository<Deal> implements IDealRepository
     if (toStage.isClosing) {
       newStatus = DealStatus.WON;
 
-      // DEPRECATED: Hardcoded Integration spawning logic - now handled by pipeline rules
-      // This logic has been migrated to the 'Dealer Close Won → Spawn Integration' rule
-      /*
+      // Auto-spawn Integration pipeline when closing a deal in the Dealer pipeline
       if (pipeline.name === 'Dealer') {
         const integrationPipelines = await pipelineRepository.list();
         const integrationPipeline = integrationPipelines.find(p => p.name === 'Integration');
@@ -215,7 +213,6 @@ class DealRepositoryImpl extends BaseRepository<Deal> implements IDealRepository
           }
         }
       }
-      */
     } else if (toStage.isLost) {
       if (!input.lossReason) throw new Error('Loss reason required for lost stage');
       newStatus = DealStatus.LOST;

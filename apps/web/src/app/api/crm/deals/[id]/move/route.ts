@@ -2,13 +2,28 @@ import { NextRequest, NextResponse } from 'next/server';
 import { moveDealInputSchema, ActivityType, EntityType } from '@united-cars/crm-core';
 import { dealRepository, activityRepository, pipelineRepository, jsonPersistence } from '@united-cars/crm-mocks';
 
+// B8 Fix: Simple in-memory lock to prevent concurrent deal moves
+const dealMoveLocks = new Map<string, boolean>();
+
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
+
+  // B8 Fix: Check if deal is currently being moved
+  if (dealMoveLocks.get(id)) {
+    return NextResponse.json(
+      { error: 'Deal is currently being moved by another operation. Please try again.' },
+      { status: 409 }  // Conflict
+    );
+  }
+
+  // B8 Fix: Acquire lock
+  dealMoveLocks.set(id, true);
+
   try {
     const body = await request.json();
-    const { id } = await params;
 
     console.log(`Moving deal ${id} to stage:`, body);
 
@@ -21,6 +36,17 @@ export async function PATCH(
       return NextResponse.json(
         { error: 'Deal not found' },
         { status: 404 }
+      );
+    }
+
+    // B8 Fix: Optimistic locking - verify the deal hasn't been modified since client read it
+    if (body.expectedStageId && currentDeal.stageId !== body.expectedStageId) {
+      return NextResponse.json(
+        {
+          error: 'Deal has been modified by another user. Please refresh and try again.',
+          currentStageId: currentDeal.stageId
+        },
+        { status: 409 }  // Conflict
       );
     }
 
@@ -107,5 +133,8 @@ export async function PATCH(
       { error: 'Failed to move deal' },
       { status: 500 }
     );
+  } finally {
+    // B8 Fix: Always release the lock
+    dealMoveLocks.delete(id);
   }
 }

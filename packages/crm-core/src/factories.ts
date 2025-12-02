@@ -23,7 +23,10 @@ import {
   DealStageHistory,
   Contract,
   ContractStatus,
-  ContractType
+  ContractType,
+  ContactMethod,
+  ContactMethodType,
+  ContactType
 } from './types';
 
 const DEFAULT_TENANT_ID = 'united-cars';
@@ -45,15 +48,44 @@ export function makeOrganisation(partial?: Partial<Organisation>): Organisation 
 
 export function makeContact(partial?: Partial<Contact>): Contact {
   const now = new Date();
+
+  // Auto-generate contactMethods from email/phone if not explicitly provided
+  let contactMethods: ContactMethod[] = partial?.contactMethods ?? [];
+
+  if (contactMethods.length === 0) {
+    // Auto-generate from email if provided
+    if (partial?.email) {
+      contactMethods.push({
+        id: nanoid(),
+        type: ContactMethodType.EMAIL,
+        value: partial.email,
+        isPrimary: contactMethods.length === 0
+      });
+    }
+
+    // Auto-generate from phone if provided
+    if (partial?.phone) {
+      contactMethods.push({
+        id: nanoid(),
+        type: ContactMethodType.PHONE,
+        value: partial.phone,
+        isPrimary: contactMethods.length === 0
+      });
+    }
+  }
+
   return {
     id: nanoid(),
     tenantId: DEFAULT_TENANT_ID,
     firstName: 'John',
     lastName: 'Doe',
-    contactMethods: [],
+    type: ContactType.SALES,
+    contactMethods,
     createdAt: now,
     updatedAt: now,
-    ...partial
+    ...partial,
+    // Ensure contactMethods from auto-generation takes precedence over empty array in partial
+    contactMethods: partial?.contactMethods?.length ? partial.contactMethods : contactMethods
   };
 }
 
