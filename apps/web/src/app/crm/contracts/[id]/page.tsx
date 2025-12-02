@@ -21,7 +21,7 @@ import { UserSelect } from '@/components/crm/shared/user-select';
 import { ContactsMultiSelect } from '@/components/crm/shared/contacts-multi-select';
 
 // Helper function to get status badge variant
-const getStatusVariant = (status: ContractStatus): "default" | "secondary" | "success" | "destructive" | "warning" => {
+const getStatusVariant = (status: ContractStatus): "default" | "secondary" | "success" | "destructive" | "warning" | "outline" => {
   switch (status) {
     case 'DRAFT': return 'secondary';
     case 'SENT': return 'default';
@@ -421,11 +421,11 @@ export default function ContractDetailPage() {
                     </div>
                     <div>
                       <label className="text-sm font-medium text-muted-foreground">Status</label>
-                      <p className="text-sm mt-1">
+                      <div className="text-sm mt-1">
                         <Badge variant={getStatusVariant(contract.status)}>
                           {contract.status}
                         </Badge>
-                      </p>
+                      </div>
                     </div>
                     {contract.description && (
                       <div>

@@ -118,6 +118,12 @@ function initializeData() {
       activityRepository.fromJSON(data.activities || []);
       changeLogRepository.fromJSON(data.changeLogs || []);
 
+      // Load contracts
+      const { contractRepository: contractRepo } = require('./repositories');
+      if (data.contracts) {
+        contractRepo.fromJSON(data.contracts);
+      }
+
       console.log('Loaded persisted CRM data synchronously');
       dataInitialized = true;
     } else {

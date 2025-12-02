@@ -46,7 +46,7 @@ interface ContractFilters {
 }
 
 // Helper function to get status badge variant
-const getStatusVariant = (status: ContractStatus): "default" | "secondary" | "success" | "destructive" | "warning" => {
+const getStatusVariant = (status: ContractStatus): "default" | "secondary" | "success" | "destructive" | "warning" | "outline" => {
   switch (status) {
     case 'DRAFT': return 'secondary';
     case 'SENT': return 'default';

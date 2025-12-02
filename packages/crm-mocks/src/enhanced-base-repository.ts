@@ -50,7 +50,7 @@ export interface ValidationResult {
 
 export class EnhancedBaseRepository<T extends EnhancedEntityBase> implements Repository<T> {
   protected items = new Map<string, T>();
-  protected tenantId = 'tenant_001';
+  protected tenantId = 'united-cars';
   protected validator?: EntityValidator<T>;
   protected entityType: EntityType;
   protected entityTypeName: keyof RBACPermissions;

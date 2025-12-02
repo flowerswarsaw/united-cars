@@ -161,6 +161,32 @@ export class EnhancedContractRepository extends EnhancedBaseRepository<EnhancedC
       contract.endDate >= new Date()
     );
   }
+
+  // Persistence methods
+  toJSON(): EnhancedContract[] {
+    return Array.from(this.items.values());
+  }
+
+  fromJSON(data: EnhancedContract[]): void {
+    this.items.clear();
+    for (const item of data) {
+      // Convert date strings back to Date objects
+      const contract: EnhancedContract = {
+        ...item,
+        createdAt: new Date(item.createdAt),
+        updatedAt: new Date(item.updatedAt),
+        effectiveDate: item.effectiveDate ? new Date(item.effectiveDate) : undefined,
+        endDate: item.endDate ? new Date(item.endDate) : undefined,
+        signedDate: item.signedDate ? new Date(item.signedDate) : undefined,
+        sentDate: item.sentDate ? new Date(item.sentDate) : undefined,
+      };
+      this.items.set(contract.id, contract);
+    }
+  }
+
+  clear(): void {
+    this.items.clear();
+  }
 }
 
 // Export singleton instance

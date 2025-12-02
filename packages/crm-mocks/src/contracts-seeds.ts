@@ -129,5 +129,5 @@ export async function seedContracts() {
 
 export async function clearContracts() {
   console.log('Clearing contracts...');
-  // The repository will handle cleanup if needed
+  contractRepository.clear();
 }
