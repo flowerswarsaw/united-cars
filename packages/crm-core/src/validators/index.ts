@@ -7,9 +7,15 @@
 export {
   formatEmailForStorage,
   formatContactMethodsEmails,
-  validateEmail,
-  normalizeEmail
+  isValidEmail,
+  normalizeEmailForComparison,
+  extractEmailDomain,
+  isFreeEmailProvider
 } from './email';
+
+// Aliases for backward compatibility
+export { isValidEmail as validateEmail } from './email';
+export { formatEmailForStorage as normalizeEmail } from './email';
 
 // Country validation
 export {

@@ -7,7 +7,8 @@ export enum EntityType {
   PIPELINE = 'PIPELINE',
   STAGE = 'STAGE',
   ACTIVITY = 'ACTIVITY',
-  TICKET = 'TICKET'
+  TICKET = 'TICKET',
+  CONTRACT = 'CONTRACT'
 }
 
 export enum DealStatus {
@@ -69,7 +70,11 @@ export enum ActivityType {
   CONTACT_ASSIGNED = 'CONTACT_ASSIGNED',
   CONTACT_REMOVED = 'CONTACT_REMOVED',
   ORGANIZATION_ASSIGNED = 'ORGANIZATION_ASSIGNED',
-  ORGANIZATION_REMOVED = 'ORGANIZATION_REMOVED'
+  ORGANIZATION_REMOVED = 'ORGANIZATION_REMOVED',
+  CONTRACT_CREATED = 'CONTRACT_CREATED',
+  CONTRACT_STATUS_CHANGED = 'CONTRACT_STATUS_CHANGED',
+  CONTRACT_SIGNED = 'CONTRACT_SIGNED',
+  CONTRACT_CANCELLED = 'CONTRACT_CANCELLED'
 }
 
 export enum CustomFieldType {
@@ -131,6 +136,23 @@ export enum TicketPriority {
   MEDIUM = 'MEDIUM',
   HIGH = 'HIGH',
   URGENT = 'URGENT'
+}
+
+export enum ContractStatus {
+  DRAFT = 'DRAFT',
+  SENT = 'SENT',
+  SIGNED = 'SIGNED',
+  ACTIVE = 'ACTIVE',
+  EXPIRED = 'EXPIRED',
+  CANCELLED = 'CANCELLED'
+}
+
+export enum ContractType {
+  MASTER = 'MASTER',
+  ORDER = 'ORDER',
+  NDA = 'NDA',
+  SERVICE = 'SERVICE',
+  AMENDMENT = 'AMENDMENT'
 }
 
 export enum ContactType {
@@ -427,6 +449,47 @@ export interface TicketTimeline {
 
 // Main Ticket interface composed of focused components
 export interface Ticket extends BaseEntity, TicketCore, TicketRelationships, TicketTimeline, EntityMetadata {}
+
+// ============================================================================
+// CONTRACT SYSTEM - Legal Agreements Management
+// ============================================================================
+
+// Contract-specific focused interfaces
+export interface ContractCore {
+  title: string;
+  contractNumber: string;
+  type: ContractType;
+  status: ContractStatus;
+  description?: string;
+}
+
+export interface ContractFinancial {
+  amount?: number;
+  currency?: string;
+}
+
+export interface ContractTimeline {
+  effectiveDate?: Date;
+  endDate?: Date;
+  signedDate?: Date;
+  sentDate?: Date;
+}
+
+export interface ContractRelationships {
+  dealId?: string;
+  organisationId: string;
+  contactIds: string[];
+  responsibleUserId?: string;
+}
+
+export interface ContractDocument {
+  fileId?: string;
+  version?: string;
+  signatureStatus?: string;
+}
+
+// Main Contract interface composed of focused components
+export interface Contract extends BaseEntity, ContractCore, ContractFinancial, ContractTimeline, ContractRelationships, ContractDocument, EntityMetadata {}
 
 export interface CustomFieldDef extends BaseEntity {
   entityType: EntityType;

@@ -19,7 +19,9 @@ import {
   RuleConditionOperator,
   TicketType,
   TicketStatus,
-  TicketPriority
+  TicketPriority,
+  ContractStatus,
+  ContractType
 } from './types';
 import {
   validatePostalCode,
@@ -374,6 +376,67 @@ export const createTicketSchema = ticketSchema.omit({
 });
 
 export const updateTicketSchema = createTicketSchema.partial();
+
+// ============================================================================
+// CONTRACT SCHEMAS
+// ============================================================================
+
+// Base contract schema
+const contractBaseSchema = z.object({
+  id: z.string(),
+  tenantId: z.string(),
+  title: z.string().min(1, 'Title is required'),
+  contractNumber: z.string().min(1, 'Contract number is required'),
+  type: z.nativeEnum(ContractType),
+  status: z.nativeEnum(ContractStatus),
+  description: z.string().optional(),
+  // Financial
+  amount: z.number().min(0).optional(),
+  currency: z.string().length(3).optional(),
+  // Timeline
+  effectiveDate: z.date().optional(),
+  endDate: z.date().optional(),
+  signedDate: z.date().optional(),
+  sentDate: z.date().optional(),
+  // Relationships
+  dealId: z.string().optional(),
+  organisationId: z.string().min(1, 'Organisation is required'),
+  contactIds: z.array(z.string()).default([]),
+  responsibleUserId: z.string().optional(),
+  // Document
+  fileId: z.string().optional(),
+  version: z.string().optional(),
+  signatureStatus: z.string().optional(),
+  // Metadata
+  notes: z.string().optional(),
+  tags: z.array(z.string()).optional(),
+  // Audit fields
+  createdAt: z.date(),
+  updatedAt: z.date(),
+  createdBy: z.string().optional(),
+  updatedBy: z.string().optional()
+});
+
+// Full contract schema with cross-field validation
+export const contractSchema = contractBaseSchema
+  .refine(
+    (data) => !data.endDate || !data.effectiveDate || data.endDate >= data.effectiveDate,
+    { message: "End date must be after effective date", path: ["endDate"] }
+  )
+  .refine(
+    (data) => !data.signedDate || !data.sentDate || data.signedDate >= data.sentDate,
+    { message: "Signed date must be after sent date", path: ["signedDate"] }
+  );
+
+// Create schema (omit system-generated fields)
+export const createContractSchema = contractBaseSchema
+  .omit({ id: true, tenantId: true, createdAt: true, updatedAt: true })
+  .partial({ contractNumber: true }); // Can be auto-generated
+
+// Update schema (all fields optional except system fields)
+export const updateContractSchema = contractBaseSchema
+  .omit({ id: true, tenantId: true, createdAt: true, updatedAt: true })
+  .partial();
 
 export const customFieldDefSchema = z.object({
   id: z.string(),

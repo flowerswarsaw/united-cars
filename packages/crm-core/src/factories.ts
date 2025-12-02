@@ -20,7 +20,10 @@ import {
   ActivityType,
   CustomFieldType,
   DealCurrentStage,
-  DealStageHistory
+  DealStageHistory,
+  Contract,
+  ContractStatus,
+  ContractType
 } from './types';
 
 const DEFAULT_TENANT_ID = 'united-cars';
@@ -74,6 +77,23 @@ export function makeDeal(partial?: Partial<Deal>): Deal {
     tenantId: DEFAULT_TENANT_ID,
     title: 'New Deal',
     status: DealStatus.OPEN,
+    createdAt: now,
+    updatedAt: now,
+    ...partial
+  };
+}
+
+export function makeContract(partial?: Partial<Contract>): Contract {
+  const now = new Date();
+  return {
+    id: nanoid(),
+    tenantId: DEFAULT_TENANT_ID,
+    title: 'New Contract',
+    contractNumber: `CNT-${nanoid(6).toUpperCase()}`,
+    type: ContractType.SERVICE,
+    status: ContractStatus.DRAFT,
+    organisationId: '',
+    contactIds: [],
     createdAt: now,
     updatedAt: now,
     ...partial

@@ -45,3 +45,11 @@ export {
   ticketRepository,
   type TicketRepository
 } from './ticket-repository';
+
+// Export contract repository
+export {
+  EnhancedContractRepository,
+  contractRepository
+} from './enhanced-contract-repository';
+
+export type { EnhancedContract } from './enhanced-contract-repository';

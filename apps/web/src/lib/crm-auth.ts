@@ -145,7 +145,7 @@ function mapToCRMRole(platformRoles: string[]): UserRole {
  */
 export function checkEntityAccess(
   user: CRMUser,
-  entityType: 'Organisation' | 'Contact' | 'Deal' | 'Lead' | 'Task' | 'Pipeline' | 'Stage',
+  entityType: 'Organisation' | 'Contact' | 'Deal' | 'Lead' | 'Task' | 'Pipeline' | 'Stage' | 'Contract',
   operation: 'canCreate' | 'canRead' | 'canUpdate' | 'canDelete',
   entityAssignedUserId?: string
 ): boolean | NextResponse {
@@ -157,7 +157,8 @@ export function checkEntityAccess(
     'Lead': 'leads',
     'Task': 'tasks',
     'Pipeline': 'pipelines',
-    'Stage': 'pipelines' // Stages use pipeline permissions
+    'Stage': 'pipelines', // Stages use pipeline permissions
+    'Contract': 'contracts'
   };
 
   const rbacEntityType = entityTypeMap[entityType] as any;
@@ -187,7 +188,7 @@ export function checkEntityAccess(
 export function filterByUserAccess<T extends { assignedUserId?: string; responsibleUserId?: string; createdBy?: string }>(
   items: T[],
   user: CRMUser,
-  entityType: 'Organisation' | 'Contact' | 'Deal' | 'Lead'
+  entityType: 'Organisation' | 'Contact' | 'Deal' | 'Lead' | 'Contract'
 ): T[] {
   // Admin and Senior Managers see everything in their tenant
   if (user.role === UserRole.ADMIN || user.role === UserRole.SENIOR_SALES_MANAGER) {

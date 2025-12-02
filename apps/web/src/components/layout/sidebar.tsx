@@ -116,6 +116,7 @@ const getNavigation = (userRoles: string[] = []): NavSection[] => {
         },
         { label: 'Leads', href: '/crm/leads', icon: Users },
         { label: 'Tasks', href: '/crm/tasks', icon: CheckSquare },
+        { label: 'Contracts', href: '/crm/contracts', icon: FileText },
         {
           label: 'Settings',
           href: '/crm/settings/general',

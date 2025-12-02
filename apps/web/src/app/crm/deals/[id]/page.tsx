@@ -15,7 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Edit2, Save, X, Building2, DollarSign, Calendar, User, History, CheckSquare, Plus, Trophy, AlertCircle, Clock, Circle, ChevronRight, Star, Target, TrendingUp, Users, FileText, Activity, Trash2, Zap } from 'lucide-react';
-import { Deal, Organisation, Contact, Task, Pipeline, Stage, DealStatus, TaskStatus, TaskPriority, EntityType, LossReason } from '@united-cars/crm-core';
+import { Deal, Organisation, Contact, Task, Pipeline, Stage, DealStatus, TaskStatus, TaskPriority, EntityType, LossReason, Contract, ContractStatus } from '@united-cars/crm-core';
 import { ActivityLog } from '@/components/crm/activity-log';
 import { AutomationsPanel } from '@/components/crm/automations-panel';
 import toast from 'react-hot-toast';
@@ -37,6 +37,7 @@ export default function DealDetailPage() {
   const [organisation, setOrganisation] = useState<Organisation | null>(null);
   const [contact, setContact] = useState<Contact | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [contracts, setContracts] = useState<Contract[]>([]);
   const [pipeline, setPipeline] = useState<Pipeline | null>(null);
   const [stage, setStage] = useState<Stage | null>(null);
   const [pipelines, setPipelines] = useState<Pipeline[]>([]);
@@ -174,6 +175,13 @@ export default function DealDetailPage() {
           t.targetType === EntityType.DEAL && t.targetId === dealId
         );
         setTasks(dealTasks);
+      }
+
+      // Load contracts
+      const contractsResponse = await fetch(`/api/crm/contracts?dealId=${dealId}`);
+      if (contractsResponse.ok) {
+        const contractsData = await contractsResponse.json();
+        setContracts(contractsData);
       }
 
     } catch (error) {
@@ -531,6 +539,10 @@ export default function DealDetailPage() {
               <TabsTrigger value="tasks" className="flex items-center gap-2">
                 <CheckSquare className="h-4 w-4" />
                 Tasks ({tasks.length})
+              </TabsTrigger>
+              <TabsTrigger value="contracts" className="flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                Contracts ({contracts.length})
               </TabsTrigger>
               <TabsTrigger value="activity" className="flex items-center gap-2">
                 <History className="h-4 w-4" />
@@ -1091,6 +1103,93 @@ export default function DealDetailPage() {
                               </div>
                             )}
                           </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="contracts" className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-medium">Contracts ({contracts.length})</h3>
+                <p className="text-sm text-muted-foreground">
+                  Legal agreements and contracts for this deal
+                </p>
+              </div>
+              <Button onClick={() => router.push(`/crm/contracts?createNew=true&dealId=${dealId}`)}>
+                <Plus className="h-4 w-4 mr-2" />
+                New Contract
+              </Button>
+            </div>
+
+            {contracts.length === 0 ? (
+              <Card>
+                <CardContent className="text-center py-12">
+                  <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+                  <h4 className="text-lg font-medium mb-2">No contracts</h4>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Create contracts to formalize agreements for this deal
+                  </p>
+                  <Button onClick={() => router.push(`/crm/contracts?createNew=true&dealId=${dealId}`)}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create First Contract
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="space-y-3">
+                {contracts.map(contract => {
+                  const getStatusVariant = (status: ContractStatus): "default" | "secondary" | "success" | "destructive" | "warning" => {
+                    switch (status) {
+                      case 'DRAFT': return 'secondary';
+                      case 'SENT': return 'default';
+                      case 'SIGNED': return 'success';
+                      case 'ACTIVE': return 'success';
+                      case 'EXPIRED': return 'warning';
+                      case 'CANCELLED': return 'destructive';
+                      default: return 'default';
+                    }
+                  };
+
+                  return (
+                    <Card
+                      key={contract.id}
+                      className="cursor-pointer hover:bg-muted/50 transition-colors"
+                      onClick={() => router.push(`/crm/contracts/${contract.id}`)}
+                    >
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3 flex-1 min-w-0">
+                            <FileText className="h-5 w-5 text-slate-600 flex-shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1">
+                                <h4 className="font-medium text-sm truncate">
+                                  {contract.title}
+                                </h4>
+                                <Badge variant={getStatusVariant(contract.status)} className="flex-shrink-0">
+                                  {contract.status}
+                                </Badge>
+                              </div>
+                              <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                                <span className="font-mono">{contract.contractNumber}</span>
+                                <span>•</span>
+                                <span className="capitalize">{contract.type}</span>
+                                {contract.amount && (
+                                  <>
+                                    <span>•</span>
+                                    <span className="font-medium">
+                                      {contract.currency} {contract.amount.toLocaleString()}
+                                    </span>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0 ml-2" />
                         </div>
                       </CardContent>
                     </Card>

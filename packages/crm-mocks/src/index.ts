@@ -1,6 +1,9 @@
 // Initialize user management seed data immediately
 import './init-user-management';
 
+// Initialize contract seed data
+import './init-contracts';
+
 export * from './base-repository';
 export * from './change-tracker';
 export * from './organization-scoped-repositories';
@@ -49,7 +52,8 @@ export { userActivityRepository } from './repositories/user-activity-repository'
 export {
   automationWorkflowRepository,
   automationRunRepository,
-  ticketRepository
+  ticketRepository,
+  contractRepository
 } from './repositories';
 
 // Export automation services
@@ -57,6 +61,9 @@ export * from './services';
 
 // Export automation seed function
 export { seedAutomationWorkflows, clearAutomationWorkflows, SEED_WORKFLOWS } from './automation-seeds';
+
+// Export contract seed function
+export { seedContracts, clearContracts } from './contracts-seeds';
 
 // Export user management seed data
 export * from './user-management-seeds';

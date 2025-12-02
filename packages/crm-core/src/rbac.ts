@@ -25,6 +25,7 @@ export interface RBACPermissions {
   leads: EntityPermissions;
   tasks: EntityPermissions;
   pipelines: EntityPermissions;
+  contracts: EntityPermissions;
 }
 
 export function getUserPermissions(role: UserRole): RBACPermissions {
@@ -36,7 +37,8 @@ export function getUserPermissions(role: UserRole): RBACPermissions {
         deals: { canCreate: true, canRead: true, canUpdate: true, canDelete: true, canReadAll: true },
         leads: { canCreate: true, canRead: true, canUpdate: true, canDelete: true, canReadAll: true },
         tasks: { canCreate: true, canRead: true, canUpdate: true, canDelete: true, canReadAll: true },
-        pipelines: { canCreate: true, canRead: true, canUpdate: true, canDelete: true, canReadAll: true }
+        pipelines: { canCreate: true, canRead: true, canUpdate: true, canDelete: true, canReadAll: true },
+        contracts: { canCreate: true, canRead: true, canUpdate: true, canDelete: true, canReadAll: true }
       };
 
     case UserRole.SENIOR_SALES_MANAGER:
@@ -46,7 +48,8 @@ export function getUserPermissions(role: UserRole): RBACPermissions {
         deals: { canCreate: true, canRead: true, canUpdate: false, canDelete: false, canReadAll: true }, // Can only update assigned
         leads: { canCreate: true, canRead: true, canUpdate: false, canDelete: false, canReadAll: true }, // Can only update assigned
         tasks: { canCreate: true, canRead: true, canUpdate: false, canDelete: false, canReadAll: true }, // Can only update assigned
-        pipelines: { canCreate: false, canRead: true, canUpdate: false, canDelete: false, canReadAll: true }
+        pipelines: { canCreate: false, canRead: true, canUpdate: false, canDelete: false, canReadAll: true },
+        contracts: { canCreate: true, canRead: true, canUpdate: true, canDelete: false, canReadAll: true }
       };
 
     case UserRole.JUNIOR_SALES_MANAGER:
@@ -56,7 +59,8 @@ export function getUserPermissions(role: UserRole): RBACPermissions {
         deals: { canCreate: true, canRead: false, canUpdate: false, canDelete: false, canReadAll: false }, // Can only manage assigned
         leads: { canCreate: true, canRead: false, canUpdate: false, canDelete: false, canReadAll: false }, // Can only manage assigned
         tasks: { canCreate: true, canRead: false, canUpdate: false, canDelete: false, canReadAll: false }, // Can only manage assigned
-        pipelines: { canCreate: false, canRead: true, canUpdate: false, canDelete: false, canReadAll: true }
+        pipelines: { canCreate: false, canRead: true, canUpdate: false, canDelete: false, canReadAll: true },
+        contracts: { canCreate: true, canRead: false, canUpdate: false, canDelete: false, canReadAll: false } // Can only manage assigned
       };
 
     default:
@@ -96,9 +100,9 @@ export function canUserAccessEntity(
     return false;
   }
 
-  // For update/delete operations on deals/leads/tasks, check assignment
+  // For update/delete operations on deals/leads/tasks/contracts, check assignment
   if ((operation === 'canUpdate' || operation === 'canDelete') &&
-      (entityType === 'deals' || entityType === 'leads' || entityType === 'tasks')) {
+      (entityType === 'deals' || entityType === 'leads' || entityType === 'tasks' || entityType === 'contracts')) {
 
     // Admins can do anything
     if (user.role === UserRole.ADMIN) {
@@ -136,6 +140,7 @@ export interface CRMRBACUser {
     leads?: Partial<EntityPermissions>;
     tasks?: Partial<EntityPermissions>;
     pipelines?: Partial<EntityPermissions>;
+    contracts?: Partial<EntityPermissions>;
   };
   assignedEntityIds?: string[];
 }
@@ -195,6 +200,10 @@ export function resolveUserPermissions(
     pipelines: {
       ...basePermissions.pipelines,
       ...overrides.pipelines
+    },
+    contracts: {
+      ...basePermissions.contracts,
+      ...overrides.contracts
     }
   };
 
@@ -246,9 +255,9 @@ export function canCRMUserAccessEntity(
     return false;
   }
 
-  // For update/delete operations on deals/leads/tasks, check assignment if needed
+  // For update/delete operations on deals/leads/tasks/contracts, check assignment if needed
   if ((operation === 'canUpdate' || operation === 'canDelete') &&
-      (entityType === 'deals' || entityType === 'leads' || entityType === 'tasks')) {
+      (entityType === 'deals' || entityType === 'leads' || entityType === 'tasks' || entityType === 'contracts')) {
 
     // If user has the permission, they still might need assignment check
     // This depends on whether they have canReadAll (full access) or not (limited access)
@@ -282,6 +291,7 @@ export function customRoleToPermissions(role: {
     leads: EntityPermissions;
     tasks: EntityPermissions;
     pipelines: EntityPermissions;
+    contracts: EntityPermissions;
   };
 }): CustomRolePermissions {
   return {
