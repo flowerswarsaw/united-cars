@@ -150,6 +150,26 @@ export enum ContractStatus {
   CANCELLED = 'CANCELLED'
 }
 
+// ============================================================================
+// CALL SYSTEM - Phone Call Tracking
+// ============================================================================
+
+export enum CallDirection {
+  INBOUND = 'INBOUND',
+  OUTBOUND = 'OUTBOUND'
+}
+
+export enum CallStatus {
+  QUEUED = 'QUEUED',
+  RINGING = 'RINGING',
+  IN_PROGRESS = 'IN_PROGRESS',
+  COMPLETED = 'COMPLETED',
+  FAILED = 'FAILED',
+  BUSY = 'BUSY',
+  NO_ANSWER = 'NO_ANSWER',
+  CANCELLED = 'CANCELLED'
+}
+
 export enum ContractType {
   MASTER = 'MASTER',
   ORDER = 'ORDER',
@@ -499,6 +519,38 @@ export interface ContractDocument {
 
 // Main Contract interface composed of focused components
 export interface Contract extends BaseEntity, ContractCore, ContractFinancial, ContractTimeline, ContractRelationships, ContractDocument, EntityMetadata {}
+
+// ============================================================================
+// CALL - Phone Call Tracking
+// ============================================================================
+
+// Call-specific focused interfaces
+export interface CallCore {
+  direction: CallDirection;
+  status: CallStatus;
+  phoneNumber: string;
+}
+
+export interface CallRelationships {
+  contactId?: string;
+  organisationId?: string;
+  dealId?: string;
+  crmUserId: string; // User who made/received the call
+}
+
+export interface CallTimeline {
+  startedAt?: Date;
+  endedAt?: Date;
+  durationSec?: number;
+}
+
+export interface CallProvider {
+  provider: string; // 'twilio', 'mock', etc.
+  providerCallId?: string;
+}
+
+// Main Call interface composed of focused components
+export interface Call extends BaseEntity, CallCore, CallRelationships, CallTimeline, CallProvider, EntityMetadata {}
 
 export interface CustomFieldDef extends BaseEntity {
   entityType: EntityType;

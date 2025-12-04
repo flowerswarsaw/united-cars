@@ -53,3 +53,10 @@ export {
 } from './enhanced-contract-repository';
 
 export type { EnhancedContract } from './enhanced-contract-repository';
+
+// Export call repository
+export {
+  CallRepositoryImpl,
+  callRepository,
+  type CallRepository
+} from './call-repository';

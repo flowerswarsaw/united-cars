@@ -1,6 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@united-cars/db';
-import { getCRMUser, checkEntityAccess } from '@/lib/crm-auth';
+import { callRepository } from '@united-cars/crm-mocks';
+import { CallStatus } from '@united-cars/crm-core';
+
+const DEFAULT_TENANT_ID = 'united-cars';
+
+// Mock user for development (in production, this would come from auth)
+function getMockUser(request: NextRequest) {
+  return {
+    id: 'admin-user-001',
+    tenantId: DEFAULT_TENANT_ID,
+    role: 'ADMIN',
+    email: 'admin@united-cars.com',
+    displayName: 'Admin User'
+  };
+}
 
 /**
  * GET /api/crm/calls/[id]
@@ -11,39 +24,13 @@ export async function GET(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    // 1. Extract user session
-    const userOrError = await getCRMUser(request);
-    if (userOrError instanceof NextResponse) return userOrError;
-    const user = userOrError;
-
-    // 2. Check read permission
-    const accessCheck = checkEntityAccess(user, 'Call', 'canRead');
-    if (accessCheck instanceof NextResponse) return accessCheck;
-
-    // 3. Get call ID from params
+    const user = getMockUser(request);
     const params = await context.params;
     const callId = params.id;
 
-    // 4. Fetch call with tenant isolation
-    const call = await prisma.call.findFirst({
-      where: {
-        id: callId,
-        tenantId: user.tenantId,
-        // Junior managers can only see their own calls
-        ...(user.role === 'JUNIOR_SALES_MANAGER' && { crmUserId: user.id }),
-      },
-      include: {
-        user: {
-          select: {
-            id: true,
-            email: true,
-            name: true,
-          }
-        }
-      },
-    });
+    const call = await callRepository.getById(callId);
 
-    if (!call) {
+    if (!call || call.tenantId !== user.tenantId) {
       return NextResponse.json(
         { error: 'Call not found' },
         { status: 404 }
@@ -69,40 +56,23 @@ export async function PATCH(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    // 1. Extract user session
-    const userOrError = await getCRMUser(request);
-    if (userOrError instanceof NextResponse) return userOrError;
-    const user = userOrError;
-
-    // 2. Check update permission
-    const accessCheck = checkEntityAccess(user, 'Call', 'canUpdate');
-    if (accessCheck instanceof NextResponse) return accessCheck;
-
-    // 3. Get call ID from params
+    const user = getMockUser(request);
     const params = await context.params;
     const callId = params.id;
 
-    // 4. Check if call exists and user has access
-    const existingCall = await prisma.call.findFirst({
-      where: {
-        id: callId,
-        tenantId: user.tenantId,
-        // Users can only update their own calls
-        crmUserId: user.id,
-      },
-    });
+    // Check if call exists
+    const existingCall = await callRepository.getById(callId);
 
-    if (!existingCall) {
+    if (!existingCall || existingCall.tenantId !== user.tenantId) {
       return NextResponse.json(
         { error: 'Call not found or access denied' },
         { status: 404 }
       );
     }
 
-    // 5. Parse update data
     const body = await request.json();
 
-    // Allowed update fields
+    // Build update data
     const updateData: any = {};
 
     if (body.status !== undefined) updateData.status = body.status;
@@ -111,28 +81,63 @@ export async function PATCH(
     if (body.durationSec !== undefined) updateData.durationSec = body.durationSec;
     if (body.providerCallId !== undefined) updateData.providerCallId = body.providerCallId;
     if (body.notes !== undefined) updateData.notes = body.notes;
-    if (body.metadata !== undefined) updateData.metadata = body.metadata;
 
-    // 6. Update call
-    const updatedCall = await prisma.call.update({
-      where: { id: callId },
-      data: updateData,
-      include: {
-        user: {
-          select: {
-            id: true,
-            email: true,
-            name: true,
-          }
-        }
-      },
-    });
+    const updatedCall = await callRepository.update(callId, updateData);
+
+    if (!updatedCall) {
+      return NextResponse.json(
+        { error: 'Failed to update call' },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json(updatedCall);
   } catch (error: any) {
     console.error('Failed to update call:', error);
     return NextResponse.json(
       { error: 'Failed to update call', details: error.message },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * DELETE /api/crm/calls/[id]
+ * Delete a call record
+ */
+export async function DELETE(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  try {
+    const user = getMockUser(request);
+    const params = await context.params;
+    const callId = params.id;
+
+    // Check if call exists
+    const existingCall = await callRepository.getById(callId);
+
+    if (!existingCall || existingCall.tenantId !== user.tenantId) {
+      return NextResponse.json(
+        { error: 'Call not found or access denied' },
+        { status: 404 }
+      );
+    }
+
+    const deleted = await callRepository.delete(callId);
+
+    if (!deleted) {
+      return NextResponse.json(
+        { error: 'Failed to delete call' },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    console.error('Failed to delete call:', error);
+    return NextResponse.json(
+      { error: 'Failed to delete call', details: error.message },
       { status: 500 }
     );
   }

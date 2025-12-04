@@ -1,7 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@united-cars/db';
-import { getCRMUser, checkEntityAccess } from '@/lib/crm-auth';
-import { formatPhoneForStorage } from '@/lib/phone-formatter';
+import { callRepository, seedCalls } from '@united-cars/crm-mocks';
+import { CallStatus, CallDirection } from '@united-cars/crm-core';
+
+const DEFAULT_TENANT_ID = 'united-cars';
+
+// Track if calls have been seeded
+let callsSeeded = false;
+
+async function ensureCallsSeeded(tenantId: string) {
+  if (callsSeeded) return;
+
+  const existingCalls = await callRepository.getAll(tenantId);
+  if (existingCalls.length === 0) {
+    await seedCalls();
+  }
+  callsSeeded = true;
+}
+
+// Mock user for development (in production, this would come from auth)
+function getMockUser(request: NextRequest) {
+  // For now, return a mock admin user
+  return {
+    id: 'admin-user-001',
+    tenantId: DEFAULT_TENANT_ID,
+    role: 'ADMIN',
+    email: 'admin@united-cars.com',
+    displayName: 'Admin User'
+  };
+}
 
 /**
  * GET /api/crm/calls
@@ -9,48 +35,35 @@ import { formatPhoneForStorage } from '@/lib/phone-formatter';
  */
 export async function GET(request: NextRequest) {
   try {
-    // 1. Extract user session
-    const userOrError = await getCRMUser(request);
-    if (userOrError instanceof NextResponse) return userOrError;
-    const user = userOrError;
+    const user = getMockUser(request);
 
-    // 2. Check read permission
-    const accessCheck = checkEntityAccess(user, 'Call', 'canRead');
-    if (accessCheck instanceof NextResponse) return accessCheck;
+    // Ensure calls are seeded on first access
+    await ensureCallsSeeded(user.tenantId);
 
-    // 3. Query parameters for filtering
     const { searchParams } = new URL(request.url);
+
     const contactId = searchParams.get('contactId');
     const organisationId = searchParams.get('organisationId');
     const dealId = searchParams.get('dealId');
-    const status = searchParams.get('status');
+    const status = searchParams.get('status') as CallStatus | null;
+    const crmUserId = searchParams.get('crmUserId');
     const limit = searchParams.get('limit');
-    const offset = searchParams.get('offset');
 
-    // 4. Query with filters and tenant isolation
-    const calls = await prisma.call.findMany({
-      where: {
-        tenantId: user.tenantId,
-        ...(contactId && { contactId }),
-        ...(organisationId && { organisationId }),
-        ...(dealId && { dealId }),
-        ...(status && { status: status as any }),
-        // Filter by user access (Junior managers see only their calls)
-        ...(user.role === 'JUNIOR_SALES_MANAGER' && { crmUserId: user.id }),
-      },
-      include: {
-        user: {
-          select: {
-            id: true,
-            email: true,
-            name: true,
-          }
-        }
-      },
-      orderBy: { createdAt: 'desc' },
-      ...(limit && { take: parseInt(limit) }),
-      ...(offset && { skip: parseInt(offset) }),
-    });
+    let calls;
+
+    if (contactId) {
+      calls = await callRepository.getByContact(user.tenantId, contactId);
+    } else if (organisationId) {
+      calls = await callRepository.getByOrganisation(user.tenantId, organisationId);
+    } else if (dealId) {
+      calls = await callRepository.getByDeal(user.tenantId, dealId);
+    } else if (crmUserId) {
+      calls = await callRepository.getByUser(user.tenantId, crmUserId);
+    } else if (status) {
+      calls = await callRepository.getByStatus(user.tenantId, status);
+    } else {
+      calls = await callRepository.getRecent(user.tenantId, limit ? parseInt(limit) : 50);
+    }
 
     return NextResponse.json(calls);
   } catch (error: any) {
@@ -68,18 +81,10 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    // 1. Extract user session
-    const userOrError = await getCRMUser(request);
-    if (userOrError instanceof NextResponse) return userOrError;
-    const user = userOrError;
-
-    // 2. Check create permission
-    const accessCheck = checkEntityAccess(user, 'Call', 'canCreate');
-    if (accessCheck instanceof NextResponse) return accessCheck;
-
+    const user = getMockUser(request);
     const body = await request.json();
 
-    // 3. Validate required fields
+    // Validate required fields
     if (!body.phoneNumber) {
       return NextResponse.json(
         { error: 'Phone number is required' },
@@ -87,39 +92,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 4. Format phone to E.164
-    let phoneNumber: string;
-    try {
-      phoneNumber = formatPhoneForStorage(body.phoneNumber);
-    } catch (error: any) {
-      return NextResponse.json(
-        { error: 'Invalid phone number format', details: error.message },
-        { status: 400 }
-      );
-    }
-
-    // 5. Create call log
-    const call = await prisma.call.create({
-      data: {
-        tenantId: user.tenantId,
-        crmUserId: user.id,
-        phoneNumber,
-        direction: 'OUTBOUND',
-        status: 'QUEUED',
-        contactId: body.contactId || null,
-        organisationId: body.organisationId || null,
-        dealId: body.dealId || null,
-        notes: body.notes || null,
-      },
-      include: {
-        user: {
-          select: {
-            id: true,
-            email: true,
-            name: true,
-          }
-        }
-      },
+    const call = await callRepository.create({
+      tenantId: user.tenantId,
+      crmUserId: body.crmUserId || user.id,
+      phoneNumber: body.phoneNumber,
+      direction: body.direction || CallDirection.OUTBOUND,
+      status: body.status || CallStatus.QUEUED,
+      provider: body.provider || 'mock',
+      contactId: body.contactId || undefined,
+      organisationId: body.organisationId || undefined,
+      dealId: body.dealId || undefined,
+      notes: body.notes || undefined,
+      providerCallId: body.providerCallId || undefined,
     });
 
     return NextResponse.json(call, { status: 201 });
