@@ -71,9 +71,13 @@ export const getSecurityConfig = (): SecurityConfig => {
         'blob:'
       ],
       connectSrc: [
-        "'self'", 
-        'https://vercel.live', 
-        'wss://ws-us3.pusher.com'
+        "'self'",
+        'https://vercel.live',
+        'wss://ws-us3.pusher.com',
+        // Twilio Voice SDK
+        'wss://*.twilio.com',
+        'https://*.twilio.com',
+        'https://sdk.twilio.com'
       ],
       frameSrc: ["'none'"],
       objectSrc: ["'none'"]
@@ -88,7 +92,7 @@ export const getSecurityConfig = (): SecurityConfig => {
       referrerPolicy: 'strict-origin-when-cross-origin',
       permissions: [
         'camera=()',
-        'microphone=()',
+        'microphone=(self)', // Allow microphone for Twilio Voice
         'geolocation=()',
         'interest-cohort=()',
         'payment=()',

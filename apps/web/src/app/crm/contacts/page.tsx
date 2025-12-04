@@ -13,6 +13,7 @@ import { LoadingState } from '@/components/ui/loading-state';
 import { LocationFieldGroup, CountrySelector, RegionSelector, CitySelector } from '@/components/location';
 import { COUNTRIES_REGIONS, getCountryByCode, getRegionsByCountryCode, hasRegions, getRegionDisplayName, getCitiesByRegion, hasCities } from '@/lib/countries-regions';
 import { getUserName, getUserInitials } from '@/lib/crm-users';
+import { PhoneDialerButton } from '@/components/crm/shared/phone-dialer-button';
 import {
   Table,
   TableBody,
@@ -859,6 +860,12 @@ export default function ContactsPage() {
                                 >
                                   {phoneMethod.value}
                                 </a>
+                                <PhoneDialerButton
+                                  phoneNumber={phoneMethod.value}
+                                  contactId={contact.id}
+                                  variant="ghost"
+                                  size="sm"
+                                />
                               </div>
                             )}
                             {!emailMethod && !phoneMethod && (

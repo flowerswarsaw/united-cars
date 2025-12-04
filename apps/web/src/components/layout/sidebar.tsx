@@ -35,7 +35,8 @@ import {
   UsersRound,
   User,
   Zap,
-  Ticket
+  Ticket,
+  Phone
 } from 'lucide-react'
 import { ThemeToggleCompact } from '@/components/ui/theme-toggle'
 import { RealTimeStatus } from '@/components/ui/real-time-notifications'
@@ -117,6 +118,7 @@ const getNavigation = (userRoles: string[] = []): NavSection[] => {
         },
         { label: 'Leads', href: '/crm/leads', icon: Users },
         { label: 'Tasks', href: '/crm/tasks', icon: CheckSquare },
+        { label: 'Calls', href: '/crm/calls', icon: Phone },
         { label: 'Tickets', href: '/crm/tickets', icon: Ticket },
         { label: 'Contracts', href: '/crm/contracts', icon: FileText },
         {

@@ -32,6 +32,7 @@
     "@radix-ui/react-tabs": "^1.1.13",
     "@tanstack/react-query": "^5.87.1",
     "@tanstack/react-query-devtools": "^5.87.1",
+    "@twilio/voice-sdk": "^2.17.0",
     "@types/bcryptjs": "^2.4.6",
     "@united-cars/calc": "workspace:*",
     "@united-cars/core": "workspace:*",
@@ -53,6 +54,7 @@
     "react-dom": "^18.3.0",
     "react-hot-toast": "^2.6.0",
     "tailwindcss-animate": "^1.0.7",
+    "twilio": "^5.10.7",
     "xlsx": "^0.18.5",
     "zod": "^3.23.8",
     "zustand": "^5.0.0"
@@ -62,6 +64,7 @@
     "@types/node": "^22.0.0",
     "@types/react": "^18.3.0",
     "@types/react-dom": "^18.3.0",
+    "@types/twilio": "^3.19.3",
     "autoprefixer": "^10.4.0",
     "eslint": "^9.0.0",
     "eslint-config-next": "^15.1.0",

@@ -48,6 +48,7 @@ model User {
   org                   Org             @relation(fields: [orgId], references: [id], onDelete: Cascade)
   createdIntakes        VehicleIntake[] @relation("IntakeCreatedBy")
   reviewedIntakes       VehicleIntake[] @relation("IntakeReviewedBy")
+  calls                 Call[]
 
   @@map("users")
 }
@@ -515,6 +516,50 @@ model VehicleIntakeAttachment {
   @@map("vehicle_intake_attachments")
 }
 
+model Call {
+  id              String        @id @default(cuid())
+  tenantId        String        @map("tenant_id")
+  crmUserId       String        @map("crm_user_id")
+
+  // String IDs - no FK constraints (CRM entities in mock system)
+  contactId       String?       @map("contact_id")
+  organisationId  String?       @map("organisation_id")
+  dealId          String?       @map("deal_id")
+
+  // Call details
+  direction       CallDirection
+  status          CallStatus
+  phoneNumber     String        @map("phone_number")
+
+  // Timing
+  startedAt       DateTime?     @map("started_at")
+  endedAt         DateTime?     @map("ended_at")
+  durationSec     Int?          @map("duration_sec")
+
+  // Twilio integration
+  provider        String        @default("twilio")
+  providerCallId  String?       @map("provider_call_id")
+
+  // Notes & metadata
+  notes           String?
+  metadata        Json?
+
+  // Timestamps
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  // Relations
+  user            User          @relation(fields: [crmUserId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, crmUserId])
+  @@index([contactId])
+  @@index([organisationId])
+  @@index([dealId])
+  @@index([createdAt])
+  @@index([status])
+  @@map("calls")
+}
+
 enum OrgType {
   DEALER
   ADMIN
@@ -669,4 +714,20 @@ enum AttachmentKind {
   INVOICE
   PHOTO
   OTHER
+}
+
+enum CallDirection {
+  OUTBOUND
+  INBOUND
+}
+
+enum CallStatus {
+  QUEUED
+  RINGING
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+  NO_ANSWER
+  BUSY
+  CANCELLED
 }

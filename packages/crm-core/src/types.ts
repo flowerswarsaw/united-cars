@@ -8,7 +8,8 @@ export enum EntityType {
   STAGE = 'STAGE',
   ACTIVITY = 'ACTIVITY',
   TICKET = 'TICKET',
-  CONTRACT = 'CONTRACT'
+  CONTRACT = 'CONTRACT',
+  CALL = 'CALL'
 }
 
 export enum DealStatus {
