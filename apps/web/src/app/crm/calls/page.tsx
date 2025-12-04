@@ -54,7 +54,7 @@ interface Call {
   notes?: string;
   createdAt: string;
   updatedAt: string;
-  user: {
+  user?: {
     id: string;
     name?: string;
     email: string;
@@ -276,7 +276,7 @@ export default function CallsPage() {
                         <div className="flex items-center gap-2">
                           <User className="h-4 w-4 text-gray-400" />
                           <span className="text-sm">
-                            {call.user.name || call.user.email}
+                            {call.user?.name || call.user?.email || call.crmUserId}
                           </span>
                         </div>
                       </TableCell>
