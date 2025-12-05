@@ -184,19 +184,27 @@ export default function GeneralSettingsPage() {
 
   const handlePasswordChange = async (currentPassword: string, newPassword: string) => {
     try {
-      // TODO: Implement password change API endpoint
-      // For now, simulate success
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const response = await fetch('/api/auth/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentPassword, newPassword })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to change password');
+      }
 
       toast({
         title: 'Success',
         description: 'Password changed successfully'
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error changing password:', error);
       toast({
         title: 'Error',
-        description: 'Failed to change password',
+        description: error.message || 'Failed to change password',
         variant: 'destructive'
       });
       throw error;

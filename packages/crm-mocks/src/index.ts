@@ -4,6 +4,9 @@ import './init-user-management';
 // Initialize contract seed data
 import './init-contracts';
 
+// Initialize automation system
+import './init-automation';
+
 export * from './base-repository';
 export * from './change-tracker';
 export * from './organization-scoped-repositories';
@@ -71,6 +74,17 @@ export { seedTickets, tickets as ticketSeeds } from './ticket-seeds';
 
 // Export call seed function
 export { seedCalls, calls as callSeeds } from './call-seeds';
+
+// Export automation event helpers
+export {
+  dealEvents,
+  leadEvents,
+  contactEvents,
+  taskEvents,
+  ticketEvents,
+  emitAutomationEvent,
+  initAutomation
+} from './init-automation';
 
 // Export user management seed data
 export * from './user-management-seeds';

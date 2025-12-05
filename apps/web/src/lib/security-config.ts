@@ -45,16 +45,18 @@ export interface SecurityConfig {
 
 export const getSecurityConfig = (): SecurityConfig => {
   const isProduction = process.env.NODE_ENV === 'production'
-  
+
+  // Build script-src based on environment
+  // In production, avoid unsafe-eval for better security
+  // In development, it may be needed for hot module replacement
+  const scriptSrc = isProduction
+    ? ["'self'", "'unsafe-inline'", 'https://vercel.live']
+    : ["'self'", "'unsafe-inline'", "'unsafe-eval'", 'https://vercel.live']
+
   return {
     csp: {
       defaultSrc: ["'self'"],
-      scriptSrc: [
-        "'self'", 
-        "'unsafe-inline'", 
-        "'unsafe-eval'", // TODO: Remove after refactoring inline scripts
-        'https://vercel.live'
-      ],
+      scriptSrc,
       styleSrc: [
         "'self'", 
         "'unsafe-inline'", 

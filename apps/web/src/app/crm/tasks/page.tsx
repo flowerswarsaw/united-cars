@@ -48,20 +48,21 @@ import {
   Trash2
 } from 'lucide-react';
 import { Task, TaskStatus, TaskPriority, EntityType, Deal, Contact, Organisation } from '@united-cars/crm-core';
+import { ClickableStatusBadge } from '@/components/ui/status-badge';
 import toast from 'react-hot-toast';
 
-const StatusIcons = {
-  'PENDING': Circle,
-  'IN_PROGRESS': Clock,
-  'COMPLETED': CheckCircle2,
-  'CANCELLED': XCircle,
+const StatusIcons: Record<TaskStatus, React.ComponentType<{ className?: string }>> = {
+  [TaskStatus.TODO]: Circle,
+  [TaskStatus.IN_PROGRESS]: Clock,
+  [TaskStatus.DONE]: CheckCircle2,
+  [TaskStatus.CANCELLED]: XCircle,
 };
 
-const StatusColors = {
-  'PENDING': 'text-slate-500 bg-slate-100 dark:bg-slate-800 dark:text-slate-300',
-  'IN_PROGRESS': 'text-blue-600 bg-blue-100 dark:bg-blue-900 dark:text-blue-300',
-  'COMPLETED': 'text-emerald-600 bg-emerald-100 dark:bg-emerald-900 dark:text-emerald-300',
-  'CANCELLED': 'text-red-600 bg-red-100 dark:bg-red-900 dark:text-red-300',
+const StatusColors: Record<TaskStatus, string> = {
+  [TaskStatus.TODO]: 'text-slate-500 bg-slate-100 dark:bg-slate-800 dark:text-slate-300',
+  [TaskStatus.IN_PROGRESS]: 'text-blue-600 bg-blue-100 dark:bg-blue-900 dark:text-blue-300',
+  [TaskStatus.DONE]: 'text-emerald-600 bg-emerald-100 dark:bg-emerald-900 dark:text-emerald-300',
+  [TaskStatus.CANCELLED]: 'text-red-600 bg-red-100 dark:bg-red-900 dark:text-red-300',
 };
 
 const PriorityColors = {
@@ -71,11 +72,11 @@ const PriorityColors = {
   'URGENT': 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300',
 };
 
-const TargetIcons = {
-  'DEAL': TrendingUp,
-  'CONTACT': User,
-  'ORGANISATION': Building2,
-  'LEAD': User,
+const TargetIcons: Record<string, React.ComponentType<{ className?: string }>> = {
+  [EntityType.DEAL]: TrendingUp,
+  [EntityType.CONTACT]: User,
+  [EntityType.ORGANISATION]: Building2,
+  [EntityType.LEAD]: User,
 };
 
 interface TaskFilters {
@@ -356,6 +357,13 @@ export default function TasksPage() {
   };
 
   const hasActiveFilters = filters.status !== 'all' || filters.priority !== 'all' || filters.targetType !== 'all' || searchQuery;
+
+  const taskStatusOptions = [
+    { value: TaskStatus.TODO, label: 'To Do' },
+    { value: TaskStatus.IN_PROGRESS, label: 'In Progress' },
+    { value: TaskStatus.DONE, label: 'Done' },
+    { value: TaskStatus.CANCELLED, label: 'Cancelled' },
+  ];
 
   const navigateToTarget = (task: Task) => {
     if (!task.targetId) return;
@@ -667,29 +675,15 @@ export default function TasksPage() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge className={`${StatusColors[task.status]} text-xs font-medium px-2 py-1 flex items-center space-x-1 w-fit`}>
-                          <StatusIcon className="h-3 w-3" />
-                          <span>{task.status.replace('_', ' ')}</span>
-                        </Badge>
+                        <ClickableStatusBadge
+                          status={task.status}
+                          options={taskStatusOptions}
+                          onStatusChange={(newStatus) => updateTaskStatus(task.id, newStatus as TaskStatus)}
+                          size="sm"
+                        />
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center space-x-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              const nextStatus = task.status === TaskStatus.TODO 
-                                ? TaskStatus.IN_PROGRESS 
-                                : task.status === TaskStatus.IN_PROGRESS 
-                                  ? TaskStatus.DONE 
-                                  : TaskStatus.TODO;
-                              updateTaskStatus(task.id, nextStatus);
-                            }}
-                            className="h-8 px-2 text-muted-foreground hover:text-foreground"
-                            title="Update status"
-                          >
-                            <CheckCircle2 className="h-4 w-4" />
-                          </Button>
                           <Button
                             variant="ghost"
                             size="sm"

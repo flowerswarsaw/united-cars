@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { contactRepository, jsonPersistence } from '@united-cars/crm-mocks';
+import { contactRepository, jsonPersistence, contactEvents } from '@united-cars/crm-mocks';
 import { updateContactSchema, UserRole } from '@united-cars/crm-core';
 import { formatContactMethods } from '@/lib/phone-formatter';
 import { formatContactMethodsEmails } from '@/lib/email-formatter';
@@ -134,6 +134,24 @@ export async function PATCH(
     }
 
     await jsonPersistence.save();
+
+    // Build changes array for automation event
+    const changes: { field: string; oldValue: any; newValue: any }[] = [];
+    for (const key of Object.keys(updateData)) {
+      if (existingContact[key as keyof typeof existingContact] !== updateData[key as keyof typeof updateData]) {
+        changes.push({
+          field: key,
+          oldValue: existingContact[key as keyof typeof existingContact],
+          newValue: updateData[key as keyof typeof updateData]
+        });
+      }
+    }
+
+    // Emit automation event for contact update
+    if (changes.length > 0) {
+      await contactEvents.updated(contact, changes, user.tenantId);
+    }
+
     return NextResponse.json(contact);
   } catch (error: any) {
     console.error('Error updating contact:', error);

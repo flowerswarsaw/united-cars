@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { moveDealInputSchema, ActivityType, EntityType } from '@united-cars/crm-core';
-import { dealRepository, activityRepository, pipelineRepository, jsonPersistence } from '@united-cars/crm-mocks';
+import { dealRepository, activityRepository, pipelineRepository, jsonPersistence, dealEvents } from '@united-cars/crm-mocks';
+import { broadcastDealStageChanged } from '@/lib/crm-events';
 
 // B8 Fix: Simple in-memory lock to prevent concurrent deal moves
 const dealMoveLocks = new Map<string, boolean>();
@@ -118,7 +119,12 @@ export async function PATCH(
     // Save to persistent storage
     await jsonPersistence.save();
 
-    console.log(`✅ Deal ${id} moved to stage ${body.toStageId} in pipeline ${body.pipelineId}`);
+    // Emit automation event for stage change
+    await dealEvents.stageChanged(updatedDeal, currentDeal.stageId, body.toStageId, currentDeal.tenantId);
+
+    // Broadcast real-time update to connected clients
+    broadcastDealStageChanged(updatedDeal, currentDeal.stageId, body.toStageId, currentDeal.tenantId);
+
     return NextResponse.json(updatedDeal);
   } catch (error: any) {
     console.error('❌ Failed to move deal:', error);

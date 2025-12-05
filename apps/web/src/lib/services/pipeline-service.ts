@@ -16,10 +16,32 @@ import {
 } from '../pipeline-data';
 import { ensureMigrationCompleted, updateEnhancedDealStore } from './migration-service';
 
+export type PipelineUserRole = 'admin' | 'senior' | 'junior';
+
 export interface User {
   id: string;
-  role: 'admin' | 'senior' | 'junior';
+  role: PipelineUserRole;
   assignedDeals?: string[];
+}
+
+/**
+ * Maps session user roles array to pipeline-service role
+ * Session user has `roles: string[]`, pipeline service expects single role
+ */
+export function mapSessionUserToPipelineUser(sessionUser: { id?: string; roles?: string[] } | undefined): User {
+  const roles = sessionUser?.roles?.map(r => r.toLowerCase()) ?? [];
+
+  let role: PipelineUserRole = 'junior';
+  if (roles.includes('admin') || roles.includes('super_admin')) {
+    role = 'admin';
+  } else if (roles.includes('senior') || roles.includes('senior_sales_manager')) {
+    role = 'senior';
+  }
+
+  return {
+    id: sessionUser?.id || 'anonymous',
+    role
+  };
 }
 
 export interface HistoryEntry {

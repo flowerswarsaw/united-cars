@@ -15,21 +15,16 @@ const normalizePhone = (phone: string): string => {
 
 export async function GET(request: NextRequest) {
   try {
-    console.log('🔍 GET /api/crm/organisations called');
-
     // 1. Extract user session
     const userOrError = await getCRMUser(request);
     if (userOrError instanceof NextResponse) {
-      console.log('❌ No user session found');
       return userOrError;
     }
     const user = userOrError;
-    console.log('✅ User authenticated:', user.email, 'tenantId:', user.tenantId);
 
     // 2. Check read permission
     const accessCheck = checkEntityAccess(user, 'Organisation', 'canRead');
     if (accessCheck instanceof NextResponse) {
-      console.log('❌ User does not have read permission');
       return accessCheck;
     }
 
@@ -42,15 +37,12 @@ export async function GET(request: NextRequest) {
     const city = searchParams.get('city');
 
     let filteredOrgs = await organisationRepository.list();
-    console.log('📊 Total organizations in repository:', filteredOrgs.length);
 
     // 3. Filter by tenantId
     filteredOrgs = filteredOrgs.filter(org => org.tenantId === user.tenantId);
-    console.log('🔒 After tenantId filter:', filteredOrgs.length);
 
     // 4. Filter by user access (assignment-based for junior managers)
     filteredOrgs = filterByUserAccess(filteredOrgs, user, 'Organisation');
-    console.log('👤 After user access filter:', filteredOrgs.length);
 
     if (search) {
       const searchLower = search.toLowerCase();

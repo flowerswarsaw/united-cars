@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { contractRepository, jsonPersistence } from '@united-cars/crm-mocks';
 import { getCRMUser, checkEntityAccess, filterByUserAccess } from '@/lib/crm-auth';
+import { ContractType, ContractStatus } from '@united-cars/crm-core';
 
 // GET /api/crm/contracts - List contracts with filters
 export async function GET(request: NextRequest) {
@@ -64,11 +65,21 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
 
+    // Map string type to enum, default to SERVICE
+    const contractType = body.type && Object.values(ContractType).includes(body.type)
+      ? body.type as ContractType
+      : ContractType.SERVICE;
+
+    // Map string status to enum, default to DRAFT
+    const contractStatus = body.status && Object.values(ContractStatus).includes(body.status)
+      ? body.status as ContractStatus
+      : ContractStatus.DRAFT;
+
     const contractData = {
       title: body.title || '',
       contractNumber: body.contractNumber || undefined, // Auto-generate if not provided
-      type: body.type || 'SERVICE',
-      status: body.status || 'DRAFT',
+      type: contractType,
+      status: contractStatus,
       description: body.description || '',
       amount: body.amount || undefined,
       currency: body.currency || 'USD',
@@ -82,12 +93,11 @@ export async function POST(request: NextRequest) {
       version: body.version || '1.0',
       notes: body.notes || '',
       tags: body.tags || [],
-      tenantId: user.tenantId,
       createdBy: user.id,
       updatedBy: user.id
     };
 
-    const result = await contractRepository.createContract(contractData as any, {
+    const result = await contractRepository.createContract(contractData, {
       user,
       reason: 'User created contract'
     });

@@ -46,9 +46,6 @@ const availableOrganizations = [
   { id: generateOrgId('United Cars Processing'), name: 'United Cars Processing', type: 'processor', email: 'ops@unitedcars.com', phone: '(555) 789-0123' }
 ]
 
-// Debug: Log the generated organization IDs
-console.log('🔧 DEBUG: Available organization IDs:', availableOrganizations.map(org => ({ id: org.id, name: org.name })))
-
 export default function PackageDetailPage({ params }: PackageDetailPageProps) {
   const router = useRouter()
   const { user, loading: sessionLoading } = useSession()
@@ -119,11 +116,6 @@ export default function PackageDetailPage({ params }: PackageDetailPageProps) {
         senderOrgId: foundPackage.senderOrg.id,
         recipientOrgId: foundPackage.recipientOrg.id
       }
-      
-      console.log('🔧 DEBUG: Initializing edit form with:', initialFormData)
-      console.log('🔧 DEBUG: Available organizations:', availableOrganizations.map(org => ({ id: org.id, name: org.name })))
-      console.log('🔧 DEBUG: Current package sender:', foundPackage.senderOrg)
-      console.log('🔧 DEBUG: Current package recipient:', foundPackage.recipientOrg)
       
       setEditForm(initialFormData)
     } catch (error) {
@@ -452,8 +444,6 @@ export default function PackageDetailPage({ params }: PackageDetailPageProps) {
   }
 
   const handleSaveChanges = () => {
-    console.log('🔧 DEBUG: Save changes called with form data:', editForm)
-    
     // Validate required fields
     if (!editForm.trackingNumber || editForm.trackingNumber.trim() === '') {
       toast.error('Tracking number is required')
@@ -483,9 +473,6 @@ export default function PackageDetailPage({ params }: PackageDetailPageProps) {
     // Find the selected organizations
     const senderOrg = availableOrganizations.find(org => org.id === editForm.senderOrgId)
     const recipientOrg = availableOrganizations.find(org => org.id === editForm.recipientOrgId)
-    
-    console.log('🔧 DEBUG: Found sender org:', senderOrg)
-    console.log('🔧 DEBUG: Found recipient org:', recipientOrg)
 
     if (!senderOrg || !recipientOrg) {
       toast.error('Invalid organization selection')
@@ -704,10 +691,7 @@ export default function PackageDetailPage({ params }: PackageDetailPageProps) {
                   {isEditing ? (
                     <select
                       value={editForm.senderOrgId || ''}
-                      onChange={(e) => {
-                        console.log('🔧 DEBUG: Sender changed to:', e.target.value)
-                        setEditForm({...editForm, senderOrgId: e.target.value})
-                      }}
+                      onChange={(e) => setEditForm({...editForm, senderOrgId: e.target.value})}
                       className="block w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     >
                       <option value="">Select sender...</option>
@@ -732,10 +716,7 @@ export default function PackageDetailPage({ params }: PackageDetailPageProps) {
                   {isEditing ? (
                     <select
                       value={editForm.recipientOrgId || ''}
-                      onChange={(e) => {
-                        console.log('🔧 DEBUG: Recipient changed to:', e.target.value)
-                        setEditForm({...editForm, recipientOrgId: e.target.value})
-                      }}
+                      onChange={(e) => setEditForm({...editForm, recipientOrgId: e.target.value})}
                       className="block w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     >
                       <option value="">Select recipient...</option>
@@ -914,8 +895,6 @@ export default function PackageDetailPage({ params }: PackageDetailPageProps) {
                               onClick={() => {
                                 // Mock document viewing
                                 toast.success(`Opening document: ${doc.filename}`)
-                                console.log('Opening document:', doc)
-                                // In production: window.open(doc.fileUrl, '_blank')
                               }}
                               className="text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline text-left"
                             >
@@ -930,7 +909,6 @@ export default function PackageDetailPage({ params }: PackageDetailPageProps) {
                           <button
                             onClick={() => {
                               toast.success(`Downloading: ${doc.filename}`)
-                              console.log('Downloading document:', doc)
                             }}
                             className="p-1 text-gray-400 hover:text-blue-600"
                             title="Download document"

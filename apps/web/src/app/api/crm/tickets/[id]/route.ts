@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ticketRepository } from '@united-cars/crm-mocks';
+import { ticketRepository, ticketEvents } from '@united-cars/crm-mocks';
+import { broadcastTicketStatusChanged } from '@/lib/crm-events';
 
 export async function GET(
   request: NextRequest,
@@ -55,6 +56,13 @@ export async function PATCH(
         { error: 'Failed to update ticket' },
         { status: 500 }
       );
+    }
+
+    // Emit automation event if status changed
+    if (body.status && body.status !== existing.status) {
+      await ticketEvents.statusChanged(updated, existing.status, body.status, existing.tenantId);
+      // Broadcast real-time update to connected clients
+      broadcastTicketStatusChanged(updated, existing.status, body.status, existing.tenantId);
     }
 
     return NextResponse.json(updated);

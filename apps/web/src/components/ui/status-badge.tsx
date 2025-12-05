@@ -1,3 +1,6 @@
+'use client';
+
+import * as React from 'react';
 import { clsx } from 'clsx'
 
 type StatusVariant = 
@@ -48,11 +51,8 @@ const statusMap: Record<string, StatusConfig> = {
   new: { variant: 'warning', label: 'New' },
   investigating: { variant: 'info', label: 'Investigating' },
   under_review: { variant: 'warning', label: 'Under Review' },
-  approved: { variant: 'success', label: 'Approved' },
-  rejected: { variant: 'error', label: 'Rejected' },
   settled: { variant: 'success', label: 'Settled' },
-  paid: { variant: 'success', label: 'Paid' },
-  closed: { variant: 'neutral', label: 'Closed' },
+  // Note: approved, rejected, closed, paid are defined in Universal statuses above
   
   // Invoice statuses
   DRAFT: { variant: 'neutral', label: 'Draft' },
@@ -74,6 +74,17 @@ const statusMap: Record<string, StatusConfig> = {
   ACTIVE: { variant: 'success', label: 'Active' },
   INACTIVE: { variant: 'neutral', label: 'Inactive' },
   SUSPENDED: { variant: 'error', label: 'Suspended' },
+
+  // Ticket statuses
+  OPEN: { variant: 'info', label: 'Open' },
+  IN_PROGRESS: { variant: 'warning', label: 'In Progress' },
+  WAITING: { variant: 'neutral', label: 'Waiting' },
+  RESOLVED: { variant: 'success', label: 'Resolved' },
+
+  // Task statuses
+  TODO: { variant: 'neutral', label: 'To Do' },
+  DONE: { variant: 'success', label: 'Done' },
+  CANCELLED: { variant: 'neutral', label: 'Cancelled' },
 }
 
 const variantStyles: Record<StatusVariant, string> = {
@@ -100,20 +111,20 @@ export function StatusBadge({ status, className, size = 'md', label }: StatusBad
     )
   }
 
-  const config = statusMap[status] || { 
-    variant: 'neutral' as StatusVariant, 
-    label: status.replace(/_/g, ' ').toLowerCase() 
+  const config = statusMap[status] || {
+    variant: 'neutral' as StatusVariant,
+    label: status.replace(/_/g, ' ').toLowerCase()
   }
-  
+
   // Use custom label if provided, otherwise use config label
   const displayLabel = label || config.label
-  
+
   const sizeClasses = {
     sm: 'text-xs px-2 py-0.5',
     md: 'text-sm px-2.5 py-1',
     lg: 'text-base px-3 py-1.5'
   }
-  
+
   return (
     <span
       className={clsx(
@@ -126,4 +137,127 @@ export function StatusBadge({ status, className, size = 'md', label }: StatusBad
       {displayLabel}
     </span>
   )
+}
+
+/**
+ * ClickableStatusBadge - Status badge with dropdown to change status
+ */
+interface ClickableStatusBadgeProps {
+  status: string
+  options: { value: string; label: string }[]
+  onStatusChange: (newStatus: string) => void | Promise<void>
+  className?: string
+  size?: 'sm' | 'md' | 'lg'
+  disabled?: boolean
+}
+
+export function ClickableStatusBadge({
+  status,
+  options,
+  onStatusChange,
+  className,
+  size = 'md',
+  disabled = false,
+}: ClickableStatusBadgeProps) {
+  const [isOpen, setIsOpen] = React.useState(false);
+  const [isChanging, setIsChanging] = React.useState(false);
+  const dropdownRef = React.useRef<HTMLDivElement>(null);
+
+  // Close dropdown when clicking outside
+  React.useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleStatusChange = async (newStatus: string) => {
+    if (newStatus === status) {
+      setIsOpen(false);
+      return;
+    }
+
+    setIsChanging(true);
+    try {
+      await onStatusChange(newStatus);
+      setIsOpen(false);
+    } finally {
+      setIsChanging(false);
+    }
+  };
+
+  const config = statusMap[status] || {
+    variant: 'neutral' as StatusVariant,
+    label: status.replace(/_/g, ' ').toLowerCase()
+  }
+
+  const sizeClasses = {
+    sm: 'text-xs px-2 py-0.5',
+    md: 'text-sm px-2.5 py-1',
+    lg: 'text-base px-3 py-1.5'
+  }
+
+  return (
+    <div className="relative inline-block" ref={dropdownRef}>
+      <button
+        type="button"
+        onClick={() => !disabled && setIsOpen(!isOpen)}
+        disabled={disabled || isChanging}
+        className={clsx(
+          'inline-flex items-center font-medium rounded-full border cursor-pointer transition-all',
+          variantStyles[config.variant],
+          sizeClasses[size],
+          !disabled && 'hover:ring-2 hover:ring-offset-1 hover:ring-current/20',
+          disabled && 'opacity-50 cursor-not-allowed',
+          isChanging && 'animate-pulse',
+          className
+        )}
+      >
+        {config.label}
+        {!disabled && (
+          <svg className="ml-1 h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        )}
+      </button>
+
+      {isOpen && (
+        <div className="absolute z-50 mt-1 min-w-[120px] rounded-md border bg-popover shadow-lg">
+          <div className="p-1">
+            {options.map((option) => {
+              const optionConfig = statusMap[option.value] || {
+                variant: 'neutral' as StatusVariant,
+                label: option.label
+              };
+              return (
+                <button
+                  key={option.value}
+                  onClick={() => handleStatusChange(option.value)}
+                  className={clsx(
+                    'w-full text-left px-2 py-1.5 text-sm rounded transition-colors',
+                    option.value === status
+                      ? 'bg-accent font-medium'
+                      : 'hover:bg-muted'
+                  )}
+                >
+                  <span className={clsx(
+                    'inline-block w-2 h-2 rounded-full mr-2',
+                    optionConfig.variant === 'success' && 'bg-green-500',
+                    optionConfig.variant === 'warning' && 'bg-yellow-500',
+                    optionConfig.variant === 'error' && 'bg-red-500',
+                    optionConfig.variant === 'info' && 'bg-blue-500',
+                    optionConfig.variant === 'neutral' && 'bg-gray-500',
+                  )} />
+                  {option.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }

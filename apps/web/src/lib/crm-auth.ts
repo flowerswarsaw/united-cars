@@ -139,33 +139,36 @@ function mapToCRMRole(platformRoles: string[]): UserRole {
   return UserRole.JUNIOR_SALES_MANAGER;  // Default
 }
 
+// RBAC entity type mapping for type safety
+type RBACEntityType = 'organisations' | 'contacts' | 'deals' | 'leads' | 'tasks' | 'pipelines' | 'contracts' | 'calls';
+type EntityTypeName = 'Organisation' | 'Contact' | 'Deal' | 'Lead' | 'Task' | 'Pipeline' | 'Stage' | 'Contract' | 'Call';
+
+const ENTITY_TYPE_MAP: Record<EntityTypeName, RBACEntityType> = {
+  'Organisation': 'organisations',
+  'Contact': 'contacts',
+  'Deal': 'deals',
+  'Lead': 'leads',
+  'Task': 'tasks',
+  'Pipeline': 'pipelines',
+  'Stage': 'pipelines', // Stages use pipeline permissions
+  'Contract': 'contracts',
+  'Call': 'calls'
+} as const;
+
 /**
  * Check if user can perform operation on entity
  * Returns 403 error response if access denied, true if access granted
  */
 export function checkEntityAccess(
   user: CRMUser,
-  entityType: 'Organisation' | 'Contact' | 'Deal' | 'Lead' | 'Task' | 'Pipeline' | 'Stage' | 'Contract' | 'Call',
+  entityType: EntityTypeName,
   operation: 'canCreate' | 'canRead' | 'canUpdate' | 'canDelete',
   entityAssignedUserId?: string
 ): boolean | NextResponse {
-  // Map entity type to RBAC entity name (singular -> plural lowercase)
-  const entityTypeMap: Record<string, string> = {
-    'Organisation': 'organisations',
-    'Contact': 'contacts',
-    'Deal': 'deals',
-    'Lead': 'leads',
-    'Task': 'tasks',
-    'Pipeline': 'pipelines',
-    'Stage': 'pipelines', // Stages use pipeline permissions
-    'Contract': 'contracts',
-    'Call': 'calls'
-  };
-
-  const rbacEntityType = entityTypeMap[entityType] as any;
+  const rbacEntityType = ENTITY_TYPE_MAP[entityType];
 
   const hasAccess = canUserAccessEntity(
-    { id: user.id, role: user.role, orgId: user.orgId },
+    { id: user.id, role: user.role },
     rbacEntityType,
     operation,
     undefined,

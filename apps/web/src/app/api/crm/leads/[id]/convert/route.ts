@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { leadRepository, jsonPersistence } from '@united-cars/crm-mocks';
+import { leadRepository, jsonPersistence, leadEvents, dealEvents } from '@united-cars/crm-mocks';
 import { convertLeadInputSchema, UserRole } from '@united-cars/crm-core';
 import { getCRMUser } from '@/lib/crm-auth';
 
@@ -51,6 +51,10 @@ export async function POST(
     });
 
     await jsonPersistence.save();
+
+    // Emit automation events for lead conversion and deal creation
+    await leadEvents.converted(lead, deal.id, user.tenantId);
+    await dealEvents.created(deal, user.tenantId);
 
     console.log(`Successfully converted lead: ${id} to deal: ${deal.id}`);
     return NextResponse.json(deal, { status: 201 });

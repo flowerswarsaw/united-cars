@@ -224,14 +224,10 @@ export default function ContactDetailPage() {
 
     // Validation for contact info section
     if (section === 'contactInfo') {
-      console.log('Raw contact methods before filter:', data.contactMethods);
-
       // Filter out empty contact methods
       const validContactMethods = data.contactMethods?.filter((method: any) =>
         method.value?.trim()
       ) || [];
-
-      console.log('Filtered contact methods:', validContactMethods);
 
       const hasPhone = validContactMethods.some((method: any) =>
         method.type === ContactMethodType.PHONE && method.value?.trim()

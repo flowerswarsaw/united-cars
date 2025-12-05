@@ -163,10 +163,6 @@ export default function ContactsPage() {
           ? `/api/crm/contacts?${params.toString()}`
           : '/api/crm/contacts';
 
-        console.log('📡 Fetching contacts with URL:', url);
-        console.log('🔎 Filter values:', { country: filters.country, state: filters.state, city: filters.city, type: filters.type, assignedTo: filters.assignedTo });
-        console.log('👥 Available users:', users);
-
         const response = await fetch(url);
         const data = await response.json();
         setContacts(data || []);
@@ -638,7 +634,6 @@ export default function ContactsPage() {
                 <CountrySelector
                   value={filters.country || 'all'}
                   onValueChange={(country) => {
-                    console.log('🌍 Country selected:', country);
                     const actualCountry = country === 'all' ? '' : country;
                     setFilters({ ...filters, country: actualCountry, state: '', city: '' });
                   }}

@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { updateDealSchema, UserRole } from '@united-cars/crm-core';
-import { dealRepository, jsonPersistence } from '@united-cars/crm-mocks';
+import { dealRepository, jsonPersistence, dealEvents } from '@united-cars/crm-mocks';
 import { getCRMUser, checkEntityAccess } from '@/lib/crm-auth';
+import { broadcastDealUpdated, broadcastDealWon, broadcastDealLost } from '@/lib/crm-events';
 
 export async function GET(
   request: NextRequest,
@@ -93,8 +94,6 @@ export async function PATCH(
 
     const body = await request.json();
 
-    console.log(`Updating deal ${id} with:`, body);
-
     // 4. Update the deal with user tracking
     const updatedDeal = await dealRepository.update(id, {
       ...body,
@@ -111,10 +110,39 @@ export async function PATCH(
     // Save to persistent storage
     await jsonPersistence.save();
 
-    console.log(`✅ Deal ${id} updated successfully`);
+    // Build changes array for automation event
+    const changes: { field: string; oldValue: any; newValue: any }[] = [];
+    for (const key of Object.keys(body)) {
+      if (existingDeal[key as keyof typeof existingDeal] !== body[key]) {
+        changes.push({
+          field: key,
+          oldValue: existingDeal[key as keyof typeof existingDeal],
+          newValue: body[key]
+        });
+      }
+    }
+
+    // Emit automation event for deal update
+    if (changes.length > 0) {
+      await dealEvents.updated(updatedDeal, changes, user.tenantId);
+    }
+
+    // Check for won/lost status changes
+    if (body.status === 'WON' && existingDeal.status !== 'WON') {
+      await dealEvents.won(updatedDeal, user.tenantId);
+      broadcastDealWon(updatedDeal, user.tenantId);
+    } else if (body.status === 'LOST' && existingDeal.status !== 'LOST') {
+      await dealEvents.lost(updatedDeal, user.tenantId);
+      broadcastDealLost(updatedDeal, body.lossReason, user.tenantId);
+    } else if (changes.length > 0) {
+      // Broadcast update for non-status changes
+      const changesMap: Record<string, any> = {};
+      changes.forEach(c => { changesMap[c.field] = { from: c.oldValue, to: c.newValue }; });
+      broadcastDealUpdated(updatedDeal, changesMap, user.tenantId);
+    }
+
     return NextResponse.json(updatedDeal);
   } catch (error: any) {
-    console.error('❌ Failed to update deal:', error);
     if (error.name === 'ZodError') {
       return NextResponse.json(
         { error: 'Invalid input', details: error.errors },
@@ -176,10 +204,8 @@ export async function DELETE(
     // Save to persistent storage
     await jsonPersistence.save();
 
-    console.log(`✅ Deal ${id} deleted successfully`);
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('❌ Failed to delete deal:', error);
     return NextResponse.json(
       { error: 'Failed to delete deal' },
       { status: 500 }

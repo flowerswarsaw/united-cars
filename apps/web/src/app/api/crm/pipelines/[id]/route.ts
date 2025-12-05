@@ -61,7 +61,7 @@ export async function PATCH(
       description: body.description ?? pipeline.description,
       color: body.color ?? pipeline.color,
       isDefault: body.isDefault ?? pipeline.isDefault,
-      isActive: body.isActive ?? (pipeline as any).isActive ?? true,
+      isActive: body.isActive ?? pipeline.isActive ?? true,
       order: body.order ?? pipeline.order,
       applicableTypes: body.applicableTypes ?? pipeline.applicableTypes,
       isTypeSpecific: body.isTypeSpecific ?? pipeline.isTypeSpecific

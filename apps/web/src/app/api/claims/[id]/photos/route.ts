@@ -3,6 +3,22 @@ import { prisma } from '@united-cars/db'
 import { processSecureUpload, ALLOWED_IMAGE_TYPES, MAX_FILES_PER_REQUEST } from '@united-cars/core/server'
 import { join } from 'path'
 
+// Photo data stored in JSON field
+interface ClaimPhoto {
+  filename: string;
+  originalName: string;
+  size: number;
+  mimeType: string;
+  url: string;
+  uploadedAt: string;
+}
+
+// Where clause type for insurance claims
+interface ClaimWhereClause {
+  id: string;
+  orgId?: string;
+}
+
 // Simple auth helper
 async function getSession(request: NextRequest) {
   try {
@@ -29,11 +45,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const roles = session.user.roles || []
 
     // Check if claim exists and user has access
-    let whereClause: any = { id: claimId }
-    
+    const whereClause: ClaimWhereClause = { id: claimId };
+
     if (!roles.includes('ADMIN') && !roles.includes('OPS')) {
       // Dealers can only upload to their own org's claims
-      whereClause.orgId = session.user.orgId
+      whereClause.orgId = session.user.orgId;
     }
 
     const claim = await prisma.insuranceClaim.findFirst({
@@ -123,8 +139,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }
 
     // Update claim with new photos
-    const existingPhotos = (claim.photos as any[]) || []
-    const updatedPhotos = [...existingPhotos, ...uploadedPhotos]
+    const existingPhotos = (claim.photos as ClaimPhoto[] | null) || [];
+    const updatedPhotos = [...existingPhotos, ...uploadedPhotos];
 
     const updatedClaim = await prisma.insuranceClaim.update({
       where: { id: claimId },

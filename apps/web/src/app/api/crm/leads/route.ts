@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { leadRepository } from '@united-cars/crm-mocks';
+import { leadRepository, jsonPersistence, leadEvents } from '@united-cars/crm-mocks';
 import { formatPhoneForStorage } from '@/lib/phone-formatter';
 import { normalizeCountryCode, normalizeRegionCode } from '@/lib/country-validator';
 import { normalizePostalCode } from '@/lib/postal-code-validator';
@@ -137,6 +137,12 @@ export async function POST(request: NextRequest) {
       // If no assignee specified, assign to creator
       responsibleUserId: body.responsibleUserId || user.id
     });
+
+    // Save to persistent storage
+    await jsonPersistence.save();
+
+    // Emit automation event for lead creation
+    await leadEvents.created(newLead, user.tenantId);
 
     return NextResponse.json(newLead, { status: 201 });
   } catch (error: any) {

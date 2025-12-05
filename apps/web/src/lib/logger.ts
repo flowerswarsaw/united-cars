@@ -109,15 +109,31 @@ class StructuredLogger {
     }
   }
 
+  private safeStringify(obj: any, space?: number): string {
+    const seen = new WeakSet()
+    return JSON.stringify(obj, (key, value) => {
+      if (typeof value === 'object' && value !== null) {
+        if (seen.has(value)) {
+          return '[Circular]'
+        }
+        seen.add(value)
+      }
+      return value
+    }, space)
+  }
+
   private output(entry: LogEntry) {
     let logString: string
     try {
-      logString = JSON.stringify(entry)
+      logString = this.safeStringify(entry)
     } catch (error) {
-      // Handle circular references or other JSON.stringify issues
+      // Handle any remaining stringify issues
       logString = JSON.stringify({
-        ...entry,
-        error: '[Circular reference or non-serializable data]',
+        timestamp: entry.timestamp,
+        level: entry.level,
+        category: entry.category,
+        message: entry.message,
+        error: '[Non-serializable data]',
         fallback: true
       })
     }
@@ -126,7 +142,7 @@ class StructuredLogger {
     if (this.environment === 'development' || this.environment === 'test') {
       const readable = `[${entry.timestamp}] ${entry.level.toUpperCase()} [${entry.category}] ${entry.message}`
       console.log(readable)
-      console.log('  Details:', JSON.stringify(entry, null, 2))
+      console.log('  Details:', this.safeStringify(entry, 2))
     } else {
       // In production, output structured JSON for log aggregation
       console.log(logString)

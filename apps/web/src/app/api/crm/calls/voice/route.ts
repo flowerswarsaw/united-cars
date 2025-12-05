@@ -29,14 +29,25 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // Build status callback URL
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const statusCallbackUrl = `${baseUrl}/api/crm/calls/webhook`;
+
     // Dial the destination number
     const dial = response.dial({
       callerId: process.env.TWILIO_CALLER_ID,
       timeout: 30,
+      // Configure status callback for call status updates
+      action: statusCallbackUrl,
+      method: 'POST',
     });
-    dial.number(to);
+    dial.number({
+      statusCallback: statusCallbackUrl,
+      statusCallbackMethod: 'POST',
+      statusCallbackEvent: ['initiated', 'ringing', 'answered', 'completed'],
+    }, to);
 
-    console.log(`[Voice Webhook] Dialing ${to} with caller ID ${process.env.TWILIO_CALLER_ID}`);
+    console.log(`[Voice Webhook] Dialing ${to} with caller ID ${process.env.TWILIO_CALLER_ID}, status callback: ${statusCallbackUrl}`);
 
     return new NextResponse(response.toString(), {
       headers: { 'Content-Type': 'text/xml' },

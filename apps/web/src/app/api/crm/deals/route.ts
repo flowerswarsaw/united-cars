@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { dealRepository, jsonPersistence } from '@united-cars/crm-mocks';
+import { dealRepository, jsonPersistence, dealEvents } from '@united-cars/crm-mocks';
 import { getCRMUser, checkEntityAccess, filterByUserAccess } from '@/lib/crm-auth';
+import { broadcastDealCreated } from '@/lib/crm-events';
 
 export async function GET(request: NextRequest) {
   try {
@@ -66,8 +67,6 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
 
-    console.log('Deal creation request received:', JSON.stringify(body, null, 2));
-
     // 3. Create deal data with tenant and user tracking
     const dealData = {
       title: body.title || '',
@@ -95,7 +94,11 @@ export async function POST(request: NextRequest) {
     const newDeal = await dealRepository.create(dealData);
     await jsonPersistence.save();
 
-    console.log(`Created new deal: ${newDeal.title} (ID: ${newDeal.id})`);
+    // Emit automation event for deal creation
+    await dealEvents.created(newDeal, user.tenantId);
+
+    // Broadcast real-time update to connected clients
+    broadcastDealCreated(newDeal, user.tenantId);
 
     return NextResponse.json(newDeal, { status: 201 });
   } catch (error: any) {

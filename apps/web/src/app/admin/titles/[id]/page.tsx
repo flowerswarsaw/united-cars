@@ -99,17 +99,8 @@ export default function AdminTitleDetailPage({ params }: AdminTitleDetailPagePro
     assignedTo: ''
   })
   
-  // Upload/Scan functionality state - using useRef to debug state persistence
+  // Upload/Scan functionality state
   const [showUploadModal, setShowUploadModal] = useState(false)
-  const modalRef = React.useRef(showUploadModal)
-  
-  useEffect(() => {
-    modalRef.current = showUploadModal
-    console.log('Modal state changed:', showUploadModal)
-    if (showUploadModal) {
-      console.log('Modal should be visible now!')
-    }
-  }, [showUploadModal])
 
   useEffect(() => {
     if (user && !sessionLoading) {
@@ -593,7 +584,6 @@ export default function AdminTitleDetailPage({ params }: AdminTitleDetailPagePro
                   onClick={(e) => {
                     e.preventDefault()
                     e.stopPropagation()
-                    console.log('Upload/Scan button clicked')
                     setShowUploadModal(true)
                   }}
                   className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
@@ -617,9 +607,6 @@ export default function AdminTitleDetailPage({ params }: AdminTitleDetailPagePro
                           onClick={() => {
                             // Mock document viewing - in production would open actual document
                             toast.success(`Opening document: ${document.filename}`)
-                            // In a real app, this would be:
-                            // window.open(`/api/titles/${title.id}/documents/${document.id}`, '_blank')
-                            console.log('Document clicked:', document)
                           }}
                           className="text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline text-left"
                         >
@@ -632,7 +619,6 @@ export default function AdminTitleDetailPage({ params }: AdminTitleDetailPagePro
                       <button
                         onClick={() => {
                           toast.success(`Downloading: ${document.filename}`)
-                          console.log('Download document:', document)
                         }}
                         className="p-1 text-gray-400 hover:text-blue-600"
                         title="Download document"

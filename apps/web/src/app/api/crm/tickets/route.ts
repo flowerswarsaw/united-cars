@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ticketRepository, seedTickets } from '@united-cars/crm-mocks';
+import { ticketRepository, seedTickets, ticketEvents } from '@united-cars/crm-mocks';
 import { TicketStatus, TicketType, TicketPriority } from '@united-cars/crm-core';
+import { broadcastTicketCreated } from '@/lib/crm-events';
 
 const DEFAULT_TENANT_ID = 'united-cars';
 
@@ -104,6 +105,12 @@ export async function POST(request: NextRequest) {
       notes: body.notes,
       tags: body.tags,
     });
+
+    // Emit automation event for ticket creation
+    await ticketEvents.created(ticket, DEFAULT_TENANT_ID);
+
+    // Broadcast real-time update to connected clients
+    broadcastTicketCreated(ticket, DEFAULT_TENANT_ID);
 
     return NextResponse.json(ticket, { status: 201 });
   } catch (error: any) {

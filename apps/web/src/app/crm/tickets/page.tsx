@@ -60,6 +60,7 @@ import {
   Contact,
   Deal
 } from '@united-cars/crm-core';
+import { ClickableStatusBadge } from '@/components/ui/status-badge';
 import toast from 'react-hot-toast';
 
 const StatusIcons: Record<TicketStatus, React.ComponentType<{ className?: string }>> = {
@@ -336,6 +337,33 @@ export default function TicketsPage() {
     });
   };
 
+  const updateTicketStatus = async (ticketId: string, newStatus: string) => {
+    try {
+      const response = await fetch(`/api/crm/tickets/${ticketId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus })
+      });
+
+      if (response.ok) {
+        await loadTickets();
+        toast.success('Status updated');
+      } else {
+        toast.error('Failed to update status');
+      }
+    } catch (error) {
+      toast.error('Failed to update status');
+    }
+  };
+
+  const ticketStatusOptions = [
+    { value: TicketStatus.OPEN, label: 'Open' },
+    { value: TicketStatus.IN_PROGRESS, label: 'In Progress' },
+    { value: TicketStatus.WAITING, label: 'Waiting' },
+    { value: TicketStatus.RESOLVED, label: 'Resolved' },
+    { value: TicketStatus.CLOSED, label: 'Closed' },
+  ];
+
   const formatDate = (date?: Date | string) => {
     if (!date) return '-';
     const d = new Date(date);
@@ -570,10 +598,12 @@ export default function TicketsPage() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge className={`${StatusColors[ticket.status]} text-xs font-medium px-2 py-1 flex items-center space-x-1 w-fit`}>
-                          <StatusIcon className="h-3 w-3" />
-                          <span>{ticket.status.replace('_', ' ')}</span>
-                        </Badge>
+                        <ClickableStatusBadge
+                          status={ticket.status}
+                          options={ticketStatusOptions}
+                          onStatusChange={(newStatus) => updateTicketStatus(ticket.id, newStatus)}
+                          size="sm"
+                        />
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center space-x-2">

@@ -380,10 +380,8 @@ export default function AdminTitlePackagesPage() {
   const handleCreateNew = () => {
     if (viewMode === 'titles') {
       setShowCreateModal(true)
-      console.log('Creating new title...')
     } else {
       setShowCreatePackageModal(true)
-      console.log('Creating new package...')
     }
   }
 
@@ -450,12 +448,6 @@ export default function AdminTitlePackagesPage() {
   // Helper functions for package title selection
   const getAvailableTitlesForPackage = () => {
     const filters = packageTitleSelection.titleFilter
-    console.log('🔍 Filter Debug:', {
-      orgFilter: filters.orgFilter,
-      statusFilter: filters.statusFilter,
-      search: filters.search,
-      totalTitles: titles.length
-    })
 
     const filtered = titles.filter(title => {
       // Only show titles that aren't already in a package
@@ -482,28 +474,9 @@ export default function AdminTitlePackagesPage() {
                      titleType.includes(searchTerm)
       }
 
-      const matches = isUnassigned && orgMatch && statusMatch && searchMatch
-      
-      // Debug individual title matching
-      if (filters.orgFilter !== 'all' || filters.statusFilter !== 'all' || filters.search !== '') {
-        console.log(`📋 Title ${title.id}:`, {
-          org: title.vehicle?.org?.id,
-          orgName: title.vehicle?.org?.name,
-          status: title.dynamicStatus.status,
-          statusDisplay: title.dynamicStatus.displayText,
-          vin: title.vehicle?.vin,
-          isUnassigned,
-          orgMatch,
-          statusMatch,
-          searchMatch,
-          finalMatch: matches
-        })
-      }
-
-      return matches
+      return isUnassigned && orgMatch && statusMatch && searchMatch
     })
 
-    console.log(`✅ Filtered Results: ${filtered.length} titles match filters`)
     return filtered
   }
 
@@ -523,8 +496,6 @@ export default function AdminTitlePackagesPage() {
   const handleSelectAllTitles = () => {
     const availableTitles = getAvailableTitlesForPackage()
     const filteredIds = new Set(availableTitles.map(title => title.id))
-    console.log(`🎯 Select All: Selecting ${filteredIds.size} titles that match current filters:`, 
-      Array.from(filteredIds))
     setPackageTitleSelection(prev => ({
       ...prev,
       selectedTitleIds: filteredIds
@@ -532,7 +503,6 @@ export default function AdminTitlePackagesPage() {
   }
 
   const handleClearAllTitles = () => {
-    console.log('Clearing all title selections')
     setPackageTitleSelection(prev => ({
       ...prev,
       selectedTitleIds: new Set()

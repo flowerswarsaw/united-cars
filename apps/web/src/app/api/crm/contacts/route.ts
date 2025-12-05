@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { contactRepository, jsonPersistence } from '@united-cars/crm-mocks';
+import { contactRepository, jsonPersistence, contactEvents } from '@united-cars/crm-mocks';
 import { formatContactMethods, formatPhoneForStorage } from '@/lib/phone-formatter';
+import { broadcastContactCreated } from '@/lib/crm-events';
 import { formatContactMethodsEmails } from '@/lib/email-formatter';
 import { normalizeCountryCode, normalizeRegionCode } from '@/lib/country-validator';
 import { normalizePostalCode } from '@/lib/postal-code-validator';
@@ -130,13 +131,7 @@ export async function GET(request: NextRequest) {
 
     // Filter by assigned user
     if (assignedTo) {
-      console.log('🎯 Filtering by assignedTo:', assignedTo);
-      console.log('📊 Sample contacts responsibleUserIds:', filteredContacts.slice(0, 3).map(c => ({
-        name: `${c.firstName} ${c.lastName}`,
-        responsibleUserId: c.responsibleUserId
-      })));
       filteredContacts = filteredContacts.filter(contact => contact.responsibleUserId === assignedTo);
-      console.log('✅ Contacts after assignedTo filter:', filteredContacts.length);
     }
 
     if (paginated) {
@@ -169,9 +164,6 @@ export async function POST(request: NextRequest) {
     if (accessCheck instanceof NextResponse) return accessCheck;
 
     const body = await request.json();
-
-    // Log the incoming request data for debugging
-    console.log('Contact creation request received:', JSON.stringify(body, null, 2));
 
     // Build contact methods array, ensuring at least one exists
     let contactMethods = body.contactMethods || [];
@@ -248,7 +240,11 @@ export async function POST(request: NextRequest) {
     // Save to persistent storage
     await jsonPersistence.save();
 
-    console.log(`Created new contact: ${newContact.firstName} ${newContact.lastName} (ID: ${newContact.id})`);
+    // Emit automation event for contact creation
+    await contactEvents.created(newContact, user.tenantId);
+
+    // Broadcast real-time update to connected clients
+    broadcastContactCreated(newContact, user.tenantId);
 
     return NextResponse.json(newContact, { status: 201 });
   } catch (error: any) {

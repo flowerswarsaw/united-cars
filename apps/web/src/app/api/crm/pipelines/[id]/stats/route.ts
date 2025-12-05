@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PipelineService, hasPermission } from '@/lib/services/pipeline-service';
+import { PipelineService, hasPermission, mapSessionUserToPipelineUser } from '@/lib/services/pipeline-service';
 import { getServerSessionFromRequest } from '@/lib/auth';
 
 export async function GET(
@@ -8,10 +8,7 @@ export async function GET(
 ) {
   try {
     const session = await getServerSessionFromRequest(request);
-    const user = { 
-      id: session?.user?.id || 'anonymous', 
-      role: (session?.user as any)?.role || 'junior' as 'admin' | 'senior' | 'junior'
-    };
+    const user = mapSessionUserToPipelineUser(session?.user);
 
     if (!hasPermission(user, 'pipeline:read')) {
       return NextResponse.json(
