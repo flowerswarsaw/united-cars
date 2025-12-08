@@ -57,10 +57,56 @@ interface NavSection {
   roles?: string[]
 }
 
+// Check if CRM demo mode is enabled
+// Note: For demo purposes, we hardcode this to true
+// To disable, set to false or use: process.env.NEXT_PUBLIC_DEMO_MODE === 'crm'
+const isCRMDemoMode = true
+
 // Function to get navigation based on user roles
 const getNavigation = (userRoles: string[] = []): NavSection[] => {
   const isDealer = userRoles.includes('DEALER')
-  
+
+  // CRM-only navigation for demo mode
+  const crmNavigation: NavSection[] = [
+    {
+      title: 'CRM',
+      items: [
+        { label: 'Dashboard', href: '/crm', icon: Home },
+        { label: 'Organisations', href: '/crm/organisations', icon: Building2 },
+        { label: 'Contacts', href: '/crm/contacts', icon: UserCheck },
+        {
+          label: 'Deals',
+          href: '/crm/deals/kanban',
+          icon: TrendingUp,
+          children: [
+            { label: 'Kanban', href: '/crm/deals/kanban', icon: TrendingUp },
+            { label: 'Recovery', href: '/crm/deals/recovery', icon: LifeBuoy }
+          ]
+        },
+        { label: 'Leads', href: '/crm/leads', icon: Users },
+        { label: 'Tasks', href: '/crm/tasks', icon: CheckSquare },
+        { label: 'Calls', href: '/crm/calls', icon: Phone },
+        { label: 'Tickets', href: '/crm/tickets', icon: Ticket },
+        {
+          label: 'Settings',
+          href: '/crm/settings/general',
+          icon: Settings,
+          children: [
+            { label: 'General', href: '/crm/settings/general', icon: Settings },
+            { label: 'Users', href: '/crm/settings/users', icon: UsersRound },
+            { label: 'Pipelines', href: '/crm/settings/pipelines', icon: GitBranch },
+            { label: 'Automations', href: '/crm/settings/automations', icon: Zap }
+          ]
+        },
+      ]
+    }
+  ]
+
+  // Return CRM-only navigation in demo mode
+  if (isCRMDemoMode) {
+    return crmNavigation
+  }
+
   const baseNavigation: NavSection[] = [
     {
       title: 'Main',
@@ -83,20 +129,20 @@ const getNavigation = (userRoles: string[] = []): NavSection[] => {
       items: [
         { label: 'Calculator', href: '/calculator', icon: Calculator },
         { label: 'Invoice Generator', href: '/operations/invoice-generator', icon: Receipt },
-        { 
-          label: isDealer ? 'My Invoices' : 'Invoices', 
-          href: '/invoices', 
-          icon: Receipt 
+        {
+          label: isDealer ? 'My Invoices' : 'Invoices',
+          href: '/invoices',
+          icon: Receipt
         },
-        { 
-          label: isDealer ? 'My Payments' : 'Payments', 
-          href: '/payments', 
-          icon: CreditCard 
+        {
+          label: isDealer ? 'My Payments' : 'Payments',
+          href: '/payments',
+          icon: CreditCard
         },
-        { 
-          label: isDealer ? 'My Balance' : 'Balance', 
-          href: '/balance', 
-          icon: DollarSign 
+        {
+          label: isDealer ? 'My Balance' : 'Balance',
+          href: '/balance',
+          icon: DollarSign
         },
       ]
     },
@@ -158,7 +204,7 @@ const getNavigation = (userRoles: string[] = []): NavSection[] => {
       ]
     }
   ]
-  
+
   return baseNavigation
 }
 
@@ -319,15 +365,26 @@ export function Sidebar({ user: userProp, isCollapsed = false, onToggleCollapse 
         "flex items-center h-16 border-b border-border bg-background transition-all duration-200",
         collapsed ? "px-3 justify-center" : "px-3"
       )}>
-        <Link href="/dashboard" className={clsx(
+        <Link href={isCRMDemoMode ? "/crm" : "/dashboard"} className={clsx(
           "flex items-center transition-all duration-200",
           collapsed ? "justify-center" : "space-x-3"
         )}>
-          <div className="bg-gradient-to-br from-primary to-primary/90 rounded-lg flex items-center justify-center transition-all duration-200 w-8 h-8">
-            <Car className="text-primary-foreground transition-all duration-200 w-5 h-5" />
+          <div className={clsx(
+            "rounded-lg flex items-center justify-center transition-all duration-200 w-8 h-8",
+            isCRMDemoMode
+              ? "bg-gradient-to-br from-indigo-600 to-purple-600"
+              : "bg-gradient-to-br from-primary to-primary/90"
+          )}>
+            {isCRMDemoMode ? (
+              <TrendingUp className="text-white transition-all duration-200 w-5 h-5" />
+            ) : (
+              <Car className="text-primary-foreground transition-all duration-200 w-5 h-5" />
+            )}
           </div>
           {!collapsed && (
-            <span className="text-lg font-bold text-foreground truncate">United Cars</span>
+            <span className="text-lg font-bold text-foreground truncate">
+              {isCRMDemoMode ? "SalesPro CRM" : "United Cars"}
+            </span>
           )}
         </Link>
         {/* Desktop collapse toggle */}
@@ -648,7 +705,7 @@ export function Sidebar({ user: userProp, isCollapsed = false, onToggleCollapse 
               <ThemeToggleCompact className="hover:bg-muted" />
             </div>
             <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span>© 2024 United Cars</span>
+              <span>{isCRMDemoMode ? "SalesPro CRM" : "© 2024 United Cars"}</span>
               <span>v1.0.0</span>
             </div>
           </div>

@@ -407,7 +407,18 @@ export default function TicketsPage() {
   const hasActiveFilters = filters.status !== 'all' || filters.priority !== 'all' || filters.type !== 'all' || searchQuery;
 
   if (loading) {
-    return <LoadingState />;
+    return (
+      <AppLayout user={user}>
+        <PageHeader
+          title="Tickets"
+          description="Manage support tickets, claims, and service requests"
+          breadcrumbs={[{ label: 'CRM' }, { label: 'Tickets' }]}
+        />
+        <div className="px-4 sm:px-6 lg:px-8 py-6">
+          <LoadingState />
+        </div>
+      </AppLayout>
+    );
   }
 
   return (

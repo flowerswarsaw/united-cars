@@ -78,45 +78,60 @@ export default function CRMDashboard() {
   ];
 
   const moduleCards = [
-    { 
-      title: 'Deals', 
-      count: stats.totalDeals, 
-      subtext: `${stats.activeDeals} active`, 
-      href: '/crm/deals',
+    {
+      title: 'Deals',
+      count: stats.totalDeals,
+      subtext: `${stats.activeDeals} active`,
+      href: '/crm/deals/kanban',
       icon: TrendingUp,
-      color: 'text-green-600 bg-green-50'
+      iconColor: 'text-emerald-600 dark:text-emerald-400',
+      iconBg: 'bg-emerald-100 dark:bg-emerald-900/50',
+      gradient: 'from-emerald-50 to-teal-50 dark:from-emerald-950/30 dark:to-teal-950/30',
+      borderColor: 'border-emerald-200/50 dark:border-emerald-800/50'
     },
-    { 
-      title: 'Contacts', 
-      count: stats.totalContacts, 
-      subtext: 'People in system', 
+    {
+      title: 'Contacts',
+      count: stats.totalContacts,
+      subtext: 'People in system',
       href: '/crm/contacts',
       icon: UserCheck,
-      color: 'text-blue-600 bg-blue-50'
+      iconColor: 'text-blue-600 dark:text-blue-400',
+      iconBg: 'bg-blue-100 dark:bg-blue-900/50',
+      gradient: 'from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30',
+      borderColor: 'border-blue-200/50 dark:border-blue-800/50'
     },
-    { 
-      title: 'Organisations', 
-      count: stats.totalOrganisations, 
-      subtext: 'Companies tracked', 
+    {
+      title: 'Organisations',
+      count: stats.totalOrganisations,
+      subtext: 'Companies tracked',
       href: '/crm/organisations',
       icon: Building2,
-      color: 'text-orange-600 bg-orange-50'
+      iconColor: 'text-orange-600 dark:text-orange-400',
+      iconBg: 'bg-orange-100 dark:bg-orange-900/50',
+      gradient: 'from-orange-50 to-amber-50 dark:from-orange-950/30 dark:to-amber-950/30',
+      borderColor: 'border-orange-200/50 dark:border-orange-800/50'
     },
-    { 
-      title: 'Leads', 
-      count: stats.totalLeads, 
-      subtext: 'Potential customers', 
+    {
+      title: 'Leads',
+      count: stats.totalLeads,
+      subtext: 'Potential customers',
       href: '/crm/leads',
       icon: Users,
-      color: 'text-purple-600 bg-purple-50'
+      iconColor: 'text-purple-600 dark:text-purple-400',
+      iconBg: 'bg-purple-100 dark:bg-purple-900/50',
+      gradient: 'from-purple-50 to-violet-50 dark:from-purple-950/30 dark:to-violet-950/30',
+      borderColor: 'border-purple-200/50 dark:border-purple-800/50'
     },
-    { 
-      title: 'Pipelines', 
-      count: stats.totalPipelines, 
-      subtext: 'Sales workflows', 
-      href: '/crm/pipelines',
+    {
+      title: 'Pipelines',
+      count: stats.totalPipelines,
+      subtext: 'Sales workflows',
+      href: '/crm/settings/pipelines',
       icon: GitBranch,
-      color: 'text-gray-600 bg-gray-50'
+      iconColor: 'text-slate-600 dark:text-slate-400',
+      iconBg: 'bg-slate-100 dark:bg-slate-800/50',
+      gradient: 'from-slate-50 to-gray-50 dark:from-slate-900/30 dark:to-gray-900/30',
+      borderColor: 'border-slate-200/50 dark:border-slate-700/50'
     },
   ];
 
@@ -221,25 +236,25 @@ export default function CRMDashboard() {
                 const Icon = card.icon;
                 return (
                   <Link key={card.title} href={card.href}>
-                    <div className="bg-gray-50 rounded-lg p-4 hover:bg-gray-100 transition-colors cursor-pointer">
-                      <div className="flex items-center justify-between mb-3">
-                        <div className={`p-2 rounded-lg ${card.color}`}>
-                          <Icon className="h-5 w-5" />
+                    <div className={`bg-gradient-to-br ${card.gradient} rounded-xl p-5 border ${card.borderColor} hover:shadow-lg hover:scale-[1.02] transition-all duration-200 cursor-pointer group`}>
+                      <div className="flex items-center justify-between mb-4">
+                        <div className={`p-2.5 rounded-xl ${card.iconBg} shadow-sm`}>
+                          <Icon className={`h-5 w-5 ${card.iconColor}`} />
                         </div>
-                        <ArrowRight className="h-4 w-4 text-gray-400" />
+                        <ArrowRight className="h-4 w-4 text-gray-400 group-hover:translate-x-1 group-hover:text-gray-600 transition-all" />
                       </div>
                       <div className="space-y-1">
                         {(dealsLoading || contactsLoading || orgsLoading || leadsLoading || pipelinesLoading) ? (
                           <div className="space-y-2">
-                            <div className="h-6 bg-gray-200 rounded animate-pulse"></div>
-                            <div className="h-4 bg-gray-200 rounded animate-pulse"></div>
-                            <div className="h-3 bg-gray-200 rounded animate-pulse w-3/4"></div>
+                            <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                            <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded animate-pulse w-3/4"></div>
                           </div>
                         ) : (
                           <>
-                            <p className="text-xl font-bold text-gray-900">{card.count}</p>
-                            <p className="text-sm font-medium text-gray-900">{card.title}</p>
-                            <p className="text-xs text-gray-500">{card.subtext}</p>
+                            <p className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight">{card.count}</p>
+                            <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">{card.title}</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">{card.subtext}</p>
                           </>
                         )}
                       </div>

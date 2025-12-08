@@ -493,7 +493,18 @@ export default function TasksPage() {
   );
 
   if (loading) {
-    return <LoadingState />;
+    return (
+      <AppLayout user={user}>
+        <PageHeader
+          title="Tasks"
+          description="Manage your action items and follow-ups"
+          breadcrumbs={[{ label: 'CRM' }, { label: 'Tasks' }]}
+        />
+        <div className="px-4 sm:px-6 lg:px-8 py-6">
+          <LoadingState />
+        </div>
+      </AppLayout>
+    );
   }
 
   return (

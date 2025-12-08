@@ -3,6 +3,9 @@ import type { NextRequest } from 'next/server'
 import { getSecurityConfig, generateCSPHeader } from '@/lib/security-config'
 import { getServerSessionFromRequest } from '@/lib/auth'
 
+// Check if CRM demo mode is enabled
+const isCRMDemoMode = process.env.NEXT_PUBLIC_DEMO_MODE === 'crm'
+
 // Routes that require authentication
 const protectedRoutes = ['/admin', '/crm', '/dashboard', '/services', '/claims', '/titles', '/payments', '/invoices', '/vehicles', '/intake']
 const adminOnlyRoutes = ['/admin']
@@ -15,6 +18,13 @@ const crmRoutes = ['/crm']
  * - Route protection based on user roles
  */
 export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl
+
+  // CRM Demo Mode: Redirect root to CRM
+  if (isCRMDemoMode && (pathname === '/' || pathname === '/dashboard')) {
+    return NextResponse.redirect(new URL('/crm', request.url))
+  }
+
   const response = NextResponse.next()
   const securityConfig = getSecurityConfig()
 
@@ -90,7 +100,6 @@ export async function middleware(request: NextRequest) {
   }
 
   // Authentication and authorization logic
-  const { pathname } = request.nextUrl
   const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route))
 
   if (isProtectedRoute) {
